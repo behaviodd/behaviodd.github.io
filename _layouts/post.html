@@ -12,7 +12,7 @@ layout: default
   <div id="secret-form">
     <div class="secret-lock">&#128274;</div>
     <p class="secret-msg">This post is password-protected.</p>
-    <form onsubmit="return decryptPost()">
+    <form onsubmit="event.preventDefault(); decryptPost();">
       <input type="password" id="secret-pw" placeholder="Password" autocomplete="off" autofocus>
       <button type="submit">Unlock</button>
     </form>
