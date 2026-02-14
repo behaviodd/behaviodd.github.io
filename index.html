@@ -1,219 +1,37 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>behaviodd</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+---
+layout: default
+title: Home
+---
 
-    :root {
-      --fg: #111;
-      --fg-muted: #666;
-      --fg-faint: #999;
-      --bg: #fff;
-      --border: #e0e0e0;
-      --accent: #4c4cb1;
-      --font: "iA Writer Mono", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
-    }
+<div class="hero">
+  <h1>Projects</h1>
+  <p>A collection of things I've built.</p>
+</div>
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --fg: #e8e8e8;
-        --fg-muted: #999;
-        --fg-faint: #666;
-        --bg: #111;
-        --border: #2a2a2a;
-        --accent: #8888e8;
-      }
-    }
+<div class="section-label">Works</div>
 
-    html {
-      font-family: var(--font);
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--fg);
-      background: var(--bg);
-      -webkit-font-smoothing: antialiased;
-    }
+<div class="project-list">
+  <a href="https://matome-keyword.vercel.app/" class="project" target="_blank" rel="noopener">
+    <span class="project-name">Matome Keyword</span>
+    <span class="project-desc">News aggregation & AI summary</span>
+    <span class="arrow">&rarr;</span>
+  </a>
+  <a href="https://aerowriting.vercel.app/" class="project" target="_blank" rel="noopener">
+    <span class="project-name">Aero Writing</span>
+    <span class="project-desc">Writing tool</span>
+    <span class="arrow">&rarr;</span>
+  </a>
+</div>
 
-    body { min-height: 100vh; display: flex; flex-direction: column; }
+{% if site.posts.size > 0 %}
+<div class="section-label" style="margin-top: 64px;">Recent Posts</div>
 
-    .container {
-      max-width: 640px;
-      margin: 0 auto;
-      padding: 0 24px;
-      width: 100%;
-    }
-
-    /* ── Header ── */
-    header {
-      padding: 32px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    nav {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-    nav .name {
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--fg);
-      text-decoration: none;
-      margin-right: auto;
-    }
-    nav a {
-      color: var(--fg-muted);
-      text-decoration: none;
-      font-size: 14px;
-    }
-    nav a:hover { color: var(--fg); }
-
-    /* ── Main ── */
-    main { flex: 1; padding: 64px 0; }
-
-    .hero {
-      margin-bottom: 64px;
-    }
-    .hero h1 {
-      font-size: clamp(32px, 8vw, 56px);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
-    }
-    .hero p {
-      font-size: 16px;
-      color: var(--fg-muted);
-      max-width: 480px;
-    }
-
-    /* ── Projects ── */
-    .section-label {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--fg-faint);
-      margin-bottom: 24px;
-    }
-
-    .project-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .project {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
-      text-decoration: none;
-      color: inherit;
-      transition: opacity 0.15s;
-    }
-    .project:last-child {
-      border-bottom: 1px solid var(--border);
-    }
-    .project:hover { opacity: 0.6; }
-
-    .project-name {
-      font-weight: 700;
-      font-size: 15px;
-    }
-    .project-desc {
-      font-size: 13px;
-      color: var(--fg-muted);
-      text-align: right;
-      flex-shrink: 1;
-    }
-
-    .arrow {
-      font-size: 14px;
-      color: var(--fg-faint);
-      flex-shrink: 0;
-    }
-
-    /* ── Footer ── */
-    footer {
-      padding: 32px 0;
-      border-top: 1px solid var(--border);
-    }
-    .footer-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13px;
-      color: var(--fg-faint);
-    }
-    .footer-links {
-      display: flex;
-      gap: 16px;
-    }
-    .footer-links a {
-      color: var(--fg-faint);
-      text-decoration: none;
-    }
-    .footer-links a:hover { color: var(--fg); }
-
-    @media (max-width: 480px) {
-      .project {
-        flex-direction: column;
-        gap: 4px;
-      }
-      .project-desc { text-align: left; }
-    }
-  </style>
-</head>
-<body>
-
-  <header>
-    <div class="container">
-      <nav>
-        <a href="/" class="name">behaviodd</a>
-        <a href="https://github.com/behaviodd">GitHub</a>
-      </nav>
-    </div>
-  </header>
-
-  <main>
-    <div class="container">
-      <div class="hero">
-        <h1>Projects</h1>
-        <p>A collection of things I've built.</p>
-      </div>
-
-      <div class="section-label">Works</div>
-
-      <div class="project-list">
-        <a href="https://matome-keyword.vercel.app/" class="project" target="_blank" rel="noopener">
-          <span class="project-name">Matome Keyword</span>
-          <span class="project-desc">News aggregation & AI summary</span>
-          <span class="arrow">&rarr;</span>
-        </a>
-        <a href="https://aerowriting.vercel.app/" class="project" target="_blank" rel="noopener">
-          <span class="project-name">Aero Writing</span>
-          <span class="project-desc">Writing tool</span>
-          <span class="arrow">&rarr;</span>
-        </a>
-      </div>
-    </div>
-  </main>
-
-  <footer>
-    <div class="container">
-      <div class="footer-inner">
-        <span>&copy; 2025 behaviodd</span>
-        <div class="footer-links">
-          <a href="https://github.com/behaviodd">GitHub</a>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-</body>
-</html>
+<div class="project-list">
+  {% for post in site.posts limit:5 %}
+  <a href="{{ post.url }}" class="post-item">
+    <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
+    <span class="post-title">{{ post.title }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
