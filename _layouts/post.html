@@ -21,6 +21,7 @@ layout: default
   <div id="secret-content" style="display:none;">{{ content }}</div>
   <div id="decrypted-content" class="prose" style="display:none;"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
   async function decryptPost() {
     const pw = document.getElementById('secret-pw').value;
@@ -52,7 +53,7 @@ layout: default
 
       document.getElementById('secret-form').style.display = 'none';
       const dest = document.getElementById('decrypted-content');
-      dest.innerHTML = plaintext;
+      dest.innerHTML = marked.parse(plaintext);
       dest.style.display = 'block';
     } catch (e) {
       errEl.style.display = 'block';
