@@ -6,7 +6,7 @@ permalink: /digging/
 
 <div class="hero">
   <h1>K-POP Digging Club</h1>
-  <p>Paste a Spotify track link and discover similar songs, ranked by match rate.</p>
+  <p>Paste a Spotify track link and discover similar songs.</p>
 </div>
 
 <form class="dig-form" id="digForm" onsubmit="return handleSubmit(event)">
@@ -162,15 +162,12 @@ permalink: /digging/
   /* ── Track URL Parser ── */
   function parseTrackId(input) {
     input = input.trim();
-    // spotify:track:ID
     const urnMatch = input.match(/^spotify:track:([a-zA-Z0-9]{22})$/);
     if (urnMatch) return urnMatch[1];
-    // open.spotify.com URL
     try {
       const url = new URL(input);
       if (url.hostname === 'open.spotify.com') {
         const parts = url.pathname.split('/').filter(Boolean);
-        // Handle /intl-xx/track/ID pattern
         const trackIdx = parts.indexOf('track');
         if (trackIdx !== -1 && parts[trackIdx + 1]) {
           const id = parts[trackIdx + 1];
@@ -178,70 +175,110 @@ permalink: /digging/
         }
       }
     } catch {}
-    // Bare ID
     if (/^[a-zA-Z0-9]{22}$/.test(input)) return input;
     return null;
   }
 
-  /* ── Match Engine ── */
-  const WEIGHTS = {
-    tempo: 0.20,
-    energy: 0.20,
-    danceability: 0.15,
-    valence: 0.15,
-    acousticness: 0.10,
-    instrumentalness: 0.05,
-    speechiness: 0.05,
-    loudness: 0.05,
-    keyMode: 0.05,
-  };
-
-  function tempoSimilarity(a, b) {
-    // Account for half/double tempo relationship
-    const ratios = [1, 0.5, 2];
-    let best = 0;
-    for (const r of ratios) {
-      const adjusted = b * r;
-      const diff = Math.abs(a - adjusted) / Math.max(a, adjusted);
-      best = Math.max(best, 1 - diff);
-    }
-    return Math.max(0, Math.min(1, best));
-  }
-
-  function keySimilarity(seedKey, seedMode, candKey, candMode) {
-    if (seedKey === -1 || candKey === -1) return 0.5;
-    if (seedKey === candKey && seedMode === candMode) return 1.0;
-    // Relative major/minor (e.g., C major ↔ A minor)
-    const relativeKey = seedMode === 1 ? (seedKey + 9) % 12 : (seedKey + 3) % 12;
-    const relativeMode = 1 - seedMode;
-    if (candKey === relativeKey && candMode === relativeMode) return 0.7;
-    // Same key different mode
-    if (seedKey === candKey) return 0.5;
-    // Circle of fifths neighbors
-    if ((candKey === (seedKey + 7) % 12 || candKey === (seedKey + 5) % 12) && candMode === seedMode) return 0.6;
-    return 0.2;
-  }
-
-  function loudnessSimilarity(a, b) {
-    // Loudness typically -60 to 0 dB
-    const diff = Math.abs(a - b) / 60;
-    return Math.max(0, 1 - diff);
-  }
-
-  function calcMatch(seedFeatures, candFeatures) {
+  /* ── Relevance Scoring ── */
+  function calcRelevance(seed, cand, source) {
     let score = 0;
+    // Duration similarity (max 30 pts)
+    const durDiff = Math.abs(seed.duration_ms - cand.duration_ms) / seed.duration_ms;
+    score += Math.round(Math.max(0, 30 * (1 - durDiff)));
+    // Same album bonus (20 pts)
+    if (cand.album && seed.album && cand.album.id === seed.album.id) score += 20;
+    // Same artist penalty — user already knows them, lower priority
+    const seedArtistIds = seed.artists.map(a => a.id);
+    const candArtistIds = cand.artists.map(a => a.id);
+    const sameArtist = seedArtistIds.some(id => candArtistIds.includes(id));
+    if (sameArtist) score -= 5;
+    // Source bonus
+    if (source === 'album') score += 10;
+    if (source === 'search') score += 5;
+    // Release proximity bonus (max 15 pts)
+    if (seed.album?.release_date && cand.album?.release_date) {
+      const seedYear = parseInt(seed.album.release_date);
+      const candYear = parseInt(cand.album.release_date);
+      if (seedYear && candYear) {
+        const yearDiff = Math.abs(seedYear - candYear);
+        score += Math.round(Math.max(0, 15 * (1 - yearDiff / 10)));
+      }
+    }
+    return Math.max(0, Math.min(100, score));
+  }
 
-    score += WEIGHTS.tempo * tempoSimilarity(seedFeatures.tempo, candFeatures.tempo);
-    score += WEIGHTS.energy * (1 - Math.abs(seedFeatures.energy - candFeatures.energy));
-    score += WEIGHTS.danceability * (1 - Math.abs(seedFeatures.danceability - candFeatures.danceability));
-    score += WEIGHTS.valence * (1 - Math.abs(seedFeatures.valence - candFeatures.valence));
-    score += WEIGHTS.acousticness * (1 - Math.abs(seedFeatures.acousticness - candFeatures.acousticness));
-    score += WEIGHTS.instrumentalness * (1 - Math.abs(seedFeatures.instrumentalness - candFeatures.instrumentalness));
-    score += WEIGHTS.speechiness * (1 - Math.abs(seedFeatures.speechiness - candFeatures.speechiness));
-    score += WEIGHTS.loudness * loudnessSimilarity(seedFeatures.loudness, candFeatures.loudness);
-    score += WEIGHTS.keyMode * keySimilarity(seedFeatures.key, seedFeatures.mode, candFeatures.key, candFeatures.mode);
+  /* ── Candidate Discovery ── */
+  async function discoverCandidates(seed) {
+    const seen = new Set([seed.id]);
+    const candidates = [];
 
-    return Math.round(score * 100);
+    function addCandidate(track, source) {
+      if (seen.has(track.id)) return;
+      seen.add(track.id);
+      candidates.push({ track, source });
+    }
+
+    const artistName = seed.artists[0]?.name || '';
+    const artistId = seed.artists[0]?.id;
+    const albumId = seed.album?.id;
+
+    // 1. Same album tracks
+    if (albumId) {
+      try {
+        const albumTracks = await proxyFetch('/v1/albums/' + albumId + '/tracks?limit=50');
+        const trackIds = (albumTracks.items || []).map(t => t.id).filter(id => !seen.has(id));
+        if (trackIds.length > 0) {
+          const chunks = [];
+          for (let i = 0; i < trackIds.length; i += 50) {
+            chunks.push(trackIds.slice(i, i + 50).join(','));
+          }
+          for (const chunk of chunks) {
+            const full = await proxyFetch('/v1/tracks?ids=' + chunk);
+            (full.tracks || []).forEach(t => { if (t) addCandidate(t, 'album'); });
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Other albums by same artist
+    if (artistId) {
+      try {
+        const albums = await proxyFetch('/v1/artists/' + artistId + '/albums?limit=20&include_groups=album,single');
+        const albumIds = (albums.items || [])
+          .filter(a => a.id !== albumId)
+          .slice(0, 5)
+          .map(a => a.id);
+
+        for (const aid of albumIds) {
+          try {
+            const at = await proxyFetch('/v1/albums/' + aid + '/tracks?limit=10');
+            const ids = (at.items || []).map(t => t.id).filter(id => !seen.has(id)).slice(0, 5);
+            if (ids.length > 0) {
+              const full = await proxyFetch('/v1/tracks?ids=' + ids.join(','));
+              (full.tracks || []).forEach(t => { if (t) addCandidate(t, 'artist_album'); });
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    // 3. Search for similar tracks (multiple queries)
+    const queries = [
+      artistName,
+      artistName + ' ' + (seed.album?.name || ''),
+      seed.name,
+    ].filter(Boolean);
+
+    for (const q of queries) {
+      try {
+        const search = await proxyFetch(
+          '/v1/search?q=' + encodeURIComponent(q) + '&type=track&limit=20&market=KR'
+        );
+        (search.tracks?.items || []).forEach(t => addCandidate(t, 'search'));
+      } catch {}
+    }
+
+    return candidates;
   }
 
   /* ── Main Flow ── */
@@ -266,60 +303,37 @@ permalink: /digging/
       // 1. Get seed track info
       const track = await proxyFetch('/v1/tracks/' + trackId);
       currentSeedTrack = track;
-
-      // 2. Get audio features for seed
-      const seedFeatures = await proxyFetch('/v1/audio-features/' + trackId);
-
-      renderSeedTrack(track, seedFeatures);
+      renderSeedTrack(track);
       showLoading('Finding similar tracks...');
 
-      // 3. Get recommendations
-      let recTracks = [];
-      try {
-        const recs = await proxyFetch(
-          '/v1/recommendations?seed_tracks=' + trackId + '&limit=50'
-        );
-        recTracks = recs.tracks || [];
-      } catch {
-        // Fallback: related artists + top tracks
-        recTracks = await fallbackRecommendations(track);
-      }
+      // 2. Discover candidates
+      const candidates = await discoverCandidates(track);
 
-      if (recTracks.length === 0) {
+      if (candidates.length === 0) {
         hideLoading();
-        showError('No recommendations found for this track.');
+        showError('No similar tracks found.');
         return;
       }
 
-      // 4. Get audio features for all results
-      const ids = recTracks.map(t => t.id).join(',');
-      const featuresRes = await proxyFetch('/v1/audio-features?ids=' + ids);
-      const featuresMap = {};
-      (featuresRes.audio_features || []).forEach(f => {
-        if (f) featuresMap[f.id] = f;
-      });
-
-      // 5. Calculate match rates and sort
-      let results = recTracks
-        .filter(t => featuresMap[t.id])
-        .map(t => ({
-          track: t,
-          features: featuresMap[t.id],
-          match: calcMatch(seedFeatures, featuresMap[t.id]),
+      // 3. Score and sort
+      let results = candidates
+        .map(c => ({
+          track: c.track,
+          match: calcRelevance(track, c.track, c.source),
         }))
         .sort((a, b) => b.match - a.match);
 
-      // 6. Limit same artist to max 2
+      // 4. Limit same artist to max 3
       const artistCount = {};
       results = results.filter(r => {
-        const artistId = r.track.artists[0]?.id;
-        if (!artistId) return true;
-        artistCount[artistId] = (artistCount[artistId] || 0) + 1;
-        return artistCount[artistId] <= 2;
+        const aid = r.track.artists[0]?.id;
+        if (!aid) return true;
+        artistCount[aid] = (artistCount[aid] || 0) + 1;
+        return artistCount[aid] <= 3;
       });
 
-      // Remove seed track from results
-      results = results.filter(r => r.track.id !== trackId);
+      // Take top 30
+      results = results.slice(0, 30);
 
       recommendedTracks = results;
       hideLoading();
@@ -337,42 +351,15 @@ permalink: /digging/
     return false;
   }
 
-  async function fallbackRecommendations(track) {
-    const artistId = track.artists[0]?.id;
-    if (!artistId) return [];
-
-    try {
-      const related = await proxyFetch('/v1/artists/' + artistId + '/related-artists');
-      const artistIds = (related.artists || []).slice(0, 5).map(a => a.id);
-      artistIds.unshift(artistId);
-
-      const allTracks = [];
-      for (const aid of artistIds) {
-        try {
-          const top = await proxyFetch('/v1/artists/' + aid + '/top-tracks?market=KR');
-          allTracks.push(...(top.tracks || []));
-        } catch {}
-      }
-      return allTracks;
-    } catch {
-      return [];
-    }
-  }
-
   /* ── UI Rendering ── */
-  function renderSeedTrack(track, features) {
+  function renderSeedTrack(track) {
     const img = track.album.images[1]?.url || track.album.images[0]?.url || '';
     const tags = [];
-    if (features.tempo) tags.push(Math.round(features.tempo) + ' BPM');
-    if (features.energy != null) tags.push('Energy ' + Math.round(features.energy * 100) + '%');
-    if (features.danceability != null) tags.push('Dance ' + Math.round(features.danceability * 100) + '%');
-    if (features.valence != null) tags.push('Valence ' + Math.round(features.valence * 100) + '%');
-    if (features.acousticness != null) tags.push('Acoustic ' + Math.round(features.acousticness * 100) + '%');
-
-    const keyNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    if (features.key >= 0) {
-      tags.push(keyNames[features.key] + (features.mode === 1 ? ' Major' : ' Minor'));
-    }
+    const durMin = Math.floor(track.duration_ms / 60000);
+    const durSec = Math.floor((track.duration_ms % 60000) / 1000);
+    tags.push(durMin + ':' + String(durSec).padStart(2, '0'));
+    if (track.album?.release_date) tags.push(track.album.release_date.slice(0, 4));
+    if (track.album?.name) tags.push(track.album.name);
 
     $seed.innerHTML =
       '<div class="dig-seed">' +
@@ -400,7 +387,7 @@ permalink: /digging/
       '<div class="dig-result-list">';
 
     results.forEach((r, i) => {
-      const img = r.track.album.images[2]?.url || r.track.album.images[0]?.url || '';
+      const img = r.track.album?.images?.[2]?.url || r.track.album?.images?.[0]?.url || '';
       html +=
         '<div class="dig-result-item" data-index="' + i + '" data-track-id="' + r.track.id + '" onclick="window.__digPlay(' + i + ')">' +
           '<input type="checkbox" class="dig-result-check" checked onclick="event.stopPropagation()">' +
