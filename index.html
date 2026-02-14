@@ -12,7 +12,7 @@ title: Home
 
 <div class="project-list">
   <a href="https://matome-keyword.vercel.app/" class="project" target="_blank" rel="noopener">
-    <span class="project-name">Matome Keyword</span>
+    <span class="project-name">MATOME Keyword</span>
     <span class="project-desc">News aggregation & AI summary</span>
     <span class="arrow">&rarr;</span>
   </a>
@@ -30,7 +30,7 @@ title: Home
   {% for post in site.posts limit:5 %}
   <a href="{{ post.url }}" class="post-item">
     <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
-    <span class="post-title{% if post.secret %} post-secret{% endif %}">{{ post.title }}</span>
+    <span class="post-title">{{ post.title }}</span>
   </a>
   {% endfor %}
 </div>
