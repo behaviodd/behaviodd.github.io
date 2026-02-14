@@ -14,7 +14,7 @@ title: Blog
   {% for post in site.posts %}
   <a href="{{ post.url }}" class="post-item">
     <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
-    <span class="post-title">{{ post.title }}</span>
+    <span class="post-title{% if post.secret %} post-secret{% endif %}">{{ post.title }}</span>
   </a>
   {% endfor %}
 </div>

@@ -7,7 +7,63 @@ layout: default
     <h1>{{ page.title }}</h1>
     <p>{{ page.date | date: "%Y-%m-%d" }}</p>
   </div>
+
+  {% if page.secret %}
+  <div id="secret-form">
+    <div class="secret-lock">&#128274;</div>
+    <p class="secret-msg">This post is password-protected.</p>
+    <form onsubmit="return decryptPost()">
+      <input type="password" id="secret-pw" placeholder="Password" autocomplete="off" autofocus>
+      <button type="submit">Unlock</button>
+    </form>
+    <p id="secret-error" class="secret-error" style="display:none;">Wrong password. Try again.</p>
+  </div>
+  <div id="secret-content" style="display:none;">{{ content }}</div>
+  <div id="decrypted-content" class="prose" style="display:none;"></div>
+
+  <script>
+  async function decryptPost() {
+    const pw = document.getElementById('secret-pw').value;
+    const b64 = document.getElementById('secret-content').textContent.trim();
+    const errEl = document.getElementById('secret-error');
+    errEl.style.display = 'none';
+
+    try {
+      const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const salt = raw.slice(0, 16);
+      const iv = raw.slice(16, 28);
+      const ciphertext = raw.slice(28);
+
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']
+      );
+      const key = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['decrypt']
+      );
+      const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv }, key, ciphertext
+      );
+      const plaintext = new TextDecoder().decode(decrypted);
+
+      document.getElementById('secret-form').style.display = 'none';
+      const dest = document.getElementById('decrypted-content');
+      dest.innerHTML = plaintext;
+      dest.style.display = 'block';
+    } catch (e) {
+      errEl.style.display = 'block';
+    }
+    return false;
+  }
+  </script>
+
+  {% else %}
   <div class="prose">
     {{ content }}
   </div>
+  {% endif %}
 </article>

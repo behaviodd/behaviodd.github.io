@@ -227,6 +227,58 @@
       text-decoration: underline;
     }
 
+    /* ── Secret post ── */
+    .post-secret::before {
+      content: "\1F512";
+      font-size: 12px;
+      margin-right: 6px;
+    }
+    #secret-form {
+      text-align: center;
+      padding: 48px 0;
+    }
+    .secret-lock {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    .secret-msg {
+      color: var(--fg-muted);
+      margin-bottom: 24px;
+    }
+    #secret-form form {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      max-width: 320px;
+      margin: 0 auto;
+    }
+    #secret-form input {
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--fg);
+      flex: 1;
+    }
+    #secret-form button {
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--fg);
+      color: var(--bg);
+      cursor: pointer;
+    }
+    #secret-form button:hover { opacity: 0.8; }
+    .secret-error {
+      color: #c44;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
     /* ── Footer ── */
     footer {
       padding: 32px 0;
