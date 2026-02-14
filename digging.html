@@ -207,6 +207,17 @@ permalink: /digging/
     return Math.max(0, Math.min(100, score));
   }
 
+  /* ── Fetch single track (batch /v1/tracks?ids= is blocked) ── */
+  async function fetchTrack(id) {
+    try { return await proxyFetch('/v1/tracks/' + id); }
+    catch { return null; }
+  }
+
+  async function fetchTracksBatch(ids) {
+    const results = await Promise.all(ids.map(fetchTrack));
+    return results.filter(Boolean);
+  }
+
   /* ── Candidate Discovery ── */
   async function discoverCandidates(seed) {
     const seen = new Set([seed.id]);
@@ -227,23 +238,15 @@ permalink: /digging/
       try {
         const albumTracks = await proxyFetch('/v1/albums/' + albumId + '/tracks?limit=50');
         const trackIds = (albumTracks.items || []).map(t => t.id).filter(id => !seen.has(id));
-        if (trackIds.length > 0) {
-          const chunks = [];
-          for (let i = 0; i < trackIds.length; i += 50) {
-            chunks.push(trackIds.slice(i, i + 50).join(','));
-          }
-          for (const chunk of chunks) {
-            const full = await proxyFetch('/v1/tracks?ids=' + chunk);
-            (full.tracks || []).forEach(t => { if (t) addCandidate(t, 'album'); });
-          }
-        }
+        const fullTracks = await fetchTracksBatch(trackIds);
+        fullTracks.forEach(t => addCandidate(t, 'album'));
       } catch {}
     }
 
     // 2. Other albums by same artist
     if (artistId) {
       try {
-        const albums = await proxyFetch('/v1/artists/' + artistId + '/albums?limit=20&include_groups=album,single');
+        const albums = await proxyFetch('/v1/artists/' + artistId + '/albums?limit=10');
         const albumIds = (albums.items || [])
           .filter(a => a.id !== albumId)
           .slice(0, 5)
@@ -252,11 +255,9 @@ permalink: /digging/
         for (const aid of albumIds) {
           try {
             const at = await proxyFetch('/v1/albums/' + aid + '/tracks?limit=10');
-            const ids = (at.items || []).map(t => t.id).filter(id => !seen.has(id)).slice(0, 5);
-            if (ids.length > 0) {
-              const full = await proxyFetch('/v1/tracks?ids=' + ids.join(','));
-              (full.tracks || []).forEach(t => { if (t) addCandidate(t, 'artist_album'); });
-            }
+            const ids = (at.items || []).map(t => t.id).filter(id => !seen.has(id)).slice(0, 3);
+            const fullTracks = await fetchTracksBatch(ids);
+            fullTracks.forEach(t => addCandidate(t, 'artist_album'));
           } catch {}
         }
       } catch {}
