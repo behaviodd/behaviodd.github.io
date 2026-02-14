@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}behaviodd</title>
+  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}NVY Design</title>
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -228,56 +228,41 @@
       text-decoration: underline;
     }
 
-    /* ── Secret post ── */
-    .post-secret::before {
-      content: "\1F512";
-      font-size: 12px;
-      margin-right: 6px;
+    /* ── Profile ── */
+    .profile-section {
+      margin-bottom: 48px;
     }
-    #secret-form {
-      text-align: center;
-      padding: 48px 0;
-    }
-    .secret-lock {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .secret-msg {
-      color: var(--fg-muted);
-      margin-bottom: 24px;
-    }
-    #secret-form form {
+    .profile-list {
       display: flex;
-      gap: 8px;
-      justify-content: center;
-      max-width: 320px;
-      margin: 0 auto;
+      flex-direction: column;
+      gap: 0;
     }
-    #secret-form input {
-      font-family: var(--font);
-      font-size: 14px;
-      padding: 8px 12px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: var(--bg);
-      color: var(--fg);
-      flex: 1;
+    .profile-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 16px 0;
+      border-top: 1px solid var(--border);
     }
-    #secret-form button {
-      font-family: var(--font);
-      font-size: 14px;
-      padding: 8px 16px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: var(--fg);
-      color: var(--bg);
-      cursor: pointer;
+    .profile-row:last-child {
+      border-bottom: 1px solid var(--border);
     }
-    #secret-form button:hover { opacity: 0.8; }
-    .secret-error {
-      color: #c44;
-      margin-top: 12px;
+    .profile-row dt {
       font-size: 13px;
+      color: var(--fg-faint);
+      flex-shrink: 0;
+      min-width: 80px;
+    }
+    .profile-row dd {
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .profile-row dd a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .profile-row dd a:hover {
+      text-decoration: underline;
     }
 
     /* ── Footer ── */
@@ -316,8 +301,9 @@
   <header>
     <div class="container">
       <nav>
-        <a href="/" class="name">behaviodd</a>
+        <a href="/" class="name">NVY Design</a>
         <a href="/blog/">Blog</a>
+        <a href="/profile/">Profile</a>
       </nav>
     </div>
   </header>
