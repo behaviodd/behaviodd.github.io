@@ -5,9 +5,12 @@ Usage:
     python3 _scripts/encrypt_post.py _posts/2026-02-14-secret-test.md
 
 The post must have `secret: true` in its front matter.
-You will be prompted for a password. The script overwrites the file
-with the front matter intact and the body replaced by a single
-base64-encoded blob: base64(salt[16] || iv[12] || ciphertext || tag[16]).
+Password can be specified in front matter as `password: yourpass`
+(it will be removed after encryption), or you will be prompted.
+
+The script overwrites the file with the front matter intact and
+the body replaced by a single base64-encoded blob:
+    base64(salt[16] || iv[12] || ciphertext || tag[16])
 
 The browser-side Web Crypto API (PBKDF2 + AES-GCM) can decrypt it.
 """
@@ -15,6 +18,7 @@ The browser-side Web Crypto API (PBKDF2 + AES-GCM) can decrypt it.
 import base64
 import getpass
 import os
+import re
 import sys
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -37,6 +41,16 @@ def parse_front_matter(text: str):
     if end < len(text) and text[end] == "\n":
         end += 1
     return text[:end], text[end:]
+
+
+def extract_password(front_matter: str):
+    """Extract and remove password field from front matter."""
+    match = re.search(r'^password:\s*(.+)$', front_matter, re.MULTILINE)
+    if not match:
+        return front_matter, None
+    password = match.group(1).strip().strip('"').strip("'")
+    cleaned = re.sub(r'^password:\s*.+\n?', '', front_matter, flags=re.MULTILINE)
+    return cleaned, password
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
@@ -78,14 +92,19 @@ def main():
         print("Error: post body is empty.")
         sys.exit(1)
 
-    password = getpass.getpass("Password: ")
-    if not password:
-        print("Error: password cannot be empty.")
-        sys.exit(1)
-    confirm = getpass.getpass("Confirm password: ")
-    if password != confirm:
-        print("Error: passwords do not match.")
-        sys.exit(1)
+    front_matter, password = extract_password(front_matter)
+
+    if password:
+        print(f"Using password from front matter.")
+    else:
+        password = getpass.getpass("Password: ")
+        if not password:
+            print("Error: password cannot be empty.")
+            sys.exit(1)
+        confirm = getpass.getpass("Confirm password: ")
+        if password != confirm:
+            print("Error: passwords do not match.")
+            sys.exit(1)
 
     encrypted = encrypt(body, password)
 
