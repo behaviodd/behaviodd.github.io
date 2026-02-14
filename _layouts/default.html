@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}behaviodd</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,7 +15,7 @@
       --bg: #fff;
       --border: #e0e0e0;
       --accent: #4c4cb1;
-      --font: "iA Writer Mono", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
+      --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -191,7 +192,7 @@
       margin: 0 0 16px;
     }
     .prose code {
-      font-family: var(--font);
+      font-family: "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
       font-size: 14px;
       background: var(--border);
       padding: 2px 6px;
