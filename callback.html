@@ -1,0 +1,76 @@
+---
+layout: null
+permalink: /callback/
+---
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connecting...</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; margin: 0;
+      color: #666; background: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #999; background: #111; }
+    }
+  </style>
+</head>
+<body>
+  <p id="msg">Connecting to Spotify...</p>
+  <script>
+  (async function () {
+    const CLIENT_ID = '73c2a2252db34c748e7eeb88c8a2aa20';
+    const REDIRECT_URI = 'https://behaviodd.github.io/callback/';
+
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const error = params.get('error');
+
+    if (error || !code) {
+      document.getElementById('msg').textContent = 'Authorization failed: ' + (error || 'no code');
+      return;
+    }
+
+    const verifier = localStorage.getItem('pkce_verifier');
+    if (!verifier) {
+      document.getElementById('msg').textContent = 'Session expired. Please try again.';
+      return;
+    }
+
+    try {
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: code,
+          redirect_uri: REDIRECT_URI,
+          client_id: CLIENT_ID,
+          code_verifier: verifier,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Token exchange failed');
+
+      const data = await res.json();
+      const token = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: Date.now() + data.expires_in * 1000,
+      };
+      localStorage.setItem('spotify_token', JSON.stringify(token));
+      localStorage.removeItem('pkce_verifier');
+
+      window.location.replace('/digging/');
+    } catch (err) {
+      document.getElementById('msg').textContent = 'Error: ' + err.message;
+    }
+  })();
+  </script>
+</body>
+</html>

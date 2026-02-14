@@ -1,0 +1,574 @@
+---
+layout: default
+title: Digging Club
+permalink: /digging/
+---
+
+<div class="hero">
+  <h1>K-POP Digging Club</h1>
+  <p>Paste a Spotify track link and discover similar songs, ranked by match rate.</p>
+</div>
+
+<form class="dig-form" id="digForm" onsubmit="return handleSubmit(event)">
+  <input
+    type="text"
+    class="dig-url-input"
+    id="trackInput"
+    placeholder="https://open.spotify.com/track/..."
+    autocomplete="off"
+  />
+  <button type="submit" class="dig-submit-btn" id="digBtn">Dig</button>
+</form>
+
+<div id="seedCard"></div>
+<div id="loadingArea"></div>
+<div id="errorArea"></div>
+<div id="resultsArea"></div>
+<div id="playlistBar"></div>
+<div id="authSection"></div>
+<div id="playerArea"></div>
+<div id="toastEl" class="dig-toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── CONFIG ── */
+  const CONFIG = {
+    workerUrl: 'https://kpop-digging-proxy.behaviodd.workers.dev',
+    clientId: '73c2a2252db34c748e7eeb88c8a2aa20',
+    redirectUri: 'https://behaviodd.github.io/callback/',
+    scopes: 'playlist-modify-public playlist-modify-private',
+  };
+
+  /* ── DOM refs ── */
+  const $form = document.getElementById('digForm');
+  const $input = document.getElementById('trackInput');
+  const $btn = document.getElementById('digBtn');
+  const $seed = document.getElementById('seedCard');
+  const $loading = document.getElementById('loadingArea');
+  const $error = document.getElementById('errorArea');
+  const $results = document.getElementById('resultsArea');
+  const $playlistBar = document.getElementById('playlistBar');
+  const $auth = document.getElementById('authSection');
+  const $player = document.getElementById('playerArea');
+  const $toast = document.getElementById('toastEl');
+
+  let currentSeedTrack = null;
+  let recommendedTracks = [];
+
+  /* ── API Proxy ── */
+  async function proxyFetch(endpoint) {
+    const url = CONFIG.workerUrl + '/api/spotify?endpoint=' + encodeURIComponent(endpoint);
+    const res = await fetch(url);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'API error ' + res.status);
+    }
+    return res.json();
+  }
+
+  /* ── PKCE Auth ── */
+  function generateCodeVerifier() {
+    const arr = new Uint8Array(64);
+    crypto.getRandomValues(arr);
+    return btoa(String.fromCharCode(...arr))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function sha256(plain) {
+    const data = new TextEncoder().encode(plain);
+    return crypto.subtle.digest('SHA-256', data);
+  }
+
+  function base64UrlEncode(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function buildAuthUrl() {
+    const verifier = generateCodeVerifier();
+    const challenge = base64UrlEncode(await sha256(verifier));
+    localStorage.setItem('pkce_verifier', verifier);
+    localStorage.setItem('pending_track_url', $input.value);
+
+    const params = new URLSearchParams({
+      client_id: CONFIG.clientId,
+      response_type: 'code',
+      redirect_uri: CONFIG.redirectUri,
+      scope: CONFIG.scopes,
+      code_challenge_method: 'S256',
+      code_challenge: challenge,
+    });
+    return 'https://accounts.spotify.com/authorize?' + params.toString();
+  }
+
+  function getStoredToken() {
+    const raw = localStorage.getItem('spotify_token');
+    if (!raw) return null;
+    try {
+      const t = JSON.parse(raw);
+      if (Date.now() > t.expires_at - 60000) return null;
+      return t;
+    } catch { return null; }
+  }
+
+  async function refreshUserToken() {
+    const raw = localStorage.getItem('spotify_token');
+    if (!raw) return null;
+    const t = JSON.parse(raw);
+    if (!t.refresh_token) return null;
+
+    const res = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: t.refresh_token,
+        client_id: CONFIG.clientId,
+      }),
+    });
+    if (!res.ok) {
+      localStorage.removeItem('spotify_token');
+      return null;
+    }
+    const data = await res.json();
+    const token = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token || t.refresh_token,
+      expires_at: Date.now() + data.expires_in * 1000,
+    };
+    localStorage.setItem('spotify_token', JSON.stringify(token));
+    return token;
+  }
+
+  async function getValidToken() {
+    let token = getStoredToken();
+    if (token) return token.access_token;
+    token = await refreshUserToken();
+    return token ? token.access_token : null;
+  }
+
+  function isLoggedIn() {
+    return !!getStoredToken();
+  }
+
+  function logout() {
+    localStorage.removeItem('spotify_token');
+    renderAuth();
+    showToast('Logged out');
+  }
+
+  /* ── Track URL Parser ── */
+  function parseTrackId(input) {
+    input = input.trim();
+    // spotify:track:ID
+    const urnMatch = input.match(/^spotify:track:([a-zA-Z0-9]{22})$/);
+    if (urnMatch) return urnMatch[1];
+    // open.spotify.com URL
+    try {
+      const url = new URL(input);
+      if (url.hostname === 'open.spotify.com') {
+        const parts = url.pathname.split('/').filter(Boolean);
+        // Handle /intl-xx/track/ID pattern
+        const trackIdx = parts.indexOf('track');
+        if (trackIdx !== -1 && parts[trackIdx + 1]) {
+          const id = parts[trackIdx + 1];
+          if (/^[a-zA-Z0-9]{22}$/.test(id)) return id;
+        }
+      }
+    } catch {}
+    // Bare ID
+    if (/^[a-zA-Z0-9]{22}$/.test(input)) return input;
+    return null;
+  }
+
+  /* ── Match Engine ── */
+  const WEIGHTS = {
+    tempo: 0.20,
+    energy: 0.20,
+    danceability: 0.15,
+    valence: 0.15,
+    acousticness: 0.10,
+    instrumentalness: 0.05,
+    speechiness: 0.05,
+    loudness: 0.05,
+    keyMode: 0.05,
+  };
+
+  function tempoSimilarity(a, b) {
+    // Account for half/double tempo relationship
+    const ratios = [1, 0.5, 2];
+    let best = 0;
+    for (const r of ratios) {
+      const adjusted = b * r;
+      const diff = Math.abs(a - adjusted) / Math.max(a, adjusted);
+      best = Math.max(best, 1 - diff);
+    }
+    return Math.max(0, Math.min(1, best));
+  }
+
+  function keySimilarity(seedKey, seedMode, candKey, candMode) {
+    if (seedKey === -1 || candKey === -1) return 0.5;
+    if (seedKey === candKey && seedMode === candMode) return 1.0;
+    // Relative major/minor (e.g., C major ↔ A minor)
+    const relativeKey = seedMode === 1 ? (seedKey + 9) % 12 : (seedKey + 3) % 12;
+    const relativeMode = 1 - seedMode;
+    if (candKey === relativeKey && candMode === relativeMode) return 0.7;
+    // Same key different mode
+    if (seedKey === candKey) return 0.5;
+    // Circle of fifths neighbors
+    if ((candKey === (seedKey + 7) % 12 || candKey === (seedKey + 5) % 12) && candMode === seedMode) return 0.6;
+    return 0.2;
+  }
+
+  function loudnessSimilarity(a, b) {
+    // Loudness typically -60 to 0 dB
+    const diff = Math.abs(a - b) / 60;
+    return Math.max(0, 1 - diff);
+  }
+
+  function calcMatch(seedFeatures, candFeatures) {
+    let score = 0;
+
+    score += WEIGHTS.tempo * tempoSimilarity(seedFeatures.tempo, candFeatures.tempo);
+    score += WEIGHTS.energy * (1 - Math.abs(seedFeatures.energy - candFeatures.energy));
+    score += WEIGHTS.danceability * (1 - Math.abs(seedFeatures.danceability - candFeatures.danceability));
+    score += WEIGHTS.valence * (1 - Math.abs(seedFeatures.valence - candFeatures.valence));
+    score += WEIGHTS.acousticness * (1 - Math.abs(seedFeatures.acousticness - candFeatures.acousticness));
+    score += WEIGHTS.instrumentalness * (1 - Math.abs(seedFeatures.instrumentalness - candFeatures.instrumentalness));
+    score += WEIGHTS.speechiness * (1 - Math.abs(seedFeatures.speechiness - candFeatures.speechiness));
+    score += WEIGHTS.loudness * loudnessSimilarity(seedFeatures.loudness, candFeatures.loudness);
+    score += WEIGHTS.keyMode * keySimilarity(seedFeatures.key, seedFeatures.mode, candFeatures.key, candFeatures.mode);
+
+    return Math.round(score * 100);
+  }
+
+  /* ── Main Flow ── */
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const trackId = parseTrackId($input.value);
+    if (!trackId) {
+      showError('Please enter a valid Spotify track URL.');
+      return false;
+    }
+
+    $btn.disabled = true;
+    $btn.textContent = 'Digging...';
+    $seed.innerHTML = '';
+    $results.innerHTML = '';
+    $playlistBar.innerHTML = '';
+    $player.innerHTML = '';
+    $error.innerHTML = '';
+    recommendedTracks = [];
+
+    try {
+      // 1. Get seed track info
+      const track = await proxyFetch('/v1/tracks/' + trackId);
+      currentSeedTrack = track;
+
+      // 2. Get audio features for seed
+      const seedFeatures = await proxyFetch('/v1/audio-features/' + trackId);
+
+      renderSeedTrack(track, seedFeatures);
+      showLoading('Finding similar tracks...');
+
+      // 3. Get recommendations
+      let recTracks = [];
+      try {
+        const recs = await proxyFetch(
+          '/v1/recommendations?seed_tracks=' + trackId + '&limit=50'
+        );
+        recTracks = recs.tracks || [];
+      } catch {
+        // Fallback: related artists + top tracks
+        recTracks = await fallbackRecommendations(track);
+      }
+
+      if (recTracks.length === 0) {
+        hideLoading();
+        showError('No recommendations found for this track.');
+        return;
+      }
+
+      // 4. Get audio features for all results
+      const ids = recTracks.map(t => t.id).join(',');
+      const featuresRes = await proxyFetch('/v1/audio-features?ids=' + ids);
+      const featuresMap = {};
+      (featuresRes.audio_features || []).forEach(f => {
+        if (f) featuresMap[f.id] = f;
+      });
+
+      // 5. Calculate match rates and sort
+      let results = recTracks
+        .filter(t => featuresMap[t.id])
+        .map(t => ({
+          track: t,
+          features: featuresMap[t.id],
+          match: calcMatch(seedFeatures, featuresMap[t.id]),
+        }))
+        .sort((a, b) => b.match - a.match);
+
+      // 6. Limit same artist to max 2
+      const artistCount = {};
+      results = results.filter(r => {
+        const artistId = r.track.artists[0]?.id;
+        if (!artistId) return true;
+        artistCount[artistId] = (artistCount[artistId] || 0) + 1;
+        return artistCount[artistId] <= 2;
+      });
+
+      // Remove seed track from results
+      results = results.filter(r => r.track.id !== trackId);
+
+      recommendedTracks = results;
+      hideLoading();
+      renderResults(results);
+      renderPlaylistBar();
+      renderAuth();
+
+    } catch (err) {
+      hideLoading();
+      showError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      $btn.disabled = false;
+      $btn.textContent = 'Dig';
+    }
+    return false;
+  }
+
+  async function fallbackRecommendations(track) {
+    const artistId = track.artists[0]?.id;
+    if (!artistId) return [];
+
+    try {
+      const related = await proxyFetch('/v1/artists/' + artistId + '/related-artists');
+      const artistIds = (related.artists || []).slice(0, 5).map(a => a.id);
+      artistIds.unshift(artistId);
+
+      const allTracks = [];
+      for (const aid of artistIds) {
+        try {
+          const top = await proxyFetch('/v1/artists/' + aid + '/top-tracks?market=KR');
+          allTracks.push(...(top.tracks || []));
+        } catch {}
+      }
+      return allTracks;
+    } catch {
+      return [];
+    }
+  }
+
+  /* ── UI Rendering ── */
+  function renderSeedTrack(track, features) {
+    const img = track.album.images[1]?.url || track.album.images[0]?.url || '';
+    const tags = [];
+    if (features.tempo) tags.push(Math.round(features.tempo) + ' BPM');
+    if (features.energy != null) tags.push('Energy ' + Math.round(features.energy * 100) + '%');
+    if (features.danceability != null) tags.push('Dance ' + Math.round(features.danceability * 100) + '%');
+    if (features.valence != null) tags.push('Valence ' + Math.round(features.valence * 100) + '%');
+    if (features.acousticness != null) tags.push('Acoustic ' + Math.round(features.acousticness * 100) + '%');
+
+    const keyNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    if (features.key >= 0) {
+      tags.push(keyNames[features.key] + (features.mode === 1 ? ' Major' : ' Minor'));
+    }
+
+    $seed.innerHTML =
+      '<div class="dig-seed">' +
+        '<img src="' + escHtml(img) + '" alt="">' +
+        '<div class="dig-seed-info">' +
+          '<div class="dig-seed-title">' + escHtml(track.name) + '</div>' +
+          '<div class="dig-seed-artist">' + escHtml(track.artists.map(a => a.name).join(', ')) + '</div>' +
+          '<div class="dig-feature-tags">' +
+            tags.map(t => '<span class="dig-feature-tag">' + escHtml(t) + '</span>').join('') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderResults(results) {
+    if (results.length === 0) {
+      $results.innerHTML = '<div class="dig-error">No similar tracks found.</div>';
+      return;
+    }
+
+    let html =
+      '<div class="dig-results-header">' +
+        '<span class="dig-results-count">' + results.length + ' Results</span>' +
+      '</div>' +
+      '<div class="dig-result-list">';
+
+    results.forEach((r, i) => {
+      const img = r.track.album.images[2]?.url || r.track.album.images[0]?.url || '';
+      html +=
+        '<div class="dig-result-item" data-index="' + i + '" data-track-id="' + r.track.id + '" onclick="window.__digPlay(' + i + ')">' +
+          '<input type="checkbox" class="dig-result-check" checked onclick="event.stopPropagation()">' +
+          '<img class="dig-result-img" src="' + escHtml(img) + '" alt="">' +
+          '<div class="dig-result-info">' +
+            '<div class="dig-result-title">' + escHtml(r.track.name) + '</div>' +
+            '<div class="dig-result-artist">' + escHtml(r.track.artists.map(a => a.name).join(', ')) + '</div>' +
+          '</div>' +
+          '<div class="dig-result-match">' + r.match + '%</div>' +
+        '</div>';
+    });
+
+    html += '</div>';
+    $results.innerHTML = html;
+  }
+
+  function renderPlaylistBar() {
+    if (recommendedTracks.length === 0) return;
+
+    const loggedIn = isLoggedIn();
+    $playlistBar.innerHTML =
+      '<div class="dig-playlist-bar">' +
+        '<label><input type="checkbox" id="selectAll" checked onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
+        (loggedIn
+          ? '<button class="dig-submit-btn" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
+          : '<button class="dig-submit-btn" onclick="window.__digConnectSpotify()">Connect Spotify to Create Playlist</button>') +
+      '</div>';
+  }
+
+  function renderAuth() {
+    if (isLoggedIn()) {
+      $auth.innerHTML =
+        '<div class="dig-auth-section">Spotify connected. <a onclick="window.__digLogout()">Disconnect</a></div>';
+    } else {
+      $auth.innerHTML =
+        '<div class="dig-auth-section">Connect Spotify to create playlists. <a onclick="window.__digConnectSpotify()">Connect</a></div>';
+    }
+  }
+
+  function renderPlayer(trackId) {
+    $player.innerHTML =
+      '<div class="dig-player">' +
+        '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
+          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'loading="lazy"></iframe>' +
+      '</div>';
+
+    // Highlight playing item
+    document.querySelectorAll('.dig-result-item').forEach(el => {
+      el.classList.toggle('dig-playing', el.dataset.trackId === trackId);
+    });
+  }
+
+  function showLoading(msg) {
+    $loading.innerHTML = '<div class="dig-loading">' + escHtml(msg) + '</div>';
+  }
+
+  function hideLoading() {
+    $loading.innerHTML = '';
+  }
+
+  function showError(msg) {
+    $error.innerHTML = '<div class="dig-error">' + escHtml(msg) + '</div>';
+  }
+
+  function showToast(msg) {
+    $toast.textContent = msg;
+    $toast.classList.add('dig-toast-show');
+    setTimeout(() => $toast.classList.remove('dig-toast-show'), 2500);
+  }
+
+  function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  /* ── Global handlers (accessible from inline onclick) ── */
+  window.__digPlay = function (index) {
+    const r = recommendedTracks[index];
+    if (r) renderPlayer(r.track.id);
+  };
+
+  window.__digToggleAll = function (checked) {
+    document.querySelectorAll('.dig-result-check').forEach(cb => { cb.checked = checked; });
+  };
+
+  window.__digConnectSpotify = async function () {
+    if (!CONFIG.clientId) {
+      showToast('Spotify Client ID not configured');
+      return;
+    }
+    const url = await buildAuthUrl();
+    window.location.href = url;
+  };
+
+  window.__digLogout = function () {
+    logout();
+    renderPlaylistBar();
+  };
+
+  window.__digCreatePlaylist = async function () {
+    const token = await getValidToken();
+    if (!token) {
+      showToast('Please connect Spotify first');
+      return;
+    }
+
+    const checked = [];
+    document.querySelectorAll('.dig-result-item').forEach((el, i) => {
+      const cb = el.querySelector('.dig-result-check');
+      if (cb && cb.checked && recommendedTracks[i]) {
+        checked.push(recommendedTracks[i].track.uri);
+      }
+    });
+
+    if (checked.length === 0) {
+      showToast('Select at least one track');
+      return;
+    }
+
+    try {
+      // Get user ID
+      const me = await fetch('https://api.spotify.com/v1/me', {
+        headers: { Authorization: 'Bearer ' + token },
+      }).then(r => r.json());
+
+      const playlistName = 'Digging: ' + (currentSeedTrack?.name || 'Unknown');
+
+      // Create playlist
+      const pl = await fetch('https://api.spotify.com/v1/users/' + me.id + '/playlists', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: playlistName, public: false }),
+      }).then(r => r.json());
+
+      // Add tracks
+      await fetch('https://api.spotify.com/v1/playlists/' + pl.id + '/tracks', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uris: checked }),
+      });
+
+      showToast('Playlist "' + playlistName + '" created!');
+    } catch (err) {
+      showToast('Failed to create playlist: ' + err.message);
+    }
+  };
+
+  /* ── Expose handleSubmit for form ── */
+  window.handleSubmit = handleSubmit;
+
+  /* ── Init: restore pending track & render auth ── */
+  (function init() {
+    renderAuth();
+
+    const pending = localStorage.getItem('pending_track_url');
+    if (pending) {
+      localStorage.removeItem('pending_track_url');
+      $input.value = pending;
+      handleSubmit(new Event('submit'));
+    }
+  })();
+})();
+</script>
