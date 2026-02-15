@@ -377,13 +377,9 @@ permalink: /digging/
       const titleKey = normalizeTitle(item.track.name) + '|||' + primaryArtistId;
       if (seenTitles.has(titleKey)) continue;
 
-      // Artist cap: check ALL artists (including feat.)
-      let blocked = false;
-      for (const artistId of allArtistIds) {
-        const count = artistCount[artistId] || 0;
-        if (artistId === seedArtistId && count >= 1) { blocked = true; break; }
-        if (count >= 2) { blocked = true; break; }
-      }
+      // Artist cap: 1 per artist (primary artist only)
+      const count = artistCount[primaryArtistId] || 0;
+      let blocked = count >= 1;
       if (blocked) continue;
 
       seenTitles.add(titleKey);
