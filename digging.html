@@ -92,16 +92,12 @@ permalink: /digging/
 
     /* ── Batch runner to avoid 429 rate limits ── */
     async function batchAll(tasks, batchSize) {
-      batchSize = batchSize || 5;
+      batchSize = batchSize || 8;
       const results = [];
       for (let i = 0; i < tasks.length; i += batchSize) {
         const batch = tasks.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(fn => fn()));
         results.push(...batchResults);
-        // Small delay between batches to avoid rate limits
-        if (i + batchSize < tasks.length) {
-          await new Promise(r => setTimeout(r, 300));
-        }
       }
       return results;
     }
@@ -511,7 +507,7 @@ permalink: /digging/
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        ), 5
+        ), 8
       );
 
       for (const { album, tracks } of phase2Results) {
@@ -529,25 +525,25 @@ permalink: /digging/
 
       const searchQueries = buildSearchQueries(seed, topCollabs, seedTags);
 
-      // Last.fm similar tracks → Spotify search queries (max 10)
-      const lfmTrackSearches = lfmSimilarTracks.slice(0, 10).map(lt => ({
+      // Last.fm similar tracks → Spotify search queries (max 5)
+      const lfmTrackSearches = lfmSimilarTracks.slice(0, 5).map(lt => ({
         q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
         source: 'lastfm_similar',
         limit: 3,
         lfmMatch: parseFloat(lt.match) || 0,
       }));
 
-      // Last.fm similar artists → Spotify search queries (max 5)
-      const lfmArtistSearches = lfmSimilarArtists.slice(0, 5).map(la => ({
+      // Last.fm similar artists → Spotify search queries (max 3)
+      const lfmArtistSearches = lfmSimilarArtists.slice(0, 3).map(la => ({
         q: 'artist:"' + la.name + '"',
         source: 'lastfm_related',
         limit: 10,
       }));
 
-      // Last.fm tag top tracks → Spotify search queries (8 per tag)
+      // Last.fm tag top tracks → Spotify search queries (4 per tag, max 2 tags)
       const lfmTagSearches = [];
-      for (const { tag, tracks } of tagTopTracksResults) {
-        for (const lt of tracks.slice(0, 8)) {
+      for (const { tag, tracks } of tagTopTracksResults.slice(0, 2)) {
+        for (const lt of tracks.slice(0, 4)) {
           lfmTagSearches.push({
             q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
             source: 'lastfm_tag',
@@ -559,23 +555,23 @@ permalink: /digging/
 
       const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches, ...lfmTagSearches];
 
-      // Collab artists album lists (batched)
-      const collabAlbumResults = await batchAll(
-        topCollabs.map(c => () =>
-          proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
-            .then(data => ({ artist: c, albums: data.items || [] }))
-            .catch(() => ({ artist: c, albums: [] }))
-        ), 5
-      );
-
-      // Search queries (batched, 5 at a time)
-      const searchResults = await batchAll(
-        allSearches.map(sq => () =>
-          proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
-            .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
-            .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
-        ), 5
-      );
+      // Collab albums + search queries in parallel (each internally batched)
+      const [collabAlbumResults, searchResults] = await Promise.all([
+        batchAll(
+          topCollabs.map(c => () =>
+            proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
+              .then(data => ({ artist: c, albums: data.items || [] }))
+              .catch(() => ({ artist: c, albums: [] }))
+          ), 5
+        ),
+        batchAll(
+          allSearches.map(sq => () =>
+            proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
+              .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
+              .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
+          ), 8
+        ),
+      ]);
 
       // Add search results (with position-based lfmMatch decay)
       for (const sr of searchResults) {
@@ -603,7 +599,7 @@ permalink: /digging/
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        ), 5
+        ), 8
       );
 
       for (const { album, tracks } of phase4Results) {
