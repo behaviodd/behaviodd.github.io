@@ -206,18 +206,21 @@ permalink: /digging/
   function createCandidateMap() {
     const map = new Map();
     return {
-      add(track, source, position, lfmMatch) {
+      add(track, source, position, lfmMatch, tag) {
         if (!track || !track.id) return;
         if (map.has(track.id)) {
           const entry = map.get(track.id);
           entry.sources.add(source);
           if (position != null) entry.positions.set(source, position);
           if (lfmMatch != null) entry.lastfmMatch = Math.max(entry.lastfmMatch, lfmMatch);
+          if (tag) entry.matchedTags.add(tag.toLowerCase());
         } else {
           const sources = new Set([source]);
           const positions = new Map();
           if (position != null) positions.set(source, position);
-          map.set(track.id, { track, sources, positions, lastfmMatch: lfmMatch || 0 });
+          const matchedTags = new Set();
+          if (tag) matchedTags.add(tag.toLowerCase());
+          map.set(track.id, { track, sources, positions, lastfmMatch: lfmMatch || 0, matchedTags });
         }
       },
       entries() { return map; },
@@ -255,7 +258,7 @@ permalink: /digging/
     const genericTags = new Set(['pop', 'k-pop', 'kpop', 'korean', 'k pop', 'korean pop']);
     const specificTagList = (seedTags || []).filter(t => !genericTags.has(t.toLowerCase()));
     if (specificTagList.length > 0) {
-      queries.push({ q: '"' + specificTagList[0] + '" year:' + seedYear, source: 'search_tag' });
+      queries.push({ q: '"' + specificTagList[0] + '" year:' + seedYear, source: 'search_tag', tag: specificTagList[0] });
     } else {
       queries.push({ q: 'k-pop year:' + seedYear, source: 'search_broad' });
     }
@@ -263,65 +266,67 @@ permalink: /digging/
     // 6. Additional specific tag searches (2nd-3rd tags)
     const extraTags = specificTagList.slice(1, 3);
     for (const tag of extraTags) {
-      queries.push({ q: '"' + tag + '" year:' + seedYear, source: 'search_tag' });
+      queries.push({ q: '"' + tag + '" year:' + seedYear, source: 'search_tag', tag: tag });
     }
 
     return queries;
   }
 
-  /* ── Relevance Scoring (6-factor, max 100) ── */
-  const FACTOR_MAX = { crossVerify: 25, source: 20, diversity: 15, duration: 10, vibe: 20, rank: 10 };
-  const FACTOR_LABELS = ['Cross-Verify', 'Source', 'Diversity', 'Duration', 'Vibe', 'Rank'];
-  const FACTOR_KEYS = ['crossVerify', 'source', 'diversity', 'duration', 'vibe', 'rank'];
+  /* ── Relevance Scoring (7-factor, max 100) ── */
+  const FACTOR_MAX = { diversity: 25, crossVerify: 20, vibe: 15, source: 15, bpm: 10, energy: 10, tag: 5 };
+  const FACTOR_LABELS = ['Diversity', 'Cross-Verify', 'Vibe', 'Source', 'BPM', 'Energy', 'Tag'];
+  const FACTOR_KEYS = ['diversity', 'crossVerify', 'vibe', 'source', 'bpm', 'energy', 'tag'];
 
-  function calcRelevance(seed, entry) {
+  function calcRelevance(seed, entry, seedAF) {
     const cand = entry.track;
     const sources = entry.sources;
-    const positions = entry.positions;
-    const factors = { crossVerify: 0, source: 0, diversity: 0, duration: 0, vibe: 0, rank: 0 };
+    const candAF = entry.audioFeatures;
+    const factors = { diversity: 0, crossVerify: 0, vibe: 0, source: 0, bpm: 0, energy: 0, tag: 0 };
 
-    // 1. Cross-verification bonus (max 25)
-    if (sources.size >= 3) factors.crossVerify = 25;
-    else if (sources.size === 2) factors.crossVerify = 12;
+    // 1. Artist diversity (max 25)
+    const seedArtistIds = new Set(seed.artists.map(a => a.id));
+    const candArtistIds = cand.artists.map(a => a.id);
+    const hasSeedArtist = candArtistIds.some(id => seedArtistIds.has(id));
+    const allSeedArtist = candArtistIds.every(id => seedArtistIds.has(id));
+    if (!hasSeedArtist) factors.diversity = 25;
+    else if (!allSeedArtist) factors.diversity = 12;
 
-    // 2. Source weight (max 20) — take best source
+    // 2. Cross-verification bonus (max 20)
+    if (sources.size >= 3) factors.crossVerify = 20;
+    else if (sources.size === 2) factors.crossVerify = 10;
+
+    // 3. Vibe — Last.fm getSimilar match (max 15)
+    const lfm = entry.lastfmMatch || 0;
+    factors.vibe = Math.min(15, Math.round(lfm * 20));
+
+    // 4. Source weight (max 15) — take best source
     const sourceWeights = {
-      collab_artist: 20, lastfm_similar: 19, search_cover: 18,
-      lastfm_related: 15, search_collab: 14, lastfm_tag: 12,
-      search_era: 10, search_tag: 9, same_album: 8, artist_album: 5, search_broad: 3,
+      collab_artist: 15, lastfm_similar: 14, search_cover: 13,
+      lastfm_related: 11, search_collab: 10, lastfm_tag: 9,
+      search_era: 7, search_tag: 6, same_album: 5, artist_album: 3, search_broad: 2,
     };
     for (const s of sources) {
       factors.source = Math.max(factors.source, sourceWeights[s] || 0);
     }
 
-    // 3. Artist diversity (max 15)
-    const seedArtistIds = new Set(seed.artists.map(a => a.id));
-    const candArtistIds = cand.artists.map(a => a.id);
-    const hasSeedArtist = candArtistIds.some(id => seedArtistIds.has(id));
-    const allSeedArtist = candArtistIds.every(id => seedArtistIds.has(id));
-    if (!hasSeedArtist) factors.diversity = 15;
-    else if (!allSeedArtist) factors.diversity = 8;
-
-    // 4. Duration similarity (max 10)
-    if (seed.duration_ms && cand.duration_ms) {
-      const ratio = Math.abs(seed.duration_ms - cand.duration_ms) / seed.duration_ms;
-      if (ratio <= 0.15) factors.duration = 10;
-      else if (ratio <= 0.30) factors.duration = 6;
-      else if (ratio <= 0.50) factors.duration = 3;
+    // 5. BPM similarity (max 10) — continuous
+    if (seedAF && candAF && seedAF.tempo > 0 && candAF.tempo > 0) {
+      const ratio = Math.abs(seedAF.tempo - candAF.tempo) / seedAF.tempo;
+      factors.bpm = Math.max(0, Math.round(10 * (1 - ratio * 5)));
     }
 
-    // 5. Vibe (Last.fm match score, max 20) — continuous
-    const lfm = entry.lastfmMatch || 0;
-    factors.vibe = Math.min(20, Math.round(lfm * 28));
-
-    // 6. Search rank signal (max 10) — continuous decay
-    let bestRank = Infinity;
-    for (const [, pos] of positions) {
-      if (pos < bestRank) bestRank = pos;
+    // 6. Energy similarity (max 10) — continuous
+    if (seedAF && candAF && seedAF.energy != null && candAF.energy != null) {
+      const diff = Math.abs(seedAF.energy - candAF.energy);
+      factors.energy = Math.max(0, Math.round(10 * (1 - diff * 4)));
     }
-    if (bestRank < 20) factors.rank = Math.round(10 * (1 - bestRank / 20));
 
-    const total = factors.crossVerify + factors.source + factors.diversity + factors.duration + factors.vibe + factors.rank;
+    // 7. Tag match (max 5)
+    const matchCount = entry.matchedTags ? entry.matchedTags.size : 0;
+    if (matchCount >= 2) factors.tag = 5;
+    else if (matchCount === 1) factors.tag = 3;
+
+    const total = factors.diversity + factors.crossVerify + factors.vibe + factors.source + factors.bpm + factors.energy + factors.tag;
     return { total: Math.max(0, Math.min(100, total)), factors };
   }
 
@@ -374,7 +379,7 @@ permalink: /digging/
     /* ── Phase 1: seed album tracks + artist albums + Last.fm queries (parallel) ── */
     showLoading('Analyzing seed track...');
     const seedTrackName = seed.name || '';
-    const [seedAlbumTracks, artistAlbums, lfmSimRaw, lfmArtRaw, lfmTagsRaw] = await Promise.all([
+    const [seedAlbumTracks, artistAlbums, lfmSimRaw, lfmArtRaw, lfmTagsRaw, seedAF] = await Promise.all([
       seedAlbumId
         ? proxyFetch('/v1/albums/' + seedAlbumId + '/tracks?limit=50').catch(() => ({ items: [] }))
         : Promise.resolve({ items: [] }),
@@ -384,6 +389,7 @@ permalink: /digging/
       lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seedTrackName, limit: '30', autocorrect: '1' }),
       lastfmFetch({ method: 'artist.getSimilar', artist: seedArtistName, limit: '15', autocorrect: '1' }),
       lastfmFetch({ method: 'track.getTopTags', artist: seedArtistName, track: seedTrackName, autocorrect: '1' }),
+      proxyFetch('/v1/audio-features/' + seed.id).catch(() => null),
     ]);
 
     // Parse Last.fm results
@@ -397,10 +403,9 @@ permalink: /digging/
     const tagTopTracksResults = await Promise.all(
       specificTags.slice(0, 2).map(tag =>
         lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '20' })
-          .then(data => data?.tracks?.track || [])
+          .then(data => ({ tag, tracks: data?.tracks?.track || [] }))
       )
     );
-    const lfmTagTracks = tagTopTracksResults.flat();
 
     // Add same_album tracks
     const seedAlbumObj = seed.album;
@@ -455,11 +460,17 @@ permalink: /digging/
     }));
 
     // Last.fm tag top tracks → Spotify search queries (5 per tag, max 10)
-    const lfmTagSearches = lfmTagTracks.slice(0, 10).map(lt => ({
-      q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
-      source: 'lastfm_tag',
-      limit: 3,
-    }));
+    const lfmTagSearches = [];
+    for (const { tag, tracks } of tagTopTracksResults) {
+      for (const lt of tracks.slice(0, 5)) {
+        lfmTagSearches.push({
+          q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
+          source: 'lastfm_tag',
+          limit: 3,
+          tag: tag,
+        });
+      }
+    }
 
     const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches, ...lfmTagSearches];
 
@@ -475,8 +486,8 @@ permalink: /digging/
       // Search queries (original + Last.fm-derived)
       ...allSearches.map(sq =>
         proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
-          .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch }))
-          .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch }))
+          .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
+          .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
       ),
     ]);
 
@@ -488,7 +499,7 @@ permalink: /digging/
           const decay = Math.max(0, 1 - i * 0.35);
           match = sr.lfmMatch * decay;
         }
-        candidateMap.add(t, sr.source, i, match);
+        candidateMap.add(t, sr.source, i, match, sr.tag);
       });
     }
 
@@ -518,7 +529,24 @@ permalink: /digging/
     // Build final candidate list (exclude seed track)
     const entries = candidateMap.entries();
     entries.delete(seed.id);
-    return entries;
+
+    /* ── Phase 5: batch fetch audio features for scoring ── */
+    showLoading('Analyzing audio features...');
+    const candidateIds = [...entries.keys()];
+    const audioFeaturesMap = {};
+    for (let i = 0; i < candidateIds.length; i += 100) {
+      const chunk = candidateIds.slice(i, i + 100);
+      const data = await proxyFetch('/v1/audio-features?ids=' + chunk.join(','))
+        .catch(() => ({ audio_features: [] }));
+      for (const af of (data.audio_features || [])) {
+        if (af && af.id) audioFeaturesMap[af.id] = af;
+      }
+    }
+    for (const [id, entry] of entries) {
+      entry.audioFeatures = audioFeaturesMap[id] || null;
+    }
+
+    return { entries, seedAF };
   }
 
   /* ── Main Flow ── */
@@ -546,8 +574,8 @@ permalink: /digging/
       currentSeedTrack = track;
       renderSeedTrack(track);
 
-      // 2. Discover candidates (4-phase pipeline with loading messages)
-      const candidateEntries = await discoverCandidates(track);
+      // 2. Discover candidates (5-phase pipeline with loading messages)
+      const { entries: candidateEntries, seedAF } = await discoverCandidates(track);
 
       if (candidateEntries.size === 0) {
         hideLoading();
@@ -558,7 +586,7 @@ permalink: /digging/
       // 3. Score with 7-factor system
       const scored = [];
       for (const [, entry] of candidateEntries) {
-        const { total, factors } = calcRelevance(track, entry);
+        const { total, factors } = calcRelevance(track, entry, seedAF);
         scored.push({
           track: entry.track,
           match: total,
