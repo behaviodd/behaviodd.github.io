@@ -269,16 +269,16 @@ permalink: /digging/
     return queries;
   }
 
-  /* ── Relevance Scoring (7-factor, max 100) ── */
-  const FACTOR_MAX = { crossVerify: 25, source: 20, era: 15, diversity: 15, duration: 10, vibe: 10, rank: 5 };
-  const FACTOR_LABELS = ['Cross-Verify', 'Source', 'Era', 'Diversity', 'Duration', 'Vibe', 'Rank'];
-  const FACTOR_KEYS = ['crossVerify', 'source', 'era', 'diversity', 'duration', 'vibe', 'rank'];
+  /* ── Relevance Scoring (6-factor, max 100) ── */
+  const FACTOR_MAX = { crossVerify: 25, source: 20, diversity: 15, duration: 10, vibe: 20, rank: 10 };
+  const FACTOR_LABELS = ['Cross-Verify', 'Source', 'Diversity', 'Duration', 'Vibe', 'Rank'];
+  const FACTOR_KEYS = ['crossVerify', 'source', 'diversity', 'duration', 'vibe', 'rank'];
 
   function calcRelevance(seed, entry) {
     const cand = entry.track;
     const sources = entry.sources;
     const positions = entry.positions;
-    const factors = { crossVerify: 0, source: 0, era: 0, diversity: 0, duration: 0, vibe: 0, rank: 0 };
+    const factors = { crossVerify: 0, source: 0, diversity: 0, duration: 0, vibe: 0, rank: 0 };
 
     // 1. Cross-verification bonus (max 25)
     if (sources.size >= 3) factors.crossVerify = 25;
@@ -294,17 +294,7 @@ permalink: /digging/
       factors.source = Math.max(factors.source, sourceWeights[s] || 0);
     }
 
-    // 3. Era matching (max 15) — continuous
-    if (seed.album?.release_date && cand.album?.release_date) {
-      const seedYear = parseInt(seed.album.release_date);
-      const candYear = parseInt(cand.album.release_date);
-      if (seedYear && candYear) {
-        const diff = Math.abs(seedYear - candYear);
-        factors.era = Math.max(0, Math.round(15 * (1 - diff / 6)));
-      }
-    }
-
-    // 4. Artist diversity (max 15)
+    // 3. Artist diversity (max 15)
     const seedArtistIds = new Set(seed.artists.map(a => a.id));
     const candArtistIds = cand.artists.map(a => a.id);
     const hasSeedArtist = candArtistIds.some(id => seedArtistIds.has(id));
@@ -312,7 +302,7 @@ permalink: /digging/
     if (!hasSeedArtist) factors.diversity = 15;
     else if (!allSeedArtist) factors.diversity = 8;
 
-    // 5. Duration similarity (max 10)
+    // 4. Duration similarity (max 10)
     if (seed.duration_ms && cand.duration_ms) {
       const ratio = Math.abs(seed.duration_ms - cand.duration_ms) / seed.duration_ms;
       if (ratio <= 0.15) factors.duration = 10;
@@ -320,18 +310,18 @@ permalink: /digging/
       else if (ratio <= 0.50) factors.duration = 3;
     }
 
-    // 6. Vibe (Last.fm match score, max 10) — continuous
+    // 5. Vibe (Last.fm match score, max 20) — continuous
     const lfm = entry.lastfmMatch || 0;
-    factors.vibe = Math.min(10, Math.round(lfm * 14));
+    factors.vibe = Math.min(20, Math.round(lfm * 28));
 
-    // 7. Search rank signal (max 5) — continuous decay
+    // 6. Search rank signal (max 10) — continuous decay
     let bestRank = Infinity;
     for (const [, pos] of positions) {
       if (pos < bestRank) bestRank = pos;
     }
-    if (bestRank < 20) factors.rank = Math.round(5 * (1 - bestRank / 20));
+    if (bestRank < 20) factors.rank = Math.round(10 * (1 - bestRank / 20));
 
-    const total = factors.crossVerify + factors.source + factors.era + factors.diversity + factors.duration + factors.vibe + factors.rank;
+    const total = factors.crossVerify + factors.source + factors.diversity + factors.duration + factors.vibe + factors.rank;
     return { total: Math.max(0, Math.min(100, total)), factors };
   }
 
