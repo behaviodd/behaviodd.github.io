@@ -26,7 +26,7 @@ permalink: /digging/
 <div id="resultsArea"></div>
 <div id="playlistBar"></div>
 <div id="authSection"></div>
-<div id="playerArea" class="dig-overlay" onclick="window.__digCloseOverlay(event)"></div>
+<div id="playerArea" class="dig-overlay"></div>
 <div id="toastEl" class="dig-toast"></div>
 
 <script>
@@ -683,7 +683,7 @@ permalink: /digging/
 
     const cx = size / 2;
     const cy = size / 2;
-    const radius = size * 0.34;
+    const radius = size * 0.28;
     const n = FACTOR_KEYS.length;
     const angleStep = (2 * Math.PI) / n;
     const startAngle = -Math.PI / 2;
@@ -753,11 +753,11 @@ permalink: /digging/
 
     // Labels
     ctx.fillStyle = fg;
-    ctx.font = '11px ' + (style.getPropertyValue('--font').trim() || 'sans-serif');
+    ctx.font = '12px ' + (style.getPropertyValue('--font').trim() || 'sans-serif');
     ctx.textBaseline = 'middle';
     for (let i = 0; i < n; i++) {
       const a = startAngle + i * angleStep;
-      const lr = radius + 16;
+      const lr = radius + 20;
       const x = cx + lr * Math.cos(a);
       const y = cy + lr * Math.sin(a);
       const raw = factors[FACTOR_KEYS[i]];
@@ -770,6 +770,10 @@ permalink: /digging/
   }
 
   function renderPlayer(trackId, factors) {
+    const r = recommendedTracks.find(r => r.track.id === trackId);
+    const trackName = r ? escHtml(r.track.name) : '';
+    const artistName = r ? escHtml(r.track.artists.map(a => a.name).join(', ')) : '';
+
     let radarHtml = '';
     if (factors) {
       radarHtml =
@@ -779,14 +783,20 @@ permalink: /digging/
     }
 
     $player.innerHTML =
-      '<div class="dig-overlay-content">' +
-        '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
-        '<div class="dig-player">' +
-          radarHtml +
-          '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
-            'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
-            'loading="lazy"></iframe>' +
+      '<div class="dig-overlay-header">' +
+        '<div class="dig-overlay-track-info">' +
+          '<div class="dig-overlay-track-title">' + trackName + '</div>' +
+          '<div class="dig-overlay-track-artist">' + artistName + '</div>' +
         '</div>' +
+        '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
+      '</div>' +
+      '<div class="dig-overlay-body">' +
+        radarHtml +
+      '</div>' +
+      '<div class="dig-overlay-footer">' +
+        '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
+          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'loading="lazy"></iframe>' +
       '</div>';
 
     $player.classList.add('dig-overlay-show');
@@ -833,8 +843,7 @@ permalink: /digging/
     if (r) renderPlayer(r.track.id, r.factors);
   };
 
-  window.__digCloseOverlay = function (e) {
-    if (e && e.target !== $player) return;
+  window.__digCloseOverlay = function () {
     $player.classList.remove('dig-overlay-show');
     $player.innerHTML = '';
     document.querySelectorAll('.dig-result-item').forEach(el => {
