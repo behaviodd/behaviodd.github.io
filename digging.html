@@ -273,58 +273,58 @@ permalink: /digging/
   }
 
   /* ── Relevance Scoring (7-factor, max 100) ── */
-  const FACTOR_MAX = { diversity: 25, crossVerify: 20, vibe: 15, source: 15, bpm: 10, energy: 10, tag: 5 };
-  const FACTOR_LABELS = ['Diversity', 'Cross-Verify', 'Vibe', 'Source', 'BPM', 'Energy', 'Tag'];
-  const FACTOR_KEYS = ['diversity', 'crossVerify', 'vibe', 'source', 'bpm', 'energy', 'tag'];
+  const FACTOR_MAX = { crossVerify: 25, vibe: 20, bpm: 15, energy: 15, diversity: 15, source: 7, tag: 3 };
+  const FACTOR_LABELS = ['Cross-Verify', 'Vibe', 'BPM', 'Energy', 'Diversity', 'Source', 'Tag'];
+  const FACTOR_KEYS = ['crossVerify', 'vibe', 'bpm', 'energy', 'diversity', 'source', 'tag'];
 
   function calcRelevance(seed, entry, seedAF) {
     const cand = entry.track;
     const sources = entry.sources;
     const candAF = entry.audioFeatures;
-    const factors = { diversity: 0, crossVerify: 0, vibe: 0, source: 0, bpm: 0, energy: 0, tag: 0 };
+    const factors = { crossVerify: 0, vibe: 0, bpm: 0, energy: 0, diversity: 0, source: 0, tag: 0 };
 
-    // 1. Artist diversity (max 25)
+    // 1. Cross-verification bonus (max 25)
+    if (sources.size >= 3) factors.crossVerify = 25;
+    else if (sources.size === 2) factors.crossVerify = 12;
+
+    // 2. Vibe — Last.fm getSimilar match (max 20)
+    const lfm = entry.lastfmMatch || 0;
+    factors.vibe = Math.min(20, Math.round(lfm * 28));
+
+    // 3. BPM similarity (max 15) — continuous
+    if (seedAF && candAF && seedAF.tempo > 0 && candAF.tempo > 0) {
+      const ratio = Math.abs(seedAF.tempo - candAF.tempo) / seedAF.tempo;
+      factors.bpm = Math.max(0, Math.round(15 * (1 - ratio * 5)));
+    }
+
+    // 4. Energy similarity (max 15) — continuous
+    if (seedAF && candAF && seedAF.energy != null && candAF.energy != null) {
+      const diff = Math.abs(seedAF.energy - candAF.energy);
+      factors.energy = Math.max(0, Math.round(15 * (1 - diff * 4)));
+    }
+
+    // 5. Artist diversity (max 15)
     const seedArtistIds = new Set(seed.artists.map(a => a.id));
     const candArtistIds = cand.artists.map(a => a.id);
     const hasSeedArtist = candArtistIds.some(id => seedArtistIds.has(id));
     const allSeedArtist = candArtistIds.every(id => seedArtistIds.has(id));
-    if (!hasSeedArtist) factors.diversity = 25;
-    else if (!allSeedArtist) factors.diversity = 12;
+    if (!hasSeedArtist) factors.diversity = 15;
+    else if (!allSeedArtist) factors.diversity = 8;
 
-    // 2. Cross-verification bonus (max 20)
-    if (sources.size >= 3) factors.crossVerify = 20;
-    else if (sources.size === 2) factors.crossVerify = 10;
-
-    // 3. Vibe — Last.fm getSimilar match (max 15)
-    const lfm = entry.lastfmMatch || 0;
-    factors.vibe = Math.min(15, Math.round(lfm * 20));
-
-    // 4. Source weight (max 15) — take best source
+    // 6. Source weight (max 7) — take best source
     const sourceWeights = {
-      collab_artist: 15, lastfm_similar: 14, search_cover: 13,
-      lastfm_related: 11, search_collab: 10, lastfm_tag: 9,
-      search_era: 7, search_tag: 6, same_album: 5, artist_album: 3, search_broad: 2,
+      collab_artist: 7, lastfm_similar: 7, search_cover: 6,
+      lastfm_related: 5, search_collab: 5, lastfm_tag: 4,
+      search_era: 3, search_tag: 3, same_album: 2, artist_album: 1, search_broad: 1,
     };
     for (const s of sources) {
       factors.source = Math.max(factors.source, sourceWeights[s] || 0);
     }
 
-    // 5. BPM similarity (max 10) — continuous
-    if (seedAF && candAF && seedAF.tempo > 0 && candAF.tempo > 0) {
-      const ratio = Math.abs(seedAF.tempo - candAF.tempo) / seedAF.tempo;
-      factors.bpm = Math.max(0, Math.round(10 * (1 - ratio * 5)));
-    }
-
-    // 6. Energy similarity (max 10) — continuous
-    if (seedAF && candAF && seedAF.energy != null && candAF.energy != null) {
-      const diff = Math.abs(seedAF.energy - candAF.energy);
-      factors.energy = Math.max(0, Math.round(10 * (1 - diff * 4)));
-    }
-
-    // 7. Tag match (max 5)
+    // 7. Tag match (max 3)
     const matchCount = entry.matchedTags ? entry.matchedTags.size : 0;
-    if (matchCount >= 2) factors.tag = 5;
-    else if (matchCount === 1) factors.tag = 3;
+    if (matchCount >= 2) factors.tag = 3;
+    else if (matchCount === 1) factors.tag = 2;
 
     const total = factors.diversity + factors.crossVerify + factors.vibe + factors.source + factors.bpm + factors.energy + factors.tag;
     return { total: Math.max(0, Math.min(100, total)), factors };
