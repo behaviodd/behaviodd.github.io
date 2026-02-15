@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ page.title }} — K-POP Digging Club</title>
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --fg: #ececf1;
@@ -28,7 +37,7 @@
 
     html {
       font-family: var(--font);
-      font-size: 15px;
+      font-size: 12px;
       line-height: 1.6;
       color: var(--fg);
       background: var(--bg);
@@ -47,12 +56,19 @@
     }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #000;
+    }
+
     ::-webkit-scrollbar-thumb {
       background: rgba(255, 255, 255, 0.15);
       border-radius: 999px;
     }
+
     ::-webkit-scrollbar-thumb:hover {
       background: rgba(255, 255, 255, 0.3);
     }
@@ -75,6 +91,7 @@
     .hero {
       margin-bottom: 48px;
     }
+
     .hero h1 {
       font-size: clamp(28px, 7vw, 44px);
       font-weight: 700;
@@ -84,28 +101,40 @@
       color: var(--accent);
       text-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
     }
+
     .hero p {
       font-size: 12px;
       color: var(--fg-50);
       max-width: 420px;
     }
+
     .prompt-line {
       display: flex;
       align-items: center;
       gap: 6px;
     }
+
     .prompt {
       color: var(--fg-60);
       font-weight: 400;
     }
+
     .cursor {
       animation: blink 1s step-end infinite;
       color: var(--fg);
       font-weight: 700;
     }
+
     @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
     }
 
     /* ── Digging Club Form ── */
@@ -114,12 +143,14 @@
       gap: 8px;
       margin-bottom: 32px;
     }
+
     .dig-input-wrap {
       flex: 1;
       position: relative;
       display: flex;
       align-items: center;
     }
+
     .dig-url-input {
       width: 100%;
       padding: 10px 40px 10px 14px;
@@ -132,13 +163,16 @@
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     .dig-url-input:focus {
       border-color: var(--accent);
       box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
     }
+
     .dig-url-input::placeholder {
       color: var(--fg-50);
     }
+
     .dig-paste-btn {
       position: absolute;
       right: 8px;
@@ -154,11 +188,13 @@
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s, text-shadow 0.2s;
     }
+
     .dig-paste-btn:hover {
       color: var(--fg);
       border-color: var(--accent);
       text-shadow: 0 0 4px #00ffff;
     }
+
     .dig-submit-btn {
       padding: 10px 20px;
       font-size: 12px;
@@ -172,10 +208,12 @@
       transition: transform 0.2s, text-shadow 0.2s, box-shadow 0.2s;
       flex-shrink: 0;
     }
+
     .dig-submit-btn:hover {
       transform: translateY(-1px);
       box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
     }
+
     .dig-submit-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
@@ -195,9 +233,11 @@
       background: var(--surface);
       transition: border-color 0.2s;
     }
+
     .dig-seed:hover {
       border-color: var(--border-strong);
     }
+
     .dig-seed img {
       width: 80px;
       height: 80px;
@@ -205,10 +245,12 @@
       object-fit: cover;
       flex-shrink: 0;
     }
+
     .dig-seed-info {
       flex: 1;
       min-width: 0;
     }
+
     .dig-seed-title {
       font-weight: 700;
       font-size: 15px;
@@ -217,16 +259,19 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     .dig-seed-artist {
       font-size: 13px;
       color: var(--fg-60);
       margin-bottom: 8px;
     }
+
     .dig-feature-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
     }
+
     .dig-feature-tag {
       font-size: 10px;
       padding: 3px 10px;
@@ -246,6 +291,7 @@
       color: var(--fg-60);
       font-size: 14px;
     }
+
     .dig-loading::after {
       content: '';
       display: block;
@@ -257,8 +303,11 @@
       border-radius: 50%;
       animation: dig-spin 0.6s linear infinite;
     }
+
     @keyframes dig-spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     /* ── Results ── */
@@ -268,6 +317,7 @@
       justify-content: space-between;
       margin-bottom: 8px;
     }
+
     .dig-results-count {
       font-size: 11px;
       color: var(--fg-60);
@@ -280,6 +330,7 @@
       display: flex;
       flex-direction: column;
     }
+
     .dig-result-item {
       display: flex;
       align-items: center;
@@ -290,21 +341,26 @@
       cursor: pointer;
       transition: background 0.2s, border-color 0.2s, text-shadow 0.2s;
     }
+
     .dig-result-item:last-child {
       border-bottom: 1px solid var(--border);
     }
+
     .dig-result-item:hover {
       background: rgba(255, 255, 255, 0.03);
       border-color: var(--border-strong);
     }
+
     .dig-result-item:hover .dig-result-title {
       text-shadow: 0 0 4px #00ffff;
     }
+
     .dig-result-item.dig-playing {
       background: rgba(255, 255, 255, 0.06);
       border-color: var(--border-strong);
       box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
     }
+
     .dig-result-item.dig-playing .dig-result-title {
       text-shadow: 0 0 4px #00ffff;
     }
@@ -315,6 +371,7 @@
       height: 16px;
       accent-color: var(--fg);
     }
+
     .dig-result-img {
       width: 44px;
       height: 44px;
@@ -322,10 +379,12 @@
       object-fit: cover;
       flex-shrink: 0;
     }
+
     .dig-result-info {
       flex: 1;
       min-width: 0;
     }
+
     .dig-result-title {
       font-weight: 700;
       font-size: 12px;
@@ -334,6 +393,7 @@
       text-overflow: ellipsis;
       transition: text-shadow 0.2s;
     }
+
     .dig-result-artist {
       font-size: 12px;
       color: var(--fg-60);
@@ -348,14 +408,16 @@
       margin-top: 16px;
       border-top: 1px solid var(--border);
     }
+
     .dig-playlist-bar label {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--fg-60);
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
     }
+
     .dig-playlist-bar .dig-submit-btn {
       margin-left: auto;
       padding: 8px 16px;
@@ -367,18 +429,20 @@
       margin-top: 24px;
       padding-top: 24px;
       border-top: 1px solid var(--border);
-      font-size: 13px;
+      font-size: 12px;
       color: var(--fg-50);
       display: flex;
       align-items: center;
       gap: 12px;
     }
+
     .dig-auth-section a {
       color: var(--fg);
       text-decoration: none;
       cursor: pointer;
       transition: text-shadow 0.2s;
     }
+
     .dig-auth-section a:hover {
       text-shadow: 0 0 4px #00ffff;
       text-decoration: underline;
@@ -397,14 +461,17 @@
       transform: translateY(100%);
       transition: transform 0.3s ease;
     }
+
     .dig-player-bar.dig-player-show {
       transform: translateY(0);
     }
+
     .dig-player-bar .dig-player-inner {
       max-width: 600px;
       margin: 0 auto;
       position: relative;
     }
+
     .dig-player-bar .dig-player-close {
       position: absolute;
       top: -4px;
@@ -419,10 +486,12 @@
       z-index: 2;
       transition: color 0.15s, text-shadow 0.15s;
     }
+
     .dig-player-bar .dig-player-close:hover {
       color: var(--fg);
       text-shadow: 0 0 4px #00ffff;
     }
+
     .dig-player-bar iframe {
       width: 100%;
       border: none;
@@ -447,9 +516,11 @@
       z-index: 100;
       pointer-events: none;
     }
+
     body.dig-player-open .dig-toast {
       bottom: 110px;
     }
+
     .dig-toast.dig-toast-show {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
@@ -467,15 +538,35 @@
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
-      main { padding: 24px 12px; }
-      .dig-form { flex-direction: column; }
-      .dig-seed { flex-direction: column; text-align: center; }
-      .dig-seed img { width: 120px; height: 120px; }
-      .dig-feature-tags { justify-content: center; }
-      .dig-playlist-bar { flex-wrap: wrap; }
+      main {
+        padding: 24px 12px;
+      }
+
+      .dig-form {
+        flex-direction: column;
+      }
+
+      .dig-seed {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .dig-seed img {
+        width: 120px;
+        height: 120px;
+      }
+
+      .dig-feature-tags {
+        justify-content: center;
+      }
+
+      .dig-playlist-bar {
+        flex-wrap: wrap;
+      }
     }
   </style>
 </head>
+
 <body>
 
   <main>
@@ -485,4 +576,5 @@
   </main>
 
 </body>
+
 </html>
