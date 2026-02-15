@@ -64,6 +64,11 @@ permalink: /digging/
 
   let currentSeedTrack = null;
   let recommendedTracks = [];
+  let spotifyIFrameAPI = null;
+
+  window.onSpotifyIframeApiReady = function (IFrameAPI) {
+    spotifyIFrameAPI = IFrameAPI;
+  };
 
   /* ── API Proxy ── */
   async function proxyFetch(endpoint) {
@@ -719,13 +724,28 @@ permalink: /digging/
     $player.innerHTML =
       '<div class="dig-player-inner">' +
         '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
-        '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
-          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
-          'loading="lazy"></iframe>' +
+        '<div id="spotifyEmbed"></div>' +
       '</div>';
 
     $player.classList.add('dig-player-show');
     document.body.classList.add('dig-player-open');
+
+    const embedEl = document.getElementById('spotifyEmbed');
+    if (spotifyIFrameAPI) {
+      spotifyIFrameAPI.createController(embedEl, {
+        uri: 'spotify:track:' + trackId,
+        height: 80,
+        theme: 0,
+      }, function (controller) {
+        controller.play();
+      });
+    } else {
+      // Fallback if API not loaded yet
+      embedEl.innerHTML =
+        '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
+          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'loading="lazy"></iframe>';
+    }
 
     // Highlight playing item
     document.querySelectorAll('.dig-result-item').forEach(el => {
@@ -875,3 +895,4 @@ permalink: /digging/
   })();
 })();
 </script>
+<script src="https://open.spotify.com/embed/iframe-api/v1"></script>
