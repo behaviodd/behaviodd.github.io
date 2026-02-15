@@ -326,7 +326,6 @@ permalink: /digging/
     scored.sort((a, b) => b.match - a.match);
     const result = [];
     const artistCount = {};
-    let seedInTop10 = 0;
 
     for (const item of scored) {
       if (result.length >= 30) break;
@@ -334,11 +333,10 @@ permalink: /digging/
       if (!primaryArtistId) { result.push(item); continue; }
 
       const count = artistCount[primaryArtistId] || 0;
-      if (count >= 3) continue;
-      if (primaryArtistId === seedArtistId && result.length < 10 && seedInTop10 >= 2) continue;
+      if (primaryArtistId === seedArtistId && count >= 1) continue;
+      if (count >= 2) continue;
 
       artistCount[primaryArtistId] = count + 1;
-      if (primaryArtistId === seedArtistId && result.length < 10) seedInTop10++;
       result.push(item);
     }
     return result;
@@ -638,7 +636,6 @@ permalink: /digging/
             '<div class="dig-result-title">' + escHtml(r.track.name) + '</div>' +
             '<div class="dig-result-artist">' + escHtml(r.track.artists.map(a => a.name).join(', ')) + '</div>' +
           '</div>' +
-          '<div class="dig-result-match">' + r.match + '%</div>' +
         '</div>';
     });
 
@@ -669,115 +666,10 @@ permalink: /digging/
     }
   }
 
-  /* ── Radar Chart (Canvas) ── */
-  function drawRadarChart(canvas, factors) {
-    const dpr = window.devicePixelRatio || 1;
-    const size = canvas.clientWidth;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-
-    const cx = size / 2;
-    const cy = size / 2;
-    const radius = size * 0.28;
-    const n = FACTOR_KEYS.length;
-    const angleStep = (2 * Math.PI) / n;
-    const startAngle = -Math.PI / 2;
-
-    // Read CSS variables
-    const style = getComputedStyle(document.documentElement);
-    const fgFaint = style.getPropertyValue('--fg-faint').trim() || '#999';
-    const fg = style.getPropertyValue('--fg').trim() || '#111';
-    const accent = style.getPropertyValue('--accent').trim() || '#4c4cb1';
-
-    // Grid rings (25%, 50%, 75%, 100%)
-    ctx.strokeStyle = fgFaint;
-    ctx.lineWidth = 0.5;
-    ctx.globalAlpha = 0.3;
-    for (let ring = 1; ring <= 4; ring++) {
-      const r = radius * ring / 4;
-      ctx.beginPath();
-      for (let i = 0; i <= n; i++) {
-        const a = startAngle + i * angleStep;
-        const x = cx + r * Math.cos(a);
-        const y = cy + r * Math.sin(a);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    // Axis lines
-    ctx.globalAlpha = 0.2;
-    for (let i = 0; i < n; i++) {
-      const a = startAngle + i * angleStep;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + radius * Math.cos(a), cy + radius * Math.sin(a));
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-
-    // Data polygon
-    const normalized = FACTOR_KEYS.map(k => factors[k] / FACTOR_MAX[k]);
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const a = startAngle + i * angleStep;
-      const r = radius * Math.max(normalized[i], 0.04); // min visible dot
-      const x = cx + r * Math.cos(a);
-      const y = cy + r * Math.sin(a);
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = accent;
-    ctx.globalAlpha = 0.18;
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // Data points
-    for (let i = 0; i < n; i++) {
-      const a = startAngle + i * angleStep;
-      const r = radius * Math.max(normalized[i], 0.04);
-      ctx.beginPath();
-      ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3, 0, 2 * Math.PI);
-      ctx.fillStyle = accent;
-      ctx.fill();
-    }
-
-    // Labels
-    ctx.fillStyle = fg;
-    ctx.font = '12px ' + (style.getPropertyValue('--font').trim() || 'sans-serif');
-    ctx.textBaseline = 'middle';
-    for (let i = 0; i < n; i++) {
-      const a = startAngle + i * angleStep;
-      const lr = radius + 20;
-      const x = cx + lr * Math.cos(a);
-      const y = cy + lr * Math.sin(a);
-      const raw = factors[FACTOR_KEYS[i]];
-      const max = FACTOR_MAX[FACTOR_KEYS[i]];
-      const label = FACTOR_LABELS[i] + ' ' + raw + '/' + max;
-      ctx.textAlign = Math.abs(Math.cos(a)) < 0.01 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right';
-      ctx.fillStyle = fgFaint;
-      ctx.fillText(label, x, y);
-    }
-  }
-
-  function renderPlayer(trackId, factors) {
+  function renderPlayer(trackId) {
     const r = recommendedTracks.find(r => r.track.id === trackId);
     const trackName = r ? escHtml(r.track.name) : '';
     const artistName = r ? escHtml(r.track.artists.map(a => a.name).join(', ')) : '';
-
-    let radarHtml = '';
-    if (factors) {
-      radarHtml =
-        '<div class="dig-radar-wrap">' +
-          '<canvas class="dig-radar-canvas"></canvas>' +
-        '</div>';
-    }
 
     $player.innerHTML =
       '<div class="dig-overlay-header">' +
@@ -788,21 +680,12 @@ permalink: /digging/
         '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
       '</div>' +
       '<div class="dig-overlay-body">' +
-        radarHtml +
-      '</div>' +
-      '<div class="dig-overlay-footer">' +
         '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
-          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
           'loading="lazy"></iframe>' +
       '</div>';
 
     $player.classList.add('dig-overlay-show');
-
-    // Draw radar after DOM insertion
-    if (factors) {
-      const canvas = $player.querySelector('.dig-radar-canvas');
-      if (canvas) drawRadarChart(canvas, factors);
-    }
 
     // Highlight playing item
     document.querySelectorAll('.dig-result-item').forEach(el => {
@@ -837,7 +720,7 @@ permalink: /digging/
   /* ── Global handlers (accessible from inline onclick) ── */
   window.__digPlay = function (index) {
     const r = recommendedTracks[index];
-    if (r) renderPlayer(r.track.id, r.factors);
+    if (r) renderPlayer(r.track.id);
   };
 
   window.__digCloseOverlay = function () {
