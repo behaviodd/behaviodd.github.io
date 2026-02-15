@@ -74,10 +74,10 @@ permalink: /digging/
       const url = CONFIG.workerUrl + '/api/spotify?endpoint=' + encodeURIComponent(endpoint);
       let res = await fetch(url);
 
-      // Auto-retry once on 429
-      if (res.status === 429) {
+      // Auto-retry up to 3 times on 429 with exponential backoff
+      for (let attempt = 0; attempt < 3 && res.status === 429; attempt++) {
         rateLimitHits++;
-        const retryAfter = parseInt(res.headers.get('Retry-After')) || 2;
+        const retryAfter = parseInt(res.headers.get('Retry-After')) || (2 * (attempt + 1));
         await new Promise(r => setTimeout(r, retryAfter * 1000));
         res = await fetch(url);
       }
@@ -90,11 +90,12 @@ permalink: /digging/
       return res.json();
     }
 
-    /* ── Batch runner to avoid 429 rate limits ── */
+    /* ── Batch runner with delay between batches to avoid 429 ── */
     async function batchAll(tasks, batchSize) {
-      batchSize = batchSize || 8;
+      batchSize = batchSize || 5;
       const results = [];
       for (let i = 0; i < tasks.length; i += batchSize) {
+        if (i > 0) await new Promise(r => setTimeout(r, 300));
         const batch = tasks.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(fn => fn()));
         results.push(...batchResults);
@@ -287,14 +288,14 @@ permalink: /digging/
           method: 'track.getSimilar',
           artist: seedArtistName,
           track: seed.name,
-          limit: '50',
+          limit: '30',
           autocorrect: '1',
         }),
         // Source B: Last.fm similar artists → will fetch their top tracks
         lastfmFetch({
           method: 'artist.getSimilar',
           artist: seedArtistName,
-          limit: '15',
+          limit: '10',
           autocorrect: '1',
         }),
       ]);
@@ -307,11 +308,11 @@ permalink: /digging/
       const similarArtists = lfmArtistSimilarRaw?.similarartists?.artist || [];
       showLoading('Discovering similar artists\' tracks...');
       const artistTopResults = await batchAll(
-        similarArtists.slice(0, 10).map(a => () =>
+        similarArtists.slice(0, 8).map(a => () =>
           lastfmFetch({
             method: 'artist.getTopTracks',
             artist: a.name,
-            limit: '5',
+            limit: '3',
             autocorrect: '1',
           }).then(data => (data?.toptracks?.track || []).map(t => ({
             name: t.name,
@@ -323,7 +324,7 @@ permalink: /digging/
 
       // Merge all Last.fm candidates into a single list
       const allLfmCandidates = [
-        ...lfmSimilarTracks.slice(0, 40),
+        ...lfmSimilarTracks.slice(0, 25),
         ...artistTopResults.flat(),
       ];
 

@@ -69,7 +69,19 @@ async function handleSpotify(url, env, origin) {
 
     const body = await spotifyRes.text();
 
-    // Endpoint-specific cache durations
+    // Never cache error responses (4xx, 5xx) — especially 429 rate limits
+    if (!spotifyRes.ok) {
+      return new Response(body, {
+        status: spotifyRes.status,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+          ...corsHeaders(origin),
+        },
+      });
+    }
+
+    // Endpoint-specific cache durations (success only)
     let cacheMaxAge = 300; // default 5min
     if (/\/v1\/artists\/[^/]+\/albums/.test(endpoint) || /\/v1\/albums\/[^/]+\/tracks/.test(endpoint)) {
       cacheMaxAge = 3600; // 1h — discography rarely changes
