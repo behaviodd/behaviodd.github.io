@@ -526,14 +526,48 @@
       text-decoration: underline;
     }
 
-    .dig-player {
-      position: sticky;
-      bottom: 0;
+    .dig-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .dig-overlay.dig-overlay-show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .dig-overlay-content {
       background: var(--bg);
-      padding: 12px 0;
-      border-top: 1px solid var(--border);
-      margin-top: 24px;
-      z-index: 10;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 400px;
+      position: relative;
+    }
+    .dig-overlay-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--fg-muted);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .dig-overlay-close:hover {
+      color: var(--fg);
+    }
+    .dig-player {
+      padding: 0;
     }
     .dig-player iframe {
       width: 100%;
@@ -543,7 +577,7 @@
     .dig-radar-wrap {
       display: flex;
       justify-content: center;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     .dig-radar-canvas {
       width: 220px;
