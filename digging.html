@@ -253,11 +253,17 @@ permalink: /digging/
 
     // 5. Tag-based or broad K-pop same era
     const genericTags = new Set(['pop', 'k-pop', 'kpop', 'korean', 'k pop', 'korean pop']);
-    const specificTag = (seedTags || []).find(t => !genericTags.has(t.toLowerCase()));
-    if (specificTag) {
-      queries.push({ q: '"' + specificTag + '" year:' + seedYear, source: 'search_tag' });
+    const specificTagList = (seedTags || []).filter(t => !genericTags.has(t.toLowerCase()));
+    if (specificTagList.length > 0) {
+      queries.push({ q: '"' + specificTagList[0] + '" year:' + seedYear, source: 'search_tag' });
     } else {
       queries.push({ q: 'k-pop year:' + seedYear, source: 'search_broad' });
+    }
+
+    // 6. Additional specific tag searches (2nd-3rd tags)
+    const extraTags = specificTagList.slice(1, 3);
+    for (const tag of extraTags) {
+      queries.push({ q: '"' + tag + '" year:' + seedYear, source: 'search_tag' });
     }
 
     return queries;
@@ -281,24 +287,20 @@ permalink: /digging/
     // 2. Source weight (max 20) — take best source
     const sourceWeights = {
       collab_artist: 20, lastfm_similar: 19, search_cover: 18,
-      lastfm_related: 15, search_collab: 14,
+      lastfm_related: 15, search_collab: 14, lastfm_tag: 12,
       search_era: 10, search_tag: 9, same_album: 8, artist_album: 5, search_broad: 3,
     };
     for (const s of sources) {
       factors.source = Math.max(factors.source, sourceWeights[s] || 0);
     }
 
-    // 3. Era matching (max 15)
+    // 3. Era matching (max 15) — continuous
     if (seed.album?.release_date && cand.album?.release_date) {
       const seedYear = parseInt(seed.album.release_date);
       const candYear = parseInt(cand.album.release_date);
       if (seedYear && candYear) {
         const diff = Math.abs(seedYear - candYear);
-        if (diff === 0) factors.era = 15;
-        else if (diff === 1) factors.era = 12;
-        else if (diff === 2) factors.era = 9;
-        else if (diff === 3) factors.era = 6;
-        else if (diff <= 5) factors.era = 3;
+        factors.era = Math.max(0, Math.round(15 * (1 - diff / 6)));
       }
     }
 
@@ -318,21 +320,16 @@ permalink: /digging/
       else if (ratio <= 0.50) factors.duration = 3;
     }
 
-    // 6. Vibe (Last.fm match score, max 10)
+    // 6. Vibe (Last.fm match score, max 10) — continuous
     const lfm = entry.lastfmMatch || 0;
-    if (lfm >= 0.5) factors.vibe = 10;
-    else if (lfm >= 0.3) factors.vibe = 7;
-    else if (lfm >= 0.1) factors.vibe = 4;
-    else if (lfm > 0) factors.vibe = 2;
+    factors.vibe = Math.min(10, Math.round(lfm * 14));
 
-    // 7. Search rank signal (max 5)
+    // 7. Search rank signal (max 5) — continuous decay
     let bestRank = Infinity;
     for (const [, pos] of positions) {
       if (pos < bestRank) bestRank = pos;
     }
-    if (bestRank < 5) factors.rank = 5;
-    else if (bestRank < 10) factors.rank = 3;
-    else if (bestRank < 15) factors.rank = 1;
+    if (bestRank < 20) factors.rank = Math.round(5 * (1 - bestRank / 20));
 
     const total = factors.crossVerify + factors.source + factors.era + factors.diversity + factors.duration + factors.vibe + factors.rank;
     return { total: Math.max(0, Math.min(100, total)), factors };
@@ -404,6 +401,17 @@ permalink: /digging/
     const lfmSimilarArtists = lfmArtRaw?.similarartists?.artist || [];
     const seedTags = (lfmTagsRaw?.toptags?.tag || []).map(t => t.name);
 
+    // Fetch tag.getTopTracks for specific tags (up to 2)
+    const genericTags = new Set(['pop', 'k-pop', 'kpop', 'korean', 'k pop', 'korean pop']);
+    const specificTags = seedTags.filter(t => !genericTags.has(t.toLowerCase()));
+    const tagTopTracksResults = await Promise.all(
+      specificTags.slice(0, 2).map(tag =>
+        lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '20' })
+          .then(data => data?.tracks?.track || [])
+      )
+    );
+    const lfmTagTracks = tagTopTracksResults.flat();
+
     // Add same_album tracks
     const seedAlbumObj = seed.album;
     for (const t of (seedAlbumTracks.items || [])) {
@@ -441,22 +449,29 @@ permalink: /digging/
 
     const searchQueries = buildSearchQueries(seed, topCollabs, seedTags);
 
-    // Last.fm similar tracks → Spotify search queries (max 5)
-    const lfmTrackSearches = lfmSimilarTracks.slice(0, 5).map(lt => ({
+    // Last.fm similar tracks → Spotify search queries (max 10)
+    const lfmTrackSearches = lfmSimilarTracks.slice(0, 10).map(lt => ({
       q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
       source: 'lastfm_similar',
       limit: 3,
       lfmMatch: parseFloat(lt.match) || 0,
     }));
 
-    // Last.fm similar artists → Spotify search queries (max 3)
-    const lfmArtistSearches = lfmSimilarArtists.slice(0, 3).map(la => ({
+    // Last.fm similar artists → Spotify search queries (max 5)
+    const lfmArtistSearches = lfmSimilarArtists.slice(0, 5).map(la => ({
       q: 'artist:"' + la.name + '"',
       source: 'lastfm_related',
       limit: 10,
     }));
 
-    const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches];
+    // Last.fm tag top tracks → Spotify search queries (5 per tag, max 10)
+    const lfmTagSearches = lfmTagTracks.slice(0, 10).map(lt => ({
+      q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
+      source: 'lastfm_tag',
+      limit: 3,
+    }));
+
+    const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches, ...lfmTagSearches];
 
     const [collabAlbumResults, ...searchResults] = await Promise.all([
       // Collab artists album lists
@@ -475,10 +490,14 @@ permalink: /digging/
       ),
     ]);
 
-    // Add search results
+    // Add search results (with position-based lfmMatch decay)
     for (const sr of searchResults) {
       sr.tracks.forEach((t, i) => {
-        const match = (sr.lfmMatch != null && i === 0) ? sr.lfmMatch : undefined;
+        let match;
+        if (sr.lfmMatch != null) {
+          const decay = Math.max(0, 1 - i * 0.35);
+          match = sr.lfmMatch * decay;
+        }
         candidateMap.add(t, sr.source, i, match);
       });
     }
