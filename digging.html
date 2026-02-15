@@ -756,7 +756,7 @@ permalink: /digging/
         '<div class="dig-playlist-bar">' +
         '<label><input type="checkbox" id="selectAll" onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
         (loggedIn
-          ? '<button class="dig-submit-btn" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
+          ? '<button class="dig-auth-section" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
           : '<a onclick="window.__digConnectSpotify()" style="margin-left:auto;font-size:12px;color:var(--fg-60);cursor:pointer;transition:text-shadow 0.2s" onmouseover="this.style.textShadow=\'0 0 4px #00ffff\'" onmouseout="this.style.textShadow=\'none\'">Connect Spotify to Create Playlist</a>') +
         '</div>';
     }
