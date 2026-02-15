@@ -404,10 +404,10 @@ permalink: /digging/
         seenTitles.add(titleKey);
         artistCount[primaryArtistId] = (artistCount[primaryArtistId] || 0) + 1;
         result.push(item);
-        if (result.length >= 50) return result;
+        if (result.length >= 30) return result;
       }
 
-      // Pass 2: allow 2nd track per artist if still under 50
+      // Pass 2: allow 2nd track per artist (seed artist up to 3) if still under 30
       for (const item of skipped) {
         const allArtistIds = (item.track.artists || []).map(a => a.id).filter(Boolean);
         const primaryArtistId = allArtistIds[0];
@@ -417,13 +417,13 @@ permalink: /digging/
         if (seenTitles.has(titleKey)) continue;
 
         const count = artistCount[primaryArtistId] || 0;
-        if (primaryArtistId === seedArtistId && count >= 1) continue;
+        if (primaryArtistId === seedArtistId && count >= 3) continue;
         if (count >= 2) continue;
 
         seenTitles.add(titleKey);
         artistCount[primaryArtistId] = count + 1;
         result.push(item);
-        if (result.length >= 50) break;
+        if (result.length >= 30) break;
       }
 
       return result;
@@ -500,14 +500,14 @@ permalink: /digging/
       showLoading('Exploring discography...');
       const otherAlbums = (artistAlbums.items || [])
         .filter(a => a.id !== seedAlbumId)
-        .slice(0, 8);
+        .slice(0, 4);
 
-      const phase2Results = await batchAll(
-        otherAlbums.map(album => () =>
+      const phase2Results = await Promise.all(
+        otherAlbums.map(album =>
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        ), 8
+        )
       );
 
       for (const { album, tracks } of phase2Results) {
@@ -525,25 +525,25 @@ permalink: /digging/
 
       const searchQueries = buildSearchQueries(seed, topCollabs, seedTags);
 
-      // Last.fm similar tracks → Spotify search queries (max 5)
-      const lfmTrackSearches = lfmSimilarTracks.slice(0, 5).map(lt => ({
+      // Last.fm similar tracks → Spotify search queries (max 10)
+      const lfmTrackSearches = lfmSimilarTracks.slice(0, 10).map(lt => ({
         q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
         source: 'lastfm_similar',
         limit: 3,
         lfmMatch: parseFloat(lt.match) || 0,
       }));
 
-      // Last.fm similar artists → Spotify search queries (max 3)
-      const lfmArtistSearches = lfmSimilarArtists.slice(0, 3).map(la => ({
+      // Last.fm similar artists → Spotify search queries (max 5)
+      const lfmArtistSearches = lfmSimilarArtists.slice(0, 5).map(la => ({
         q: 'artist:"' + la.name + '"',
         source: 'lastfm_related',
         limit: 10,
       }));
 
-      // Last.fm tag top tracks → Spotify search queries (4 per tag, max 2 tags)
+      // Last.fm tag top tracks → Spotify search queries (6 per tag, max 3 tags)
       const lfmTagSearches = [];
-      for (const { tag, tracks } of tagTopTracksResults.slice(0, 2)) {
-        for (const lt of tracks.slice(0, 4)) {
+      for (const { tag, tracks } of tagTopTracksResults.slice(0, 3)) {
+        for (const lt of tracks.slice(0, 6)) {
           lfmTagSearches.push({
             q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
             source: 'lastfm_tag',
@@ -555,21 +555,21 @@ permalink: /digging/
 
       const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches, ...lfmTagSearches];
 
-      // Collab albums + search queries in parallel (each internally batched)
+      // Collab albums + search queries in parallel (each internally batched by 10)
       const [collabAlbumResults, searchResults] = await Promise.all([
-        batchAll(
-          topCollabs.map(c => () =>
+        Promise.all(
+          topCollabs.map(c =>
             proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
               .then(data => ({ artist: c, albums: data.items || [] }))
               .catch(() => ({ artist: c, albums: [] }))
-          ), 5
+          )
         ),
         batchAll(
           allSearches.map(sq => () =>
             proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
               .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
               .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
-          ), 8
+          ), 10
         ),
       ]);
 
@@ -594,12 +594,12 @@ permalink: /digging/
         }
       }
 
-      const phase4Results = await batchAll(
-        collabAlbumsToFetch.map(album => () =>
+      const phase4Results = await Promise.all(
+        collabAlbumsToFetch.map(album =>
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        ), 8
+        )
       );
 
       for (const { album, tracks } of phase4Results) {
