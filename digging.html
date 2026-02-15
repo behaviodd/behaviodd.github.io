@@ -78,6 +78,18 @@ permalink: /digging/
       return res.json();
     }
 
+    /* ── Batch runner to avoid 429 rate limits ── */
+    async function batchAll(tasks, batchSize) {
+      batchSize = batchSize || 5;
+      const results = [];
+      for (let i = 0; i < tasks.length; i += batchSize) {
+        const batch = tasks.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(fn => fn()));
+        results.push(...batchResults);
+      }
+      return results;
+    }
+
     /* ── Last.fm API Proxy ── */
     async function lastfmFetch(params) {
       try {
@@ -478,12 +490,12 @@ permalink: /digging/
         .filter(a => a.id !== seedAlbumId)
         .slice(0, 8);
 
-      const phase2Results = await Promise.all(
-        otherAlbums.map(album =>
+      const phase2Results = await batchAll(
+        otherAlbums.map(album => () =>
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        )
+        ), 5
       );
 
       for (const { album, tracks } of phase2Results) {
@@ -531,22 +543,23 @@ permalink: /digging/
 
       const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches, ...lfmTagSearches];
 
-      const [collabAlbumResults, ...searchResults] = await Promise.all([
-        // Collab artists album lists
-        Promise.all(
-          topCollabs.map(c =>
-            proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
-              .then(data => ({ artist: c, albums: data.items || [] }))
-              .catch(() => ({ artist: c, albums: [] }))
-          )
-        ),
-        // Search queries (original + Last.fm-derived)
-        ...allSearches.map(sq =>
+      // Collab artists album lists (batched)
+      const collabAlbumResults = await batchAll(
+        topCollabs.map(c => () =>
+          proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
+            .then(data => ({ artist: c, albums: data.items || [] }))
+            .catch(() => ({ artist: c, albums: [] }))
+        ), 5
+      );
+
+      // Search queries (batched, 5 at a time)
+      const searchResults = await batchAll(
+        allSearches.map(sq => () =>
           proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
             .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
             .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch, tag: sq.tag }))
-        ),
-      ]);
+        ), 5
+      );
 
       // Add search results (with position-based lfmMatch decay)
       for (const sr of searchResults) {
@@ -569,12 +582,12 @@ permalink: /digging/
         }
       }
 
-      const phase4Results = await Promise.all(
-        collabAlbumsToFetch.map(album =>
+      const phase4Results = await batchAll(
+        collabAlbumsToFetch.map(album => () =>
           proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
             .then(data => ({ album, tracks: data.items || [] }))
             .catch(() => ({ album, tracks: [] }))
-        )
+        ), 5
       );
 
       for (const { album, tracks } of phase4Results) {
