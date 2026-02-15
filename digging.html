@@ -68,6 +68,16 @@ permalink: /digging/
     return res.json();
   }
 
+  /* ── Last.fm API Proxy ── */
+  async function lastfmFetch(params) {
+    try {
+      const qs = new URLSearchParams(params).toString();
+      const res = await fetch(CONFIG.workerUrl + '/api/lastfm?' + qs);
+      if (!res.ok) return null;
+      return res.json();
+    } catch { return null; }
+  }
+
   /* ── PKCE Auth ── */
   function generateCodeVerifier() {
     const arr = new Uint8Array(64);
@@ -179,107 +189,327 @@ permalink: /digging/
     return null;
   }
 
-  /* ── Relevance Scoring ── */
-  function calcRelevance(seed, cand, source) {
-    let score = 0;
-    // Duration similarity (max 30 pts)
-    const durDiff = Math.abs(seed.duration_ms - cand.duration_ms) / seed.duration_ms;
-    score += Math.round(Math.max(0, 30 * (1 - durDiff)));
-    // Same album bonus (20 pts)
-    if (cand.album && seed.album && cand.album.id === seed.album.id) score += 20;
-    // Same artist penalty — user already knows them, lower priority
-    const seedArtistIds = seed.artists.map(a => a.id);
-    const candArtistIds = cand.artists.map(a => a.id);
-    const sameArtist = seedArtistIds.some(id => candArtistIds.includes(id));
-    if (sameArtist) score -= 5;
-    // Source bonus
-    if (source === 'album') score += 10;
-    if (source === 'search') score += 5;
-    // Release proximity bonus (max 15 pts)
+  /* ── Attach album metadata to simplified track ── */
+  function graftAlbumMeta(simplifiedTrack, albumObj) {
+    return {
+      ...simplifiedTrack,
+      album: {
+        id: albumObj.id,
+        name: albumObj.name,
+        images: albumObj.images || [],
+        release_date: albumObj.release_date || '',
+      },
+    };
+  }
+
+  /* ── Multi-source candidate map ── */
+  function createCandidateMap() {
+    const map = new Map();
+    return {
+      add(track, source, position, lfmMatch) {
+        if (!track || !track.id) return;
+        if (map.has(track.id)) {
+          const entry = map.get(track.id);
+          entry.sources.add(source);
+          if (position != null) entry.positions.set(source, position);
+          if (lfmMatch != null) entry.lastfmMatch = Math.max(entry.lastfmMatch, lfmMatch);
+        } else {
+          const sources = new Set([source]);
+          const positions = new Map();
+          if (position != null) positions.set(source, position);
+          map.set(track.id, { track, sources, positions, lastfmMatch: lfmMatch || 0 });
+        }
+      },
+      entries() { return map; },
+    };
+  }
+
+  /* ── Build search queries ── */
+  function buildSearchQueries(seed, collabArtists, seedTags) {
+    const trackName = seed.name || '';
+    const albumName = seed.album?.name || '';
+    const seedArtistName = seed.artists[0]?.name || '';
+    const seedYear = parseInt(seed.album?.release_date) || new Date().getFullYear();
+    const queries = [];
+
+    // 1. Cover/remix discovery
+    queries.push({ q: 'track:"' + trackName + '"', source: 'search_cover' });
+
+    if (collabArtists.length >= 2) {
+      // 2-3. Collaborator network
+      queries.push({ q: 'artist:"' + collabArtists[0].name + '"', source: 'search_collab' });
+      queries.push({ q: 'artist:"' + collabArtists[1].name + '"', source: 'search_collab' });
+    } else if (collabArtists.length === 1) {
+      queries.push({ q: 'artist:"' + collabArtists[0].name + '"', source: 'search_collab' });
+      queries.push({ q: 'artist:"' + seedArtistName + '" year:' + (seedYear - 1) + '-' + (seedYear + 1), source: 'search_era' });
+    } else {
+      queries.push({ q: 'artist:"' + seedArtistName + '" year:' + (seedYear - 1) + '-' + (seedYear + 1), source: 'search_era' });
+      const keywords = trackName.replace(/[\(\[\{].*?[\)\]\}]/g, '').trim();
+      queries.push({ q: '"' + keywords + '"', source: 'search_cover' });
+    }
+
+    // 4. Era + concept matching
+    queries.push({ q: '"' + albumName + '" year:' + (seedYear - 1) + '-' + (seedYear + 1), source: 'search_era' });
+
+    // 5. Tag-based or broad K-pop same era
+    const genericTags = new Set(['pop', 'k-pop', 'kpop', 'korean', 'k pop', 'korean pop']);
+    const specificTag = (seedTags || []).find(t => !genericTags.has(t.toLowerCase()));
+    if (specificTag) {
+      queries.push({ q: '"' + specificTag + '" year:' + seedYear, source: 'search_tag' });
+    } else {
+      queries.push({ q: 'k-pop year:' + seedYear, source: 'search_broad' });
+    }
+
+    return queries;
+  }
+
+  /* ── Relevance Scoring (7-factor, max 100) ── */
+  const FACTOR_MAX = { crossVerify: 25, source: 20, era: 15, diversity: 15, duration: 10, vibe: 10, rank: 5 };
+  const FACTOR_LABELS = ['Cross-Verify', 'Source', 'Era', 'Diversity', 'Duration', 'Vibe', 'Rank'];
+  const FACTOR_KEYS = ['crossVerify', 'source', 'era', 'diversity', 'duration', 'vibe', 'rank'];
+
+  function calcRelevance(seed, entry) {
+    const cand = entry.track;
+    const sources = entry.sources;
+    const positions = entry.positions;
+    const factors = { crossVerify: 0, source: 0, era: 0, diversity: 0, duration: 0, vibe: 0, rank: 0 };
+
+    // 1. Cross-verification bonus (max 25)
+    if (sources.size >= 3) factors.crossVerify = 25;
+    else if (sources.size === 2) factors.crossVerify = 12;
+
+    // 2. Source weight (max 20) — take best source
+    const sourceWeights = {
+      collab_artist: 20, lastfm_similar: 19, search_cover: 18,
+      lastfm_related: 15, search_collab: 14,
+      search_era: 10, search_tag: 9, same_album: 8, artist_album: 5, search_broad: 3,
+    };
+    for (const s of sources) {
+      factors.source = Math.max(factors.source, sourceWeights[s] || 0);
+    }
+
+    // 3. Era matching (max 15)
     if (seed.album?.release_date && cand.album?.release_date) {
       const seedYear = parseInt(seed.album.release_date);
       const candYear = parseInt(cand.album.release_date);
       if (seedYear && candYear) {
-        const yearDiff = Math.abs(seedYear - candYear);
-        score += Math.round(Math.max(0, 15 * (1 - yearDiff / 10)));
+        const diff = Math.abs(seedYear - candYear);
+        if (diff === 0) factors.era = 15;
+        else if (diff === 1) factors.era = 12;
+        else if (diff === 2) factors.era = 9;
+        else if (diff === 3) factors.era = 6;
+        else if (diff <= 5) factors.era = 3;
       }
     }
-    return Math.max(0, Math.min(100, score));
+
+    // 4. Artist diversity (max 15)
+    const seedArtistIds = new Set(seed.artists.map(a => a.id));
+    const candArtistIds = cand.artists.map(a => a.id);
+    const hasSeedArtist = candArtistIds.some(id => seedArtistIds.has(id));
+    const allSeedArtist = candArtistIds.every(id => seedArtistIds.has(id));
+    if (!hasSeedArtist) factors.diversity = 15;
+    else if (!allSeedArtist) factors.diversity = 8;
+
+    // 5. Duration similarity (max 10)
+    if (seed.duration_ms && cand.duration_ms) {
+      const ratio = Math.abs(seed.duration_ms - cand.duration_ms) / seed.duration_ms;
+      if (ratio <= 0.15) factors.duration = 10;
+      else if (ratio <= 0.30) factors.duration = 6;
+      else if (ratio <= 0.50) factors.duration = 3;
+    }
+
+    // 6. Vibe (Last.fm match score, max 10)
+    const lfm = entry.lastfmMatch || 0;
+    if (lfm >= 0.5) factors.vibe = 10;
+    else if (lfm >= 0.3) factors.vibe = 7;
+    else if (lfm >= 0.1) factors.vibe = 4;
+    else if (lfm > 0) factors.vibe = 2;
+
+    // 7. Search rank signal (max 5)
+    let bestRank = Infinity;
+    for (const [, pos] of positions) {
+      if (pos < bestRank) bestRank = pos;
+    }
+    if (bestRank < 5) factors.rank = 5;
+    else if (bestRank < 10) factors.rank = 3;
+    else if (bestRank < 15) factors.rank = 1;
+
+    const total = factors.crossVerify + factors.source + factors.era + factors.diversity + factors.duration + factors.vibe + factors.rank;
+    return { total: Math.max(0, Math.min(100, total)), factors };
   }
 
-  /* ── Fetch single track (batch /v1/tracks?ids= is blocked) ── */
-  async function fetchTrack(id) {
-    try { return await proxyFetch('/v1/tracks/' + id); }
-    catch { return null; }
+  /* ── Diversity post-filter ── */
+  function applyDiversityFilter(scored, seedArtistId) {
+    scored.sort((a, b) => b.match - a.match);
+    const result = [];
+    const artistCount = {};
+    let seedInTop10 = 0;
+
+    for (const item of scored) {
+      if (result.length >= 30) break;
+      const primaryArtistId = item.track.artists[0]?.id;
+      if (!primaryArtistId) { result.push(item); continue; }
+
+      const count = artistCount[primaryArtistId] || 0;
+      if (count >= 3) continue;
+      if (primaryArtistId === seedArtistId && result.length < 10 && seedInTop10 >= 2) continue;
+
+      artistCount[primaryArtistId] = count + 1;
+      if (primaryArtistId === seedArtistId && result.length < 10) seedInTop10++;
+      result.push(item);
+    }
+    return result;
   }
 
-  async function fetchTracksBatch(ids) {
-    const results = await Promise.all(ids.map(fetchTrack));
-    return results.filter(Boolean);
-  }
-
-  /* ── Candidate Discovery ── */
+  /* ── Candidate Discovery (4-phase parallel pipeline) ── */
   async function discoverCandidates(seed) {
-    const seen = new Set([seed.id]);
-    const candidates = [];
+    const candidateMap = createCandidateMap();
+    const seedArtistId = seed.artists[0]?.id;
+    const seedArtistName = seed.artists[0]?.name || '';
+    const seedAlbumId = seed.album?.id;
+    const collabArtistCounts = new Map(); // id → { name, count }
 
-    function addCandidate(track, source) {
-      if (seen.has(track.id)) return;
-      seen.add(track.id);
-      candidates.push({ track, source });
-    }
-
-    const artistName = seed.artists[0]?.name || '';
-    const artistId = seed.artists[0]?.id;
-    const albumId = seed.album?.id;
-
-    // 1. Same album tracks
-    if (albumId) {
-      try {
-        const albumTracks = await proxyFetch('/v1/albums/' + albumId + '/tracks?limit=50');
-        const trackIds = (albumTracks.items || []).map(t => t.id).filter(id => !seen.has(id));
-        const fullTracks = await fetchTracksBatch(trackIds);
-        fullTracks.forEach(t => addCandidate(t, 'album'));
-      } catch {}
-    }
-
-    // 2. Other albums by same artist
-    if (artistId) {
-      try {
-        const albums = await proxyFetch('/v1/artists/' + artistId + '/albums?limit=10');
-        const albumIds = (albums.items || [])
-          .filter(a => a.id !== albumId)
-          .slice(0, 5)
-          .map(a => a.id);
-
-        for (const aid of albumIds) {
-          try {
-            const at = await proxyFetch('/v1/albums/' + aid + '/tracks?limit=10');
-            const ids = (at.items || []).map(t => t.id).filter(id => !seen.has(id)).slice(0, 3);
-            const fullTracks = await fetchTracksBatch(ids);
-            fullTracks.forEach(t => addCandidate(t, 'artist_album'));
-          } catch {}
+    function extractCollabs(tracks) {
+      for (const t of tracks) {
+        for (const artist of (t.artists || [])) {
+          if (artist.id && artist.id !== seedArtistId) {
+            const prev = collabArtistCounts.get(artist.id);
+            collabArtistCounts.set(artist.id, {
+              name: artist.name,
+              id: artist.id,
+              count: (prev?.count || 0) + 1,
+            });
+          }
         }
-      } catch {}
+      }
     }
 
-    // 3. Search for similar tracks (multiple queries)
-    const queries = [
-      artistName,
-      artistName + ' ' + (seed.album?.name || ''),
-      seed.name,
-    ].filter(Boolean);
+    /* ── Phase 1: seed album tracks + artist albums + Last.fm queries (parallel) ── */
+    showLoading('Analyzing seed track...');
+    const seedTrackName = seed.name || '';
+    const [seedAlbumTracks, artistAlbums, lfmSimRaw, lfmArtRaw, lfmTagsRaw] = await Promise.all([
+      seedAlbumId
+        ? proxyFetch('/v1/albums/' + seedAlbumId + '/tracks?limit=50').catch(() => ({ items: [] }))
+        : Promise.resolve({ items: [] }),
+      seedArtistId
+        ? proxyFetch('/v1/artists/' + seedArtistId + '/albums?limit=20&include_groups=album,single').catch(() => ({ items: [] }))
+        : Promise.resolve({ items: [] }),
+      lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seedTrackName, limit: '30', autocorrect: '1' }),
+      lastfmFetch({ method: 'artist.getSimilar', artist: seedArtistName, limit: '15', autocorrect: '1' }),
+      lastfmFetch({ method: 'track.getTopTags', artist: seedArtistName, track: seedTrackName, autocorrect: '1' }),
+    ]);
 
-    for (const q of queries) {
-      try {
-        const search = await proxyFetch(
-          '/v1/search?q=' + encodeURIComponent(q) + '&type=track&limit=20&market=KR'
-        );
-        (search.tracks?.items || []).forEach(t => addCandidate(t, 'search'));
-      } catch {}
+    // Parse Last.fm results
+    const lfmSimilarTracks = lfmSimRaw?.similartracks?.track || [];
+    const lfmSimilarArtists = lfmArtRaw?.similarartists?.artist || [];
+    const seedTags = (lfmTagsRaw?.toptags?.tag || []).map(t => t.name);
+
+    // Add same_album tracks
+    const seedAlbumObj = seed.album;
+    for (const t of (seedAlbumTracks.items || [])) {
+      if (t.id === seed.id) continue;
+      candidateMap.add(graftAlbumMeta(t, seedAlbumObj), 'same_album');
+    }
+    extractCollabs(seedAlbumTracks.items || []);
+
+    /* ── Phase 2: other albums by seed artist (parallel) ── */
+    showLoading('Exploring discography...');
+    const otherAlbums = (artistAlbums.items || [])
+      .filter(a => a.id !== seedAlbumId)
+      .slice(0, 8);
+
+    const phase2Results = await Promise.all(
+      otherAlbums.map(album =>
+        proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
+          .then(data => ({ album, tracks: data.items || [] }))
+          .catch(() => ({ album, tracks: [] }))
+      )
+    );
+
+    for (const { album, tracks } of phase2Results) {
+      for (const t of tracks) {
+        candidateMap.add(graftAlbumMeta(t, album), 'artist_album');
+      }
+      extractCollabs(tracks);
     }
 
-    return candidates;
+    /* ── Phase 3: collab artist albums + search queries (parallel) ── */
+    showLoading('Discovering collaborators...');
+    const topCollabs = [...collabArtistCounts.values()]
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const searchQueries = buildSearchQueries(seed, topCollabs, seedTags);
+
+    // Last.fm similar tracks → Spotify search queries (max 5)
+    const lfmTrackSearches = lfmSimilarTracks.slice(0, 5).map(lt => ({
+      q: 'track:"' + lt.name + '" artist:"' + lt.artist.name + '"',
+      source: 'lastfm_similar',
+      limit: 3,
+      lfmMatch: parseFloat(lt.match) || 0,
+    }));
+
+    // Last.fm similar artists → Spotify search queries (max 3)
+    const lfmArtistSearches = lfmSimilarArtists.slice(0, 3).map(la => ({
+      q: 'artist:"' + la.name + '"',
+      source: 'lastfm_related',
+      limit: 10,
+    }));
+
+    const allSearches = [...searchQueries, ...lfmTrackSearches, ...lfmArtistSearches];
+
+    const [collabAlbumResults, ...searchResults] = await Promise.all([
+      // Collab artists album lists
+      Promise.all(
+        topCollabs.map(c =>
+          proxyFetch('/v1/artists/' + c.id + '/albums?limit=5&include_groups=album,single')
+            .then(data => ({ artist: c, albums: data.items || [] }))
+            .catch(() => ({ artist: c, albums: [] }))
+        )
+      ),
+      // Search queries (original + Last.fm-derived)
+      ...allSearches.map(sq =>
+        proxyFetch('/v1/search?q=' + encodeURIComponent(sq.q) + '&type=track&limit=' + (sq.limit || 20) + '&market=KR')
+          .then(data => ({ source: sq.source, tracks: data.tracks?.items || [], lfmMatch: sq.lfmMatch }))
+          .catch(() => ({ source: sq.source, tracks: [], lfmMatch: sq.lfmMatch }))
+      ),
+    ]);
+
+    // Add search results
+    for (const sr of searchResults) {
+      sr.tracks.forEach((t, i) => {
+        const match = (sr.lfmMatch != null && i === 0) ? sr.lfmMatch : undefined;
+        candidateMap.add(t, sr.source, i, match);
+      });
+    }
+
+    /* ── Phase 4: collab artist album tracks (parallel) ── */
+    showLoading('Finding related tracks...');
+    const collabAlbumsToFetch = [];
+    for (const { albums } of collabAlbumResults) {
+      for (const album of albums.slice(0, 2)) {
+        collabAlbumsToFetch.push(album);
+      }
+    }
+
+    const phase4Results = await Promise.all(
+      collabAlbumsToFetch.map(album =>
+        proxyFetch('/v1/albums/' + album.id + '/tracks?limit=20')
+          .then(data => ({ album, tracks: data.items || [] }))
+          .catch(() => ({ album, tracks: [] }))
+      )
+    );
+
+    for (const { album, tracks } of phase4Results) {
+      for (const t of tracks) {
+        candidateMap.add(graftAlbumMeta(t, album), 'collab_artist');
+      }
+    }
+
+    // Build final candidate list (exclude seed track)
+    const entries = candidateMap.entries();
+    entries.delete(seed.id);
+    return entries;
   }
 
   /* ── Main Flow ── */
@@ -305,36 +535,30 @@ permalink: /digging/
       const track = await proxyFetch('/v1/tracks/' + trackId);
       currentSeedTrack = track;
       renderSeedTrack(track);
-      showLoading('Finding similar tracks...');
 
-      // 2. Discover candidates
-      const candidates = await discoverCandidates(track);
+      // 2. Discover candidates (4-phase pipeline with loading messages)
+      const candidateEntries = await discoverCandidates(track);
 
-      if (candidates.length === 0) {
+      if (candidateEntries.size === 0) {
         hideLoading();
         showError('No similar tracks found.');
         return;
       }
 
-      // 3. Score and sort
-      let results = candidates
-        .map(c => ({
-          track: c.track,
-          match: calcRelevance(track, c.track, c.source),
-        }))
-        .sort((a, b) => b.match - a.match);
+      // 3. Score with 7-factor system
+      const scored = [];
+      for (const [, entry] of candidateEntries) {
+        const { total, factors } = calcRelevance(track, entry);
+        scored.push({
+          track: entry.track,
+          match: total,
+          factors: factors,
+        });
+      }
 
-      // 4. Limit same artist to max 3
-      const artistCount = {};
-      results = results.filter(r => {
-        const aid = r.track.artists[0]?.id;
-        if (!aid) return true;
-        artistCount[aid] = (artistCount[aid] || 0) + 1;
-        return artistCount[aid] <= 3;
-      });
-
-      // Take top 30
-      results = results.slice(0, 30);
+      // 4. Apply diversity filter
+      const seedArtistId = track.artists[0]?.id;
+      const results = applyDiversityFilter(scored, seedArtistId);
 
       recommendedTracks = results;
       hideLoading();
@@ -428,13 +652,125 @@ permalink: /digging/
     }
   }
 
-  function renderPlayer(trackId) {
+  /* ── Radar Chart (Canvas) ── */
+  function drawRadarChart(canvas, factors) {
+    const dpr = window.devicePixelRatio || 1;
+    const size = canvas.clientWidth;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const cx = size / 2;
+    const cy = size / 2;
+    const radius = size * 0.34;
+    const n = FACTOR_KEYS.length;
+    const angleStep = (2 * Math.PI) / n;
+    const startAngle = -Math.PI / 2;
+
+    // Read CSS variables
+    const style = getComputedStyle(document.documentElement);
+    const fgFaint = style.getPropertyValue('--fg-faint').trim() || '#999';
+    const fg = style.getPropertyValue('--fg').trim() || '#111';
+    const accent = style.getPropertyValue('--accent').trim() || '#4c4cb1';
+
+    // Grid rings (25%, 50%, 75%, 100%)
+    ctx.strokeStyle = fgFaint;
+    ctx.lineWidth = 0.5;
+    ctx.globalAlpha = 0.3;
+    for (let ring = 1; ring <= 4; ring++) {
+      const r = radius * ring / 4;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const a = startAngle + i * angleStep;
+        const x = cx + r * Math.cos(a);
+        const y = cy + r * Math.sin(a);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // Axis lines
+    ctx.globalAlpha = 0.2;
+    for (let i = 0; i < n; i++) {
+      const a = startAngle + i * angleStep;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + radius * Math.cos(a), cy + radius * Math.sin(a));
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // Data polygon
+    const normalized = FACTOR_KEYS.map(k => factors[k] / FACTOR_MAX[k]);
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = startAngle + i * angleStep;
+      const r = radius * Math.max(normalized[i], 0.04); // min visible dot
+      const x = cx + r * Math.cos(a);
+      const y = cy + r * Math.sin(a);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.18;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Data points
+    for (let i = 0; i < n; i++) {
+      const a = startAngle + i * angleStep;
+      const r = radius * Math.max(normalized[i], 0.04);
+      ctx.beginPath();
+      ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3, 0, 2 * Math.PI);
+      ctx.fillStyle = accent;
+      ctx.fill();
+    }
+
+    // Labels
+    ctx.fillStyle = fg;
+    ctx.font = '11px ' + (style.getPropertyValue('--font').trim() || 'sans-serif');
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) {
+      const a = startAngle + i * angleStep;
+      const lr = radius + 16;
+      const x = cx + lr * Math.cos(a);
+      const y = cy + lr * Math.sin(a);
+      const raw = factors[FACTOR_KEYS[i]];
+      const max = FACTOR_MAX[FACTOR_KEYS[i]];
+      const label = FACTOR_LABELS[i] + ' ' + raw + '/' + max;
+      ctx.textAlign = Math.abs(Math.cos(a)) < 0.01 ? 'center' : Math.cos(a) > 0 ? 'left' : 'right';
+      ctx.fillStyle = fgFaint;
+      ctx.fillText(label, x, y);
+    }
+  }
+
+  function renderPlayer(trackId, factors) {
+    let radarHtml = '';
+    if (factors) {
+      radarHtml =
+        '<div class="dig-radar-wrap">' +
+          '<canvas class="dig-radar-canvas"></canvas>' +
+        '</div>';
+    }
+
     $player.innerHTML =
       '<div class="dig-player">' +
+        radarHtml +
         '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
           'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
           'loading="lazy"></iframe>' +
       '</div>';
+
+    // Draw radar after DOM insertion
+    if (factors) {
+      const canvas = $player.querySelector('.dig-radar-canvas');
+      if (canvas) drawRadarChart(canvas, factors);
+    }
 
     // Highlight playing item
     document.querySelectorAll('.dig-result-item').forEach(el => {
@@ -469,7 +805,7 @@ permalink: /digging/
   /* ── Global handlers (accessible from inline onclick) ── */
   window.__digPlay = function (index) {
     const r = recommendedTracks[index];
-    if (r) renderPlayer(r.track.id);
+    if (r) renderPlayer(r.track.id, r.factors);
   };
 
   window.__digToggleAll = function (checked) {
