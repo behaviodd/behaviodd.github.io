@@ -1,15 +1,24 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}NVY Design</title>
-  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     :root {
       --fg: #111;
@@ -41,7 +50,11 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    body { min-height: 100vh; display: flex; flex-direction: column; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
     .container {
       max-width: 640px;
@@ -55,11 +68,13 @@
       padding: 32px 0;
       border-bottom: 1px solid var(--border);
     }
+
     nav {
       display: flex;
       align-items: center;
       gap: 24px;
     }
+
     nav .name {
       font-weight: 700;
       font-size: 15px;
@@ -67,19 +82,27 @@
       text-decoration: none;
       margin-right: auto;
     }
+
     nav a {
       color: var(--fg-muted);
       text-decoration: none;
       font-size: 14px;
     }
-    nav a:hover { color: var(--fg); }
+
+    nav a:hover {
+      color: var(--fg);
+    }
 
     /* ── Main ── */
-    main { flex: 1; padding: 64px 0; }
+    main {
+      flex: 1;
+      padding: 64px 0;
+    }
 
     .hero {
       margin-bottom: 64px;
     }
+
     .hero h1 {
       font-size: clamp(32px, 8vw, 56px);
       font-weight: 700;
@@ -87,6 +110,7 @@
       letter-spacing: -1px;
       margin-bottom: 16px;
     }
+
     .hero p {
       font-size: 16px;
       color: var(--fg-muted);
@@ -120,15 +144,20 @@
       color: inherit;
       transition: opacity 0.15s;
     }
+
     .project:last-child {
       border-bottom: 1px solid var(--border);
     }
-    .project:hover { opacity: 0.6; }
+
+    .project:hover {
+      opacity: 0.6;
+    }
 
     .project-name {
       font-weight: 700;
       font-size: 15px;
     }
+
     .project-desc {
       font-size: 13px;
       color: var(--fg-muted);
@@ -153,15 +182,21 @@
       color: inherit;
       transition: opacity 0.15s;
     }
+
     .post-item:last-child {
       border-bottom: 1px solid var(--border);
     }
-    .post-item:hover { opacity: 0.6; }
+
+    .post-item:hover {
+      opacity: 0.6;
+    }
+
     .post-date {
       font-size: 13px;
       color: var(--fg-faint);
       flex-shrink: 0;
     }
+
     .post-title {
       font-weight: 700;
       font-size: 15px;
@@ -173,27 +208,34 @@
       font-weight: 700;
       margin: 48px 0 16px;
     }
+
     .prose h3 {
       font-size: 16px;
       font-weight: 700;
       margin: 32px 0 12px;
     }
+
     .prose p {
       margin-bottom: 16px;
       color: var(--fg);
     }
-    .prose ul, .prose ol {
+
+    .prose ul,
+    .prose ol {
       margin: 0 0 16px 24px;
     }
+
     .prose li {
       margin-bottom: 4px;
     }
+
     .prose blockquote {
       border-left: 3px solid var(--border);
       padding-left: 16px;
       color: var(--fg-muted);
       margin: 0 0 16px;
     }
+
     .prose code {
       font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
       font-size: 14px;
@@ -201,6 +243,7 @@
       padding: 2px 6px;
       border-radius: 3px;
     }
+
     .prose pre {
       background: var(--border);
       padding: 16px;
@@ -208,25 +251,30 @@
       overflow-x: auto;
       margin-bottom: 16px;
     }
+
     .prose pre code {
       background: none;
       padding: 0;
     }
+
     .prose hr {
       border: none;
       border-top: 1px solid var(--border);
       margin: 32px 0;
     }
+
     .prose img {
       max-width: 100%;
       height: auto;
       border-radius: 4px;
       margin-bottom: 16px;
     }
+
     .prose a {
       color: var(--accent);
       text-decoration: none;
     }
+
     .prose a:hover {
       text-decoration: underline;
     }
@@ -235,11 +283,13 @@
     .profile-section {
       margin-bottom: 48px;
     }
+
     .profile-list {
       display: flex;
       flex-direction: column;
       gap: 0;
     }
+
     .profile-row {
       display: flex;
       align-items: baseline;
@@ -247,23 +297,28 @@
       padding: 16px 0;
       border-top: 1px solid var(--border);
     }
+
     .profile-row:last-child {
       border-bottom: 1px solid var(--border);
     }
+
     .profile-row dt {
       font-size: 13px;
       color: var(--fg-faint);
       flex-shrink: 0;
       min-width: 80px;
     }
+
     .profile-row dd {
       font-weight: 700;
       font-size: 15px;
     }
+
     .profile-row dd a {
       color: var(--accent);
       text-decoration: none;
     }
+
     .profile-row dd a:hover {
       text-decoration: underline;
     }
@@ -273,6 +328,7 @@
       padding: 32px 0;
       border-top: 1px solid var(--border);
     }
+
     .footer-inner {
       display: flex;
       align-items: center;
@@ -280,33 +336,40 @@
       font-size: 13px;
       color: var(--fg-faint);
     }
+
     .footer-links {
       display: flex;
       gap: 16px;
     }
+
     .footer-links a {
       color: var(--fg-faint);
       text-decoration: none;
     }
-    .footer-links a:hover { color: var(--fg); }
+
+    .footer-links a:hover {
+      color: var(--fg);
+    }
 
     @media (max-width: 480px) {
       .project {
         flex-direction: column;
         gap: 4px;
       }
-      .project-desc { text-align: left; }
-    }
 
+      .project-desc {
+        text-align: left;
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <header>
     <div class="container">
       <nav>
         <a href="/" class="name">NVY Design</a>
-        <a href="/digging/" target="_blank" rel="noopener">Digging</a>
         <a href="/blog/">Blog</a>
         <a href="/profile/">Profile</a>
       </nav>
@@ -322,10 +385,11 @@
   <footer>
     <div class="container">
       <div class="footer-inner">
-        <span>&copy; 2026 behaviodd</span>
+        <span>&copy; 2026 NVY</span>
       </div>
     </div>
   </footer>
 
 </body>
+
 </html>
