@@ -1,5 +1,5 @@
 ---
-layout: default
+layout: digging
 title: Digging Club
 permalink: /digging/
 ---
@@ -26,7 +26,7 @@ permalink: /digging/
 <div id="resultsArea"></div>
 <div id="playlistBar"></div>
 <div id="authSection"></div>
-<div id="playerArea" class="dig-overlay"></div>
+<div id="playerArea" class="dig-player-bar"></div>
 <div id="toastEl" class="dig-toast"></div>
 
 <script>
@@ -547,7 +547,8 @@ permalink: /digging/
     $results.innerHTML = '';
     $playlistBar.innerHTML = '';
     $player.innerHTML = '';
-    $player.classList.remove('dig-overlay-show');
+    $player.classList.remove('dig-player-show');
+    document.body.classList.remove('dig-player-open');
     $error.innerHTML = '';
     recommendedTracks = [];
 
@@ -674,14 +675,15 @@ permalink: /digging/
 
   function renderPlayer(trackId) {
     $player.innerHTML =
-      '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
-      '<div class="dig-overlay-body">' +
+      '<div class="dig-player-inner">' +
+        '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
         '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
-          'height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
           'loading="lazy"></iframe>' +
       '</div>';
 
-    $player.classList.add('dig-overlay-show');
+    $player.classList.add('dig-player-show');
+    document.body.classList.add('dig-player-open');
 
     // Highlight playing item
     document.querySelectorAll('.dig-result-item').forEach(el => {
@@ -720,7 +722,8 @@ permalink: /digging/
   };
 
   window.__digCloseOverlay = function () {
-    $player.classList.remove('dig-overlay-show');
+    $player.classList.remove('dig-player-show');
+    document.body.classList.remove('dig-player-open');
     $player.innerHTML = '';
     document.querySelectorAll('.dig-result-item').forEach(el => {
       el.classList.remove('dig-playing');
