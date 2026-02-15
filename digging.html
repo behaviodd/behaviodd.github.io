@@ -368,7 +368,7 @@ permalink: /digging/
     const seenTitles = new Set();
 
     for (const item of scored) {
-      if (result.length >= 30) break;
+      if (result.length >= 50) break;
       const allArtistIds = (item.track.artists || []).map(a => a.id).filter(Boolean);
       const primaryArtistId = allArtistIds[0];
       if (!primaryArtistId) { result.push(item); continue; }
@@ -383,9 +383,7 @@ permalink: /digging/
       if (blocked) continue;
 
       seenTitles.add(titleKey);
-      for (const artistId of allArtistIds) {
-        artistCount[artistId] = (artistCount[artistId] || 0) + 1;
-      }
+      artistCount[primaryArtistId] = (artistCount[primaryArtistId] || 0) + 1;
       result.push(item);
     }
     return result;
