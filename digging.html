@@ -67,11 +67,23 @@ permalink: /digging/
       spotifyIFrameAPI = IFrameAPI;
     };
 
-    /* ── API Proxy ── */
+    /* ── API Proxy with 429 retry ── */
+    let rateLimitHits = 0;
+
     async function proxyFetch(endpoint) {
       const url = CONFIG.workerUrl + '/api/spotify?endpoint=' + encodeURIComponent(endpoint);
-      const res = await fetch(url);
+      let res = await fetch(url);
+
+      // Auto-retry once on 429
+      if (res.status === 429) {
+        rateLimitHits++;
+        const retryAfter = parseInt(res.headers.get('Retry-After')) || 2;
+        await new Promise(r => setTimeout(r, retryAfter * 1000));
+        res = await fetch(url);
+      }
+
       if (!res.ok) {
+        if (res.status === 429) rateLimitHits++;
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || 'API error ' + res.status);
       }
@@ -86,6 +98,10 @@ permalink: /digging/
         const batch = tasks.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(fn => fn()));
         results.push(...batchResults);
+        // Small delay between batches to avoid rate limits
+        if (i + batchSize < tasks.length) {
+          await new Promise(r => setTimeout(r, 300));
+        }
       }
       return results;
     }
@@ -621,6 +637,7 @@ permalink: /digging/
       document.body.classList.remove('dig-player-open');
       $error.innerHTML = '';
       recommendedTracks = [];
+      rateLimitHits = 0;
 
       try {
         // 1. Get seed track info
@@ -633,7 +650,11 @@ permalink: /digging/
 
         if (candidateEntries.size === 0) {
           hideLoading();
-          showError('No similar tracks found.');
+          if (rateLimitHits > 0) {
+            showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
+          } else {
+            showError('No similar tracks found.');
+          }
           return;
         }
 
@@ -654,13 +675,20 @@ permalink: /digging/
 
         recommendedTracks = results;
         hideLoading();
+        if (results.length === 0 && rateLimitHits > 0) {
+          showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
+        }
         renderResults(results);
         renderPlaylistBar();
         renderAuth();
 
       } catch (err) {
         hideLoading();
-        showError(err.message || 'Something went wrong. Please try again.');
+        if (rateLimitHits > 0) {
+          showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
+        } else {
+          showError(err.message || 'Something went wrong. Please try again.');
+        }
       } finally {
         $btn.disabled = false;
         $btn.textContent = 'Dig';
@@ -729,7 +757,7 @@ permalink: /digging/
         '<label><input type="checkbox" id="selectAll" onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
         (loggedIn
           ? '<button class="dig-submit-btn" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
-          : '<button class="dig-submit-btn" onclick="window.__digConnectSpotify()">Connect Spotify to Create Playlist</button>') +
+          : '<a onclick="window.__digConnectSpotify()" style="margin-left:auto;font-size:12px;color:var(--fg-60);cursor:pointer;transition:text-shadow 0.2s" onmouseover="this.style.textShadow=\'0 0 4px #00ffff\'" onmouseout="this.style.textShadow=\'none\'">Connect Spotify to Create Playlist</a>') +
         '</div>';
     }
 
