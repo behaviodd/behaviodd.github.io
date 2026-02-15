@@ -92,10 +92,16 @@
       gap: 8px;
       margin-bottom: 32px;
     }
-    .dig-url-input {
+    .dig-input-wrap {
       flex: 1;
-      padding: 10px 14px;
-      font-size: 14px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .dig-url-input {
+      width: 100%;
+      padding: 10px 40px 10px 14px;
+      font-size: 16px;
       font-family: var(--font);
       color: var(--fg);
       background: rgba(255, 255, 255, 0.04);
@@ -109,6 +115,25 @@
     }
     .dig-url-input::placeholder {
       color: var(--fg-faint);
+    }
+    .dig-paste-btn {
+      position: absolute;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--fg-faint);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .dig-paste-btn:hover {
+      color: var(--fg);
+      border-color: var(--accent);
     }
     .dig-submit-btn {
       padding: 10px 20px;

@@ -10,13 +10,21 @@ permalink: /digging/
 </div>
 
 <form class="dig-form" id="digForm" onsubmit="return handleSubmit(event)">
-  <input
-    type="text"
-    class="dig-url-input"
-    id="trackInput"
-    placeholder="https://open.spotify.com/track/..."
-    autocomplete="off"
-  />
+  <div class="dig-input-wrap">
+    <input
+      type="text"
+      class="dig-url-input"
+      id="trackInput"
+      placeholder="https://open.spotify.com/track/..."
+      autocomplete="off"
+    />
+    <button type="button" class="dig-paste-btn" id="pasteBtn" aria-label="Paste">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="2" width="6" height="3" rx="1"/>
+        <path d="M4 4H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-1"/>
+      </svg>
+    </button>
+  </div>
   <button type="submit" class="dig-submit-btn" id="digBtn">Dig</button>
 </form>
 
@@ -227,6 +235,18 @@ permalink: /digging/
     };
   }
 
+  /* ── Title normalizer for dedup ── */
+  function normalizeTitle(name) {
+    if (!name) return '';
+    let s = name.toLowerCase();
+    s = s.replace(/\s*[\(\[\{][^\)\]\}]*[\)\]\}]\s*/g, ' ');   // (Remix), [Deluxe], {Ver.2}
+    s = s.replace(/\s*(feat\.?|ft\.?|featuring)\s+.*/i, '');     // feat. 이후 전부
+    s = s.replace(/\s+-\s+.*$/, '');                              // " - Remix" 등
+    s = s.replace(/\b(remix|remaster(ed)?|acoustic|live|ver\.?|version|inst\.?|instrumental|deluxe|special\s+edition|bonus\s+track)\b/gi, '');
+    s = s.replace(/\s+/g, ' ').trim();
+    return s;
+  }
+
   /* ── Build search queries ── */
   function buildSearchQueries(seed, collabArtists, seedTags) {
     const trackName = seed.name || '';
@@ -287,19 +307,24 @@ permalink: /digging/
     const sources = entry.sources;
     const factors = { tag: 0, crossVerify: 0, vibe: 0, source: 0, diversity: 0 };
 
-    // 1. Tag match — subgenre/production style (max 25)
+    // 1. Tag match — diminishing returns (max 25)
     const matchCount = entry.matchedTags ? entry.matchedTags.size : 0;
-    factors.tag = Math.min(25, matchCount * 8);
+    const tagPoints = [12, 8, 5];
+    for (let i = 0; i < matchCount && i < tagPoints.length; i++) {
+      factors.tag += tagPoints[i];
+    }
+    factors.tag = Math.min(25, factors.tag);
 
-    // 2. Cross-verification bonus (max 25)
-    if (sources.size >= 3) factors.crossVerify = 25;
-    else if (sources.size === 2) factors.crossVerify = 12;
+    // 2. Cross-verification bonus — smooth curve (max 25)
+    if (sources.size >= 4) factors.crossVerify = 25;
+    else if (sources.size === 3) factors.crossVerify = 22;
+    else if (sources.size === 2) factors.crossVerify = 15;
 
     // 3. Vibe — Last.fm getSimilar match (max 20)
     const lfm = entry.lastfmMatch || 0;
     factors.vibe = Math.min(20, Math.round(lfm * 28));
 
-    // 4. Source weight (max 15) — take best source
+    // 4. Source weight + global position penalty (max 15)
     const sourceWeights = {
       collab_artist: 15, lastfm_similar: 14, search_cover: 13,
       lastfm_related: 11, search_collab: 10, lastfm_tag: 9,
@@ -307,6 +332,15 @@ permalink: /digging/
     };
     for (const s of sources) {
       factors.source = Math.max(factors.source, sourceWeights[s] || 0);
+    }
+    // Position penalty: best (lowest) position across all sources
+    let bestPos = Infinity;
+    for (const pos of entry.positions.values()) {
+      if (pos < bestPos) bestPos = pos;
+    }
+    if (bestPos !== Infinity && bestPos > 2) {
+      const penalty = Math.min(4, Math.round((bestPos - 2) * 0.3));
+      factors.source = Math.max(0, factors.source - penalty);
     }
 
     // 5. Artist diversity (max 15)
@@ -330,19 +364,27 @@ permalink: /digging/
 
     for (const item of scored) {
       if (result.length >= 30) break;
-      const primaryArtistId = item.track.artists[0]?.id;
+      const allArtistIds = (item.track.artists || []).map(a => a.id).filter(Boolean);
+      const primaryArtistId = allArtistIds[0];
       if (!primaryArtistId) { result.push(item); continue; }
 
-      // Same-title dedup: skip album/single/remaster duplicates
-      const titleKey = (item.track.name || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, '').trim() + '|||' + primaryArtistId;
+      // Same-title dedup: normalizeTitle strips remaster/deluxe/remix variants
+      const titleKey = normalizeTitle(item.track.name) + '|||' + primaryArtistId;
       if (seenTitles.has(titleKey)) continue;
 
-      const count = artistCount[primaryArtistId] || 0;
-      if (primaryArtistId === seedArtistId && count >= 1) continue;
-      if (count >= 2) continue;
+      // Artist cap: check ALL artists (including feat.)
+      let blocked = false;
+      for (const artistId of allArtistIds) {
+        const count = artistCount[artistId] || 0;
+        if (artistId === seedArtistId && count >= 1) { blocked = true; break; }
+        if (count >= 2) { blocked = true; break; }
+      }
+      if (blocked) continue;
 
       seenTitles.add(titleKey);
-      artistCount[primaryArtistId] = count + 1;
+      for (const artistId of allArtistIds) {
+        artistCount[artistId] = (artistCount[artistId] || 0) + 1;
+      }
       result.push(item);
     }
     return result;
@@ -808,6 +850,17 @@ permalink: /digging/
 
   /* ── Expose handleSubmit for form ── */
   window.handleSubmit = handleSubmit;
+
+  /* ── Paste button ── */
+  document.getElementById('pasteBtn').addEventListener('click', async function () {
+    try {
+      const text = await navigator.clipboard.readText();
+      $input.value = text;
+      $input.focus();
+    } catch {
+      showToast('Clipboard access denied');
+    }
+  });
 
   /* ── Init: restore pending track & render auth ── */
   (function init() {
