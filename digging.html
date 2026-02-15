@@ -326,16 +326,22 @@ permalink: /digging/
     scored.sort((a, b) => b.match - a.match);
     const result = [];
     const artistCount = {};
+    const seenTitles = new Set();
 
     for (const item of scored) {
       if (result.length >= 30) break;
       const primaryArtistId = item.track.artists[0]?.id;
       if (!primaryArtistId) { result.push(item); continue; }
 
+      // Same-title dedup: skip album/single/remaster duplicates
+      const titleKey = (item.track.name || '').toLowerCase().replace(/\s*\(.*?\)\s*/g, '').trim() + '|||' + primaryArtistId;
+      if (seenTitles.has(titleKey)) continue;
+
       const count = artistCount[primaryArtistId] || 0;
       if (primaryArtistId === seedArtistId && count >= 1) continue;
       if (count >= 2) continue;
 
+      seenTitles.add(titleKey);
       artistCount[primaryArtistId] = count + 1;
       result.push(item);
     }
@@ -602,7 +608,7 @@ permalink: /digging/
     if (track.album?.name) tags.push(track.album.name);
 
     $seed.innerHTML =
-      '<div class="dig-seed">' +
+      '<div class="dig-seed" onclick="window.__digPlaySeed()" style="cursor:pointer">' +
         '<img src="' + escHtml(img) + '" alt="">' +
         '<div class="dig-seed-info">' +
           '<div class="dig-seed-title">' + escHtml(track.name) + '</div>' +
@@ -667,18 +673,8 @@ permalink: /digging/
   }
 
   function renderPlayer(trackId) {
-    const r = recommendedTracks.find(r => r.track.id === trackId);
-    const trackName = r ? escHtml(r.track.name) : '';
-    const artistName = r ? escHtml(r.track.artists.map(a => a.name).join(', ')) : '';
-
     $player.innerHTML =
-      '<div class="dig-overlay-header">' +
-        '<div class="dig-overlay-track-info">' +
-          '<div class="dig-overlay-track-title">' + trackName + '</div>' +
-          '<div class="dig-overlay-track-artist">' + artistName + '</div>' +
-        '</div>' +
-        '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
-      '</div>' +
+      '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
       '<div class="dig-overlay-body">' +
         '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
           'height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
@@ -729,6 +725,10 @@ permalink: /digging/
     document.querySelectorAll('.dig-result-item').forEach(el => {
       el.classList.remove('dig-playing');
     });
+  };
+
+  window.__digPlaySeed = function () {
+    if (currentSeedTrack) renderPlayer(currentSeedTrack.id);
   };
 
   window.__digToggleAll = function (checked) {
