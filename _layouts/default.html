@@ -476,15 +476,6 @@
       font-size: 12px;
       color: var(--fg-muted);
     }
-    .dig-result-match {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--accent);
-      flex-shrink: 0;
-      min-width: 44px;
-      text-align: right;
-    }
-
     .dig-playlist-bar {
       display: flex;
       align-items: center;
@@ -596,23 +587,11 @@
       justify-content: center;
       padding: 24px 20px;
     }
-    .dig-overlay-footer {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .dig-player iframe {
+    .dig-overlay-body iframe {
       width: 100%;
+      max-width: 480px;
       border: none;
       border-radius: 8px;
-    }
-    .dig-radar-wrap {
-      display: flex;
-      justify-content: center;
-    }
-    .dig-radar-canvas {
-      width: min(300px, 80vw);
-      height: min(300px, 80vw);
     }
 
     .dig-toast {
@@ -649,7 +628,6 @@
       .dig-seed { flex-direction: column; text-align: center; }
       .dig-seed img { width: 120px; height: 120px; }
       .dig-feature-tags { justify-content: center; }
-      .dig-result-match { min-width: 36px; font-size: 12px; }
       .dig-playlist-bar { flex-wrap: wrap; }
     }
   </style>
