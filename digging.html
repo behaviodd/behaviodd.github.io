@@ -26,7 +26,7 @@ permalink: /digging/
 <div id="resultsArea"></div>
 <div id="playlistBar"></div>
 <div id="authSection"></div>
-<div id="playerArea"></div>
+<div id="playerArea" class="dig-overlay" onclick="window.__digCloseOverlay(event)"></div>
 <div id="toastEl" class="dig-toast"></div>
 
 <script>
@@ -546,6 +546,7 @@ permalink: /digging/
     $results.innerHTML = '';
     $playlistBar.innerHTML = '';
     $player.innerHTML = '';
+    $player.classList.remove('dig-overlay-show');
     $error.innerHTML = '';
     recommendedTracks = [];
 
@@ -634,7 +635,7 @@ permalink: /digging/
       const img = r.track.album?.images?.[2]?.url || r.track.album?.images?.[0]?.url || '';
       html +=
         '<div class="dig-result-item" data-index="' + i + '" data-track-id="' + r.track.id + '" onclick="window.__digPlay(' + i + ')">' +
-          '<input type="checkbox" class="dig-result-check" checked onclick="event.stopPropagation()">' +
+          '<input type="checkbox" class="dig-result-check" onclick="event.stopPropagation()">' +
           '<img class="dig-result-img" src="' + escHtml(img) + '" alt="">' +
           '<div class="dig-result-info">' +
             '<div class="dig-result-title">' + escHtml(r.track.name) + '</div>' +
@@ -654,7 +655,7 @@ permalink: /digging/
     const loggedIn = isLoggedIn();
     $playlistBar.innerHTML =
       '<div class="dig-playlist-bar">' +
-        '<label><input type="checkbox" id="selectAll" checked onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
+        '<label><input type="checkbox" id="selectAll" onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
         (loggedIn
           ? '<button class="dig-submit-btn" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
           : '<button class="dig-submit-btn" onclick="window.__digConnectSpotify()">Connect Spotify to Create Playlist</button>') +
@@ -778,12 +779,17 @@ permalink: /digging/
     }
 
     $player.innerHTML =
-      '<div class="dig-player">' +
-        radarHtml +
-        '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
-          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
-          'loading="lazy"></iframe>' +
+      '<div class="dig-overlay-content">' +
+        '<button class="dig-overlay-close" onclick="window.__digCloseOverlay()">&times;</button>' +
+        '<div class="dig-player">' +
+          radarHtml +
+          '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
+            'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+            'loading="lazy"></iframe>' +
+        '</div>' +
       '</div>';
+
+    $player.classList.add('dig-overlay-show');
 
     // Draw radar after DOM insertion
     if (factors) {
@@ -825,6 +831,15 @@ permalink: /digging/
   window.__digPlay = function (index) {
     const r = recommendedTracks[index];
     if (r) renderPlayer(r.track.id, r.factors);
+  };
+
+  window.__digCloseOverlay = function (e) {
+    if (e && e.target !== $player) return;
+    $player.classList.remove('dig-overlay-show');
+    $player.innerHTML = '';
+    document.querySelectorAll('.dig-result-item').forEach(el => {
+      el.classList.remove('dig-playing');
+    });
   };
 
   window.__digToggleAll = function (checked) {
