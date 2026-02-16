@@ -111,6 +111,123 @@ permalink: /digging/
       } catch { return null; }
     }
 
+    /* ── MusicBrainz API Proxy (1 req/s client-side queue) ── */
+    const mbQueue = [];
+    let mbProcessing = false;
+
+    function musicbrainzFetch(path, params) {
+      return new Promise((resolve) => {
+        mbQueue.push({ path, params, resolve });
+        if (!mbProcessing) processMbQueue();
+      });
+    }
+
+    async function processMbQueue() {
+      mbProcessing = true;
+      while (mbQueue.length > 0) {
+        const { path, params, resolve } = mbQueue.shift();
+        try {
+          const qs = new URLSearchParams({ path, ...(params || {}) }).toString();
+          const res = await fetch(CONFIG.workerUrl + '/api/musicbrainz?' + qs);
+          resolve(res.ok ? await res.json() : null);
+        } catch { resolve(null); }
+        if (mbQueue.length > 0) await new Promise(r => setTimeout(r, 1100));
+      }
+      mbProcessing = false;
+    }
+
+    /* ── ListenBrainz Labs API Proxy (POST) ── */
+    async function listenbrainzFetch(endpoint, body) {
+      try {
+        const res = await fetch(
+          CONFIG.workerUrl + '/api/listenbrainz?endpoint=' + encodeURIComponent(endpoint),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    }
+
+    /* ── Deezer API Proxy ── */
+    async function deezerFetch(path, params) {
+      try {
+        const qs = new URLSearchParams({ path, ...(params || {}) }).toString();
+        const res = await fetch(CONFIG.workerUrl + '/api/deezer?' + qs);
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    }
+
+    /* ── MusicBrainz MBID resolvers ── */
+    async function resolveArtistMBID(name) {
+      try {
+        const data = await musicbrainzFetch('artist', { query: name, limit: '1' });
+        const artist = data?.artists?.[0];
+        if (artist && artist.score >= 90) return artist.id;
+        return null;
+      } catch { return null; }
+    }
+
+    async function resolveRecordingMBID(track, artist) {
+      try {
+        const data = await musicbrainzFetch('recording', {
+          query: 'recording:"' + track + '" AND artist:"' + artist + '"',
+          limit: '1',
+        });
+        const rec = data?.recordings?.[0];
+        if (rec && rec.score >= 90) return rec.id;
+        return null;
+      } catch { return null; }
+    }
+
+    /* ── Source D: ListenBrainz similar artists ── */
+    async function getListenBrainzSimilarArtists(artistMbid) {
+      if (!artistMbid) return [];
+      try {
+        const data = await listenbrainzFetch(
+          'similar-artists/json',
+          [{ artist_mbid: artistMbid, algorithm: 'session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30' }]
+        );
+        if (!data || !Array.isArray(data)) return [];
+        // LB returns array of rows; first row contains results
+        const row = data[0];
+        if (!row || !Array.isArray(row)) return [];
+        return row.slice(0, 15).map(r => ({
+          name: r.artist_name || r.name || '',
+          mbid: r.artist_mbid || '',
+          score: r.score || 0,
+        })).filter(a => a.name);
+      } catch { return []; }
+    }
+
+    /* ── Source E: Deezer related artists + top tracks ── */
+    async function getDeezerRelatedArtists(artistName) {
+      try {
+        // Search for artist on Deezer
+        const searchData = await deezerFetch('search/artist', { q: artistName, limit: '1' });
+        const dzArtist = searchData?.data?.[0];
+        if (!dzArtist) return [];
+
+        // Get related artists
+        const relData = await deezerFetch('artist/' + dzArtist.id + '/related', { limit: '10' });
+        return (relData?.data || []).map(a => ({
+          id: a.id,
+          name: a.name,
+        }));
+      } catch { return []; }
+    }
+
+    async function getDeezerArtistTopTracks(artistId) {
+      try {
+        const data = await deezerFetch('artist/' + artistId + '/top', { limit: '3' });
+        return (data?.data || []).map(t => ({
+          name: t.title || t.title_short || '',
+          artist: { name: t.artist?.name || '' },
+          match: 0.4,
+        }));
+      } catch { return []; }
+    }
+
     /* ── PKCE Auth ── */
     function generateCodeVerifier() {
       const arr = new Uint8Array(64);
@@ -259,19 +376,32 @@ permalink: /digging/
       return result;
     }
 
-    /* ── Hybrid Digging Algorithm (Last.fm multi-source + tag graph) ── */
+    /* ── Hybrid Digging Algorithm (Last.fm + MusicBrainz + ListenBrainz + Deezer) ── */
     async function discoverAndScore(seed) {
       const seedArtistId = seed.artists[0]?.id;
       const seedArtistName = seed.artists[0]?.name || '';
 
-      // ─── Step 1: Core data + seed profile (parallel) ───
+      // ─── Phase 0 + Step 1: MBID lookup (sequential 1req/s) + Last.fm core data (parallel) ───
       showLoading('Finding similar tracks...');
-      const [lfmSimilarRaw, lfmArtistSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo] = await Promise.all([
+
+      // Phase 0: MusicBrainz MBID resolution (runs concurrently with Last.fm Step 1)
+      const mbidPromise = (async () => {
+        const artistMbid = await resolveArtistMBID(seedArtistName);
+        const recordingMbid = await resolveRecordingMBID(seed.name, seedArtistName);
+        return { artistMbid, recordingMbid };
+      })();
+
+      // Step 1: Last.fm core data (existing, parallel)
+      const lfmCorePromise = Promise.all([
         lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seed.name, limit: '50', autocorrect: '1' }),
         lastfmFetch({ method: 'artist.getSimilar', artist: seedArtistName, limit: '10', autocorrect: '1' }),
         lastfmFetch({ method: 'track.getInfo', artist: seedArtistName, track: seed.name, autocorrect: '1' }),
         lastfmFetch({ method: 'artist.getInfo', artist: seedArtistName, autocorrect: '1' }),
       ]);
+
+      // Wait for both Phase 0 and Step 1
+      const [mbids, [lfmSimilarRaw, lfmArtistSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo]] =
+        await Promise.all([mbidPromise, lfmCorePromise]);
 
       // Build combined seed tag profile (track + artist)
       const trackTags = (seedLfmTrackInfo?.track?.toptags?.tag || []).map(t => t.name.toLowerCase());
@@ -286,7 +416,7 @@ permalink: /digging/
       const similarArtists = lfmArtistSimilarRaw?.similarartists?.artist || [];
       const similarArtistNames = new Set(similarArtists.map(a => a.name.toLowerCase()));
 
-      // ─── Step 1.5: Additional sources (parallel) ───
+      // ─── Step 1.5: All sources in parallel ───
       showLoading('Discovering cross-genre tracks...');
 
       // Source B: similar artist top tracks (genre-local)
@@ -298,7 +428,7 @@ permalink: /digging/
           }))).catch(() => [])
       );
 
-      // Source C: tag-based cross-genre artist discovery (NEW)
+      // Source C: tag-based cross-genre artist discovery
       const tagArtistTasks = crossGenreTags.slice(0, 4).map(tag => () =>
         lastfmFetch({ method: 'tag.getTopArtists', tag: tag, limit: '30' })
           .then(data => ({
@@ -310,10 +440,21 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, artists: [] }))
       );
 
-      const [artistTopResults, tagArtistResults] = await Promise.all([
+      // Source D: ListenBrainz similar artists (NEW)
+      const lbSimilarPromise = getListenBrainzSimilarArtists(mbids.artistMbid);
+
+      // Source E: Deezer related artists (NEW)
+      const deezerRelatedPromise = getDeezerRelatedArtists(seedArtistName);
+
+      const [artistTopResults, tagArtistResults, lbSimilarArtists, deezerRelatedArtists] = await Promise.all([
         batchAll(artistTopTasks, 10),
         batchAll(tagArtistTasks, 10),
+        lbSimilarPromise,
+        deezerRelatedPromise,
       ]);
+
+      // ─── Step 1.75: Fetch top tracks for new source artists (parallel) ───
+      showLoading('Expanding discovery sources...');
 
       // Collect ALL unique cross-genre artists (no cap — breadth over depth)
       const crossGenreArtistSet = new Set();
@@ -321,7 +462,7 @@ permalink: /digging/
         for (const name of result.artists) crossGenreArtistSet.add(name);
       }
 
-      // Fetch top tracks for cross-genre artists
+      // Cross-genre top tracks (existing)
       const crossGenreTrackTasks = [...crossGenreArtistSet].map(name => () =>
         lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '5', autocorrect: '1' })
           .then(data => (data?.toptracks?.track || []).map(t => ({
@@ -329,7 +470,26 @@ permalink: /digging/
             match: 0.3,
           }))).catch(() => [])
       );
-      const crossGenreTrackResults = await batchAll(crossGenreTrackTasks, 10);
+
+      // LB similar artists → Last.fm top tracks (NEW)
+      const lbTrackTasks = lbSimilarArtists.slice(0, 10).map(a => () =>
+        lastfmFetch({ method: 'artist.getTopTracks', artist: a.name, limit: '3', autocorrect: '1' })
+          .then(data => (data?.toptracks?.track || []).map(t => ({
+            name: t.name, artist: { name: a.name },
+            match: Math.max(0.2, a.score * 0.5),
+          }))).catch(() => [])
+      );
+
+      // Deezer related artists → Deezer top tracks (NEW)
+      const deezerTrackTasks = deezerRelatedArtists.slice(0, 10).map(a => () =>
+        getDeezerArtistTopTracks(a.id)
+      );
+
+      const [crossGenreTrackResults, lbTrackResults, deezerTrackResults] = await Promise.all([
+        batchAll(crossGenreTrackTasks, 10),
+        batchAll(lbTrackTasks, 10),
+        batchAll(deezerTrackTasks, 10),
+      ]);
 
       // ─── Merge & deduplicate all candidates ───
       const sourceMap = new Map();  // lfmKey -> Set<source>
@@ -349,6 +509,8 @@ permalink: /digging/
       for (const lt of lfmSimilarTracks.slice(0, 30)) addCandidate(lt, 'lfm-similar');
       for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
       for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
+      for (const lt of lbTrackResults.flat()) addCandidate(lt, 'lb-similar');
+      for (const lt of deezerTrackResults.flat()) addCandidate(lt, 'deezer-related');
 
       // Source-balanced candidate selection (cap 60 Spotify searches)
       const SPOTIFY_CAP = 60;
@@ -479,42 +641,55 @@ permalink: /digging/
       const candidates = [...candidateMap.values()];
       if (candidates.length === 0) return [];
 
-      // ─── Step 3: Score (max 100) — 4-factor hybrid scoring ───
+      // ─── Step 3: Score (max 100) — 5-factor hybrid scoring ───
+      // Platform mapping for cross-platform factor
+      const platformMap = {
+        'lfm-similar': 'lastfm', 'lfm-artist-top': 'lastfm', 'tag-discovery': 'lastfm',
+        'lb-similar': 'listenbrainz',
+        'deezer-related': 'deezer',
+      };
+
       const scored = [];
       for (const track of candidates) {
         const candKey = (track.artists[0]?.name || '').toLowerCase() + '|||' + track.name.toLowerCase();
         const info = lfmInfoByKey[candKey] || {};
         const sources = spotifySourceMap.get(track.id) || new Set();
 
-        // 1. Listener Behavior (25%) — Last.fm similarity score
-        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 25;
+        // 1. Listener Behavior (20%) — Last.fm similarity score
+        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 20;
 
-        // 2. Tag Match (35%) — cross-genre seed tags vs candidate tags
-        //    Uses only genre-relevant tags (excludes k-pop/kpop/korean filler)
-        //    so genuinely similar foreign tracks score higher
+        // 2. Tag Match (30%) — cross-genre seed tags vs candidate tags
         const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
         let tagScore = 0;
         if (matchTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 35;
+          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 30;
         }
 
-        // 3. Digging Index (20%) — engagement depth + obscurity bonus
+        // 3. Digging Index (15%) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
-          // Engagement depth (0–10): replay intensity
-          const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          // Obscurity bonus (0–10): lesser-known tracks rank higher
-          // 10M+ listeners → 0pts, 100K → 5pts, 10K → 7.5pts, 1K → 10pts
-          const obscurity = Math.max(0, Math.min(10, (7 - Math.log10(info.listeners)) * 2.5));
+          const engagement = Math.min(7.5, ((info.playcount / info.listeners) / 3.0) * 7.5);
+          const obscurity = Math.max(0, Math.min(7.5, (7 - Math.log10(info.listeners)) * 1.875));
           diggingScore = engagement + obscurity;
         }
 
         // 4. Multi-Source Confidence (20%) — bonus for appearing in multiple sources
         let sourceScore = 0;
-        if (sources.size >= 3) sourceScore = 20;
-        else if (sources.size === 2) sourceScore = 12;
+        if (sources.size >= 4) sourceScore = 20;
+        else if (sources.size === 3) sourceScore = 16;
+        else if (sources.size === 2) sourceScore = 10;
 
-        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
+        // 5. Cross-Platform Verification (15%) — bonus for confirmation across platforms
+        const platforms = new Set();
+        for (const src of sources) {
+          const p = platformMap[src];
+          if (p) platforms.add(p);
+        }
+        let crossPlatformScore = 0;
+        if (platforms.size >= 3) crossPlatformScore = 15;
+        else if (platforms.size === 2) crossPlatformScore = 9;
+
+        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore + crossPlatformScore;
         scored.push({
           track: track,
           match: Math.round(Math.min(100, finalScore)),
