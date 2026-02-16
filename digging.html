@@ -259,63 +259,148 @@ permalink: /digging/
       return result;
     }
 
-    /* ── Digging Algorithm (Last.fm + Spotify Search) ── */
+    /* ── Hybrid Digging Algorithm (Last.fm multi-source + tag graph) ── */
     async function discoverAndScore(seed) {
       const seedArtistId = seed.artists[0]?.id;
       const seedArtistName = seed.artists[0]?.name || '';
-      const seedPopularity = seed.popularity || 50;
 
-      // ─── Step 1: Last.fm — 2 sources in parallel (fast, no rate limit) ───
+      // ─── Step 1: Core data + seed profile (parallel) ───
       showLoading('Finding similar tracks...');
-      const [lfmSimilarRaw, lfmArtistSimilarRaw, seedLfmInfo] = await Promise.all([
+      const [lfmSimilarRaw, lfmArtistSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo] = await Promise.all([
         lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seed.name, limit: '50', autocorrect: '1' }),
         lastfmFetch({ method: 'artist.getSimilar', artist: seedArtistName, limit: '10', autocorrect: '1' }),
         lastfmFetch({ method: 'track.getInfo', artist: seedArtistName, track: seed.name, autocorrect: '1' }),
+        lastfmFetch({ method: 'artist.getInfo', artist: seedArtistName, autocorrect: '1' }),
       ]);
 
-      const seedTags = (seedLfmInfo?.track?.toptags?.tag || []).map(t => t.name.toLowerCase());
+      // Build combined seed tag profile (track + artist)
+      const trackTags = (seedLfmTrackInfo?.track?.toptags?.tag || []).map(t => t.name.toLowerCase());
+      const artistTags = (seedLfmArtistInfo?.artist?.tags?.tag || []).map(t => t.name.toLowerCase());
+      const allSeedTags = [...new Set([...trackTags, ...artistTags])];
+
+      // Cross-genre tags: filter out K-pop specific & junk tags
+      const kpopFilter = new Set(['k-pop', 'kpop', 'korean', 'korean pop', 'k pop', 'hallyu']);
+      const crossGenreTags = allSeedTags.filter(t => !kpopFilter.has(t) && t.length <= 25);
+
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
       const similarArtists = lfmArtistSimilarRaw?.similarartists?.artist || [];
+      const similarArtistNames = new Set(similarArtists.map(a => a.name.toLowerCase()));
 
-      // Source B: artist top tracks (Last.fm only — fast)
-      const artistTopResults = await batchAll(
-        similarArtists.slice(0, 8).map(a => () =>
-          lastfmFetch({ method: 'artist.getTopTracks', artist: a.name, limit: '3', autocorrect: '1' })
-            .then(data => (data?.toptracks?.track || []).map(t => ({
-              name: t.name, artist: { name: a.name },
-              match: parseFloat(a.match) * 0.5,
-              playcount: parseInt(t.playcount) || 0, listeners: parseInt(t.listeners) || 0,
-            }))).catch(() => [])
-        ), 10
+      // ─── Step 1.5: Additional sources (parallel) ───
+      showLoading('Discovering cross-genre tracks...');
+
+      // Source B: similar artist top tracks (genre-local)
+      const artistTopTasks = similarArtists.slice(0, 8).map(a => () =>
+        lastfmFetch({ method: 'artist.getTopTracks', artist: a.name, limit: '3', autocorrect: '1' })
+          .then(data => (data?.toptracks?.track || []).map(t => ({
+            name: t.name, artist: { name: a.name },
+            match: parseFloat(a.match) * 0.5,
+          }))).catch(() => [])
       );
 
-      // Merge & deduplicate (keep highest match)
+      // Source C: tag-based cross-genre artist discovery (NEW)
+      const tagArtistTasks = crossGenreTags.slice(0, 4).map(tag => () =>
+        lastfmFetch({ method: 'tag.getTopArtists', tag: tag, limit: '30' })
+          .then(data => ({
+            tag: tag,
+            artists: (data?.topartists?.artist || [])
+              .filter(a => a.name.toLowerCase() !== seedArtistName.toLowerCase()
+                        && !similarArtistNames.has(a.name.toLowerCase()))
+              .map(a => a.name),
+          })).catch(() => ({ tag: tag, artists: [] }))
+      );
+
+      const [artistTopResults, tagArtistResults] = await Promise.all([
+        batchAll(artistTopTasks, 10),
+        batchAll(tagArtistTasks, 10),
+      ]);
+
+      // Collect ALL unique cross-genre artists (no cap — breadth over depth)
+      const crossGenreArtistSet = new Set();
+      for (const result of tagArtistResults) {
+        for (const name of result.artists) crossGenreArtistSet.add(name);
+      }
+
+      // Fetch top tracks for cross-genre artists (limit=3, batch fast)
+      const crossGenreTrackTasks = [...crossGenreArtistSet].map(name => () =>
+        lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '3', autocorrect: '1' })
+          .then(data => (data?.toptracks?.track || []).map(t => ({
+            name: t.name, artist: { name: name },
+            match: 0.3,
+          }))).catch(() => [])
+      );
+      const crossGenreTrackResults = await batchAll(crossGenreTrackTasks, 10);
+
+      // Source D: Spotify keyword search from seed title (NEW)
+      const stopWords = new Set(['the','a','an','of','in','on','at','to','for','is','it','my','me','we','you','feat','ft','ver','remix','with','and','or','no','so','do']);
+      const keywords = seed.name.toLowerCase()
+        .replace(/[^\w\s]/g, '').split(/\s+/)
+        .filter(w => w.length >= 3 && !stopWords.has(w));
+      const keywordTracks = [];
+      for (const kw of [...new Set(keywords)].slice(0, 3)) {
+        const data = await proxyFetch(
+          '/v1/search?q=' + encodeURIComponent(kw) + '&type=track&limit=10'
+        ).catch(() => null);
+        if (data?.tracks?.items) {
+          for (const t of data.tracks.items) {
+            if (t.id !== seed.id && t.artists?.[0]?.id !== seedArtistId) {
+              keywordTracks.push(t);
+            }
+          }
+        }
+      }
+
+      // ─── Merge & deduplicate all candidates ───
+      const sourceMap = new Map();  // lfmKey -> Set<source>
       const lfmDeduped = new Map();
-      for (const lt of [...lfmSimilarTracks.slice(0, 30), ...artistTopResults.flat()]) {
+
+      function addCandidate(lt, source) {
         const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
         const matchVal = parseFloat(lt.match) || 0;
         const existing = lfmDeduped.get(key);
         if (!existing || matchVal > existing.match) {
           lfmDeduped.set(key, { name: lt.name, artistName: lt.artist?.name || '', match: matchVal });
         }
+        if (!sourceMap.has(key)) sourceMap.set(key, new Set());
+        sourceMap.get(key).add(source);
       }
 
-      // ─── Step 2: Spotify search + Last.fm info — ALL in parallel ───
-      showLoading('Searching Spotify...');
-      const lfmCandidateList = [...lfmDeduped.values()];
-      const lfmBehaviorMap = new Map();
+      for (const lt of lfmSimilarTracks.slice(0, 30)) addCandidate(lt, 'lfm-similar');
+      for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
+      for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
 
-      // Fire Spotify searches and Last.fm info fetches simultaneously
+      // Prioritize: lfm-similar first, then multi-source, then rest. Cap at 100 for Spotify.
+      const lfmCandidateAll = [...lfmDeduped.values()];
+      const prioritized = lfmCandidateAll.sort((a, b) => {
+        const sa = sourceMap.get(a.artistName.toLowerCase() + '|||' + a.name.toLowerCase());
+        const sb = sourceMap.get(b.artistName.toLowerCase() + '|||' + b.name.toLowerCase());
+        const scoreA = (b.match - a.match) || 0;
+        const sizeA = sa ? sa.size : 0, sizeB = sb ? sb.size : 0;
+        if (sizeB !== sizeA) return sizeB - sizeA;
+        return scoreA;
+      });
+      const lfmCandidateList = prioritized.slice(0, 150);
+
+      // ─── Step 2: Spotify search + Last.fm info (parallel) ───
+      showLoading('Searching Spotify...');
+      const lfmBehaviorMap = new Map();
+      const spotifySourceMap = new Map();  // spotifyId -> Set<source>
+
       const searchTasks = lfmCandidateList.map(lt => () =>
         proxyFetch(
           '/v1/search?q=' + encodeURIComponent(lt.name + ' ' + lt.artistName) +
-          '&type=track&limit=1&market=KR'
+          '&type=track&limit=1'
         ).then(data => {
           const found = data.tracks?.items?.[0];
-          if (found) lfmBehaviorMap.set(found.id, lt.match);
+          if (found) {
+            lfmBehaviorMap.set(found.id, lt.match);
+            const lfmKey = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
+            spotifySourceMap.set(found.id, sourceMap.get(lfmKey) || new Set());
+          }
           return found;
         }).catch(() => null)
       );
+
       const infoTasks = lfmCandidateList.map(lt => () =>
         lastfmFetch({ method: 'track.getInfo', artist: lt.artistName, track: lt.name, autocorrect: '1' })
           .then(data => ({
@@ -326,52 +411,63 @@ permalink: /digging/
           })).catch(() => ({ key: '', tags: [], playcount: 0, listeners: 0 }))
       );
 
-      // Run both in parallel: Spotify batched (rate limit), Last.fm all at once
       const [spotifyResults, infoResults] = await Promise.all([
         batchAll(searchTasks, 8),
         batchAll(infoTasks, 20),
       ]);
 
-      // Build info map (keyed by lowercase artist|||track)
       const lfmInfoByKey = {};
       for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
 
-      // Build candidate list (exclude seed track & seed artist)
+      // Build unified candidate map (Last.fm search + keyword search)
       const candidateMap = new Map();
       for (const t of spotifyResults) {
         if (t && t.id !== seed.id && t.artists?.[0]?.id !== seedArtistId) {
           candidateMap.set(t.id, t);
         }
       }
+      // Add keyword search results (Source D — already Spotify tracks)
+      for (const t of keywordTracks) {
+        if (!candidateMap.has(t.id)) {
+          candidateMap.set(t.id, t);
+          if (!spotifySourceMap.has(t.id)) spotifySourceMap.set(t.id, new Set());
+          spotifySourceMap.get(t.id).add('keyword-search');
+        } else {
+          // Track found in both Last.fm and keyword search
+          if (spotifySourceMap.has(t.id)) spotifySourceMap.get(t.id).add('keyword-search');
+        }
+      }
       const candidates = [...candidateMap.values()];
       if (candidates.length === 0) return [];
 
-      // ─── Step 3: Score (max 100) ───
+      // ─── Step 3: Score (max 100) — 4-factor hybrid scoring ───
       const scored = [];
       for (const track of candidates) {
         const candKey = (track.artists[0]?.name || '').toLowerCase() + '|||' + track.name.toLowerCase();
         const info = lfmInfoByKey[candKey] || {};
+        const sources = spotifySourceMap.get(track.id) || new Set();
 
-        // 1. Listener Behavior (35%)
-        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 35;
+        // 1. Listener Behavior (25%) — Last.fm similarity score
+        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 25;
 
-        // 2. Tag Match (30%)
+        // 2. Tag Match (35%) — combined seed tags (track + artist) vs candidate tags
         let tagScore = 0;
-        if (seedTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (seedTags.filter(t => info.tags.includes(t)).length / seedTags.length) * 30;
+        if (allSeedTags.length > 0 && info.tags?.length > 0) {
+          tagScore = (allSeedTags.filter(t => info.tags.includes(t)).length / allSeedTags.length) * 35;
         }
 
-        // 3. Digging Index (20%)
+        // 3. Digging Index (20%) — deep-cut metric
         let diggingScore = 0;
         if (info.listeners > 0) {
           diggingScore = Math.min(20, ((info.playcount / info.listeners) / 3.0) * 20);
         }
 
-        // 4. Popularity Balance (15%)
-        const popDiff = Math.abs(seedPopularity - (track.popularity || 0));
-        const popScore = Math.max(0, 15 - (popDiff / 100) * 15);
+        // 4. Multi-Source Confidence (20%) — bonus for appearing in multiple sources
+        let sourceScore = 0;
+        if (sources.size >= 3) sourceScore = 20;
+        else if (sources.size === 2) sourceScore = 12;
 
-        const finalScore = behaviorScore + tagScore + diggingScore + popScore;
+        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
         scored.push({
           track: track,
           match: Math.round(Math.min(100, finalScore)),
