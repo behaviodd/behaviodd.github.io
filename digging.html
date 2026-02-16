@@ -350,16 +350,52 @@ permalink: /digging/
       for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
       for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
 
-      // Prioritize: multi-source first, then higher match score. Cap for Spotify.
+      // Source-balanced candidate selection (cap 50 Spotify searches)
+      const SPOTIFY_CAP = 50;
       const lfmCandidateAll = [...lfmDeduped.values()];
-      const prioritized = lfmCandidateAll.sort((a, b) => {
-        const sa = sourceMap.get(a.artistName.toLowerCase() + '|||' + a.name.toLowerCase());
-        const sb = sourceMap.get(b.artistName.toLowerCase() + '|||' + b.name.toLowerCase());
-        const sizeA = sa ? sa.size : 0, sizeB = sb ? sb.size : 0;
-        if (sizeB !== sizeA) return sizeB - sizeA;
-        return (b.match - a.match) || 0;
-      });
-      const lfmCandidateList = prioritized.slice(0, 50);
+
+      // Separate by primary source
+      const multiSrc = [], localSrc = [], crossSrc = [];
+      for (const c of lfmCandidateAll) {
+        const key = c.artistName.toLowerCase() + '|||' + c.name.toLowerCase();
+        const s = sourceMap.get(key) || new Set();
+        if (s.size > 1) multiSrc.push(c);
+        else if (s.has('lfm-similar') || s.has('lfm-artist-top')) localSrc.push(c);
+        else crossSrc.push(c);
+      }
+      multiSrc.sort((a, b) => (b.match - a.match));
+      localSrc.sort((a, b) => (b.match - a.match));
+
+      // Cross-genre: 1 per artist, interleave by tag for diversity
+      const crossByTag = {};
+      for (const result of tagArtistResults) crossByTag[result.tag] = new Set(result.artists.map(n => n.toLowerCase()));
+      const crossPicked = [];
+      const seenCrossArtist = new Set();
+      // Round-robin: cycle through tags, pick 1 unseen artist's top track each round
+      const tagKeys = Object.keys(crossByTag);
+      let tagIdx = 0, exhausted = 0;
+      while (crossPicked.length < SPOTIFY_CAP && exhausted < tagKeys.length) {
+        const tag = tagKeys[tagIdx % tagKeys.length];
+        const cand = crossSrc.find(c => {
+          const aLow = c.artistName.toLowerCase();
+          return crossByTag[tag].has(aLow) && !seenCrossArtist.has(aLow);
+        });
+        if (cand) {
+          seenCrossArtist.add(cand.artistName.toLowerCase());
+          crossPicked.push(cand);
+          exhausted = 0;
+        } else {
+          exhausted++;
+        }
+        tagIdx++;
+      }
+
+      // Assemble: multi-source → local (cap 10) → cross-genre (fill rest)
+      const lfmCandidateList = [
+        ...multiSrc,
+        ...localSrc.slice(0, 10),
+        ...crossPicked,
+      ].slice(0, SPOTIFY_CAP);
 
       // ─── Step 2: Spotify search + Last.fm info (parallel) ───
       showLoading('Searching Spotify...');
