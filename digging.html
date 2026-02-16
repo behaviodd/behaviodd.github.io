@@ -399,25 +399,50 @@ permalink: /digging/
       const allSeedTags = [...new Set([...trackTags, ...artistTags])];
 
       // Cross-genre tags: filter out K-pop specific & junk tags
-      const kpopFilter = new Set(['k-pop', 'kpop', 'korean', 'korean pop', 'k pop', 'hallyu']);
+      const kpopFilter = new Set(['k-pop', 'kpop', 'korean', 'korean pop', 'k pop', 'hallyu',
+        'k-pop boy group', 'k-pop girl group', 'kpop boy group', 'kpop girl group']);
       const crossGenreTags = allSeedTags.filter(t => !kpopFilter.has(t) && t.length <= 25);
 
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
 
-      // ─── Step 1.5: Tag-based TRACK discovery (direct tag → tracks) ───
+      // ─── Step 1.5: Build K-POP blocklist + Tag & Deezer discovery (parallel) ───
       showLoading('Discovering similar vibes...');
 
-      // Source C: find tracks directly tagged with each seed tag
+      // Fetch K-POP artist blocklist (1 API call, 200 artists)
+      const kpopBlocklistPromise = lastfmFetch({ method: 'tag.getTopArtists', tag: 'k-pop', limit: '200' })
+        .then(data => new Set((data?.topartists?.artist || []).map(a => a.name.toLowerCase())))
+        .catch(() => new Set());
+
+      // Source C: Last.fm tag → tracks (direct)
       const tagTrackTasks = crossGenreTags.slice(0, 8).map(tag => () =>
         lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '50' })
           .then(data => ({
             tag: tag,
-            tracks: (data?.tracks?.track || [])
-              .filter(t => (t.artist?.name || '').toLowerCase() !== seedArtistName.toLowerCase()),
+            tracks: (data?.tracks?.track || []),
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      const tagTrackResults = await batchAll(tagTrackTasks, 10);
+      // Source D: Deezer search by seed tags (international tracks)
+      const deezerTasks = crossGenreTags.slice(0, 4).map(tag => () =>
+        deezerFetch('search/track', { q: tag, limit: '25' })
+          .then(data => ({
+            tag: tag,
+            tracks: (data?.data || []).map(t => ({
+              name: t.title || t.title_short || '',
+              artist: { name: t.artist?.name || '' },
+            })),
+          })).catch(() => ({ tag: tag, tracks: [] }))
+      );
+
+      // Run all in parallel: blocklist + Last.fm tags + Deezer tags
+      const [kpopBlocklist, tagTrackResults, deezerResults] = await Promise.all([
+        kpopBlocklistPromise,
+        batchAll(tagTrackTasks, 10),
+        batchAll(deezerTasks, 10),
+      ]);
+
+      // Also block seed artist
+      kpopBlocklist.add(seedArtistName.toLowerCase());
 
       // ─── Merge & deduplicate all candidates ───
       const sourceMap = new Map();
@@ -435,14 +460,32 @@ permalink: /digging/
         sourceMap.get(key).add(source);
       }
 
-      // Source A: direct similar tracks
-      for (const lt of lfmSimilarTracks.slice(0, 30)) addCandidate(lt, 'lfm-similar');
+      // Source A: Last.fm similar tracks (filter out K-POP artists)
+      for (const lt of lfmSimilarTracks.slice(0, 50)) {
+        const aLow = (lt.artist?.name || '').toLowerCase();
+        if (kpopBlocklist.has(aLow)) continue;
+        addCandidate(lt, 'lfm-similar');
+      }
 
-      // Source C: tag-discovered tracks (track tag overlap count)
+      // Source C: Last.fm tag-discovered tracks (filter out K-POP)
       for (const result of tagTrackResults) {
         for (const lt of result.tracks.slice(0, 50)) {
+          const aLow = (lt.artist?.name || '').toLowerCase();
+          if (kpopBlocklist.has(aLow)) continue;
           addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'tag-discovery');
-          const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
+          const key = aLow + '|||' + (lt.name || '').toLowerCase();
+          if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
+          tagMatchMap.get(key).add(result.tag);
+        }
+      }
+
+      // Source D: Deezer tag search tracks (filter out K-POP)
+      for (const result of deezerResults) {
+        for (const lt of result.tracks) {
+          const aLow = (lt.artist?.name || '').toLowerCase();
+          if (kpopBlocklist.has(aLow)) continue;
+          addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'deezer-tag');
+          const key = aLow + '|||' + (lt.name || '').toLowerCase();
           if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
           tagMatchMap.get(key).add(result.tag);
         }
@@ -495,31 +538,36 @@ permalink: /digging/
         const sources = sourceMap.get(candKey) || new Set();
         const matchedTags = tagMatchMap.get(candKey) || new Set();
 
+        // Hard-exclude: skip if candidate's own tags reveal K-POP
+        const candTags = info.tags || [];
+        const isKpop = candTags.some(t => kpopFilter.has(t));
+        if (isKpop) continue;
+
         // 1. Listener Behavior (15%) — Last.fm track similarity
         const behaviorScore = (lt.match || 0) * 15;
 
-        // 2. Vibe Match (35%) — how many seed tags this track was discovered under
-        //    Found via 6/8 tags = very similar vibe, 1/8 = loosely related
-        const vibeScore = (matchedTags.size / numSeedTags) * 35;
+        // 2. Vibe Match (30%) — how many seed tags this track was discovered under
+        const vibeScore = (matchedTags.size / numSeedTags) * 30;
 
-        // 3. Digging Index (35%) — engagement depth + obscurity bonus
+        // 3. Digging Index (30%) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          const obscurity = Math.max(0, Math.min(25, (7 - Math.log10(info.listeners)) * 6.25));
+          const obscurity = Math.max(0, Math.min(20, (7 - Math.log10(info.listeners)) * 5));
           diggingScore = engagement + obscurity;
         }
 
-        // 4. Multi-Source Confidence (15%) — bonus for both similar + tag-discovered
+        // 4. Multi-Source Confidence (15%) — bonus for multiple discovery methods
         let sourceScore = 0;
-        if (sources.size >= 2) sourceScore = 15;
+        if (sources.size >= 3) sourceScore = 15;
+        else if (sources.size >= 2) sourceScore = 10;
 
-        // 5. Cross-Genre — penalize K-POP, reward international finds
-        const candTags = info.tags || [];
-        const isKpop = candTags.some(t => kpopFilter.has(t));
-        const crossGenreScore = isKpop ? -15 : 10;
+        // 5. Cross-Platform (10%) — bonus if found on both Last.fm AND Deezer
+        const hasLastfm = sources.has('lfm-similar') || sources.has('tag-discovery');
+        const hasDeezer = sources.has('deezer-tag');
+        const crossPlatformScore = (hasLastfm && hasDeezer) ? 10 : 0;
 
-        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossGenreScore;
+        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossPlatformScore;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
