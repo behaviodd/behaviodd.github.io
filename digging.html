@@ -404,41 +404,25 @@ permalink: /digging/
 
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
 
-      // ─── Step 1.5: Tag-based cross-genre discovery ───
-      showLoading('Discovering cross-genre tracks...');
+      // ─── Step 1.5: Tag-based TRACK discovery (direct tag → tracks) ───
+      showLoading('Discovering similar vibes...');
 
-      // Source C: tag-based cross-genre artist discovery
-      const tagArtistTasks = crossGenreTags.slice(0, 4).map(tag => () =>
-        lastfmFetch({ method: 'tag.getTopArtists', tag: tag, limit: '30' })
+      // Source C: find tracks directly tagged with each seed tag
+      const tagTrackTasks = crossGenreTags.slice(0, 8).map(tag => () =>
+        lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '50' })
           .then(data => ({
             tag: tag,
-            artists: (data?.topartists?.artist || [])
-              .filter(a => a.name.toLowerCase() !== seedArtistName.toLowerCase())
-              .map(a => a.name),
-          })).catch(() => ({ tag: tag, artists: [] }))
+            tracks: (data?.tracks?.track || [])
+              .filter(t => (t.artist?.name || '').toLowerCase() !== seedArtistName.toLowerCase()),
+          })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      const tagArtistResults = await batchAll(tagArtistTasks, 10);
-
-      // Collect ALL unique cross-genre artists
-      const crossGenreArtistSet = new Set();
-      for (const result of tagArtistResults) {
-        for (const name of result.artists) crossGenreArtistSet.add(name);
-      }
-
-      // Fetch top tracks for cross-genre artists
-      const crossGenreTrackTasks = [...crossGenreArtistSet].map(name => () =>
-        lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '5', autocorrect: '1' })
-          .then(data => (data?.toptracks?.track || []).map(t => ({
-            name: t.name, artist: { name: name },
-            match: 0.3,
-          }))).catch(() => [])
-      );
-      const crossGenreTrackResults = await batchAll(crossGenreTrackTasks, 10);
+      const tagTrackResults = await batchAll(tagTrackTasks, 10);
 
       // ─── Merge & deduplicate all candidates ───
-      const sourceMap = new Map();  // lfmKey -> Set<source>
+      const sourceMap = new Map();
       const lfmDeduped = new Map();
+      const tagMatchMap = new Map();  // key -> Set<matched tag names>
 
       function addCandidate(lt, source) {
         const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
@@ -451,89 +435,34 @@ permalink: /digging/
         sourceMap.get(key).add(source);
       }
 
+      // Source A: direct similar tracks
       for (const lt of lfmSimilarTracks.slice(0, 30)) addCandidate(lt, 'lfm-similar');
-      for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
 
-      // Source-balanced candidate selection (cap 60 Spotify searches)
-      const SPOTIFY_CAP = 60;
+      // Source C: tag-discovered tracks (track tag overlap count)
+      for (const result of tagTrackResults) {
+        for (const lt of result.tracks.slice(0, 50)) {
+          addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'tag-discovery');
+          const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
+          if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
+          tagMatchMap.get(key).add(result.tag);
+        }
+      }
+
+      // Candidate selection: prioritize multi-source, then tag overlap count
+      const CANDIDATE_CAP = 80;
       const lfmCandidateAll = [...lfmDeduped.values()];
-
-      // Separate by primary source
-      const multiSrc = [], localSrc = [], crossSrc = [];
-      for (const c of lfmCandidateAll) {
-        const key = c.artistName.toLowerCase() + '|||' + c.name.toLowerCase();
-        const s = sourceMap.get(key) || new Set();
-        if (s.size > 1) multiSrc.push(c);
-        else if (s.has('lfm-similar')) localSrc.push(c);
-        else crossSrc.push(c);
-      }
-      multiSrc.sort((a, b) => (b.match - a.match));
-      localSrc.sort((a, b) => (b.match - a.match));
-
-      // Cross-genre: 2-pass selection using tag ranking order
-      const tagRanked = {};
-      for (const result of tagArtistResults) tagRanked[result.tag] = result.artists;
-      const crossPicked = [];
-      const crossPickedKeys = new Set();
-      const seenCrossArtist = new Set();
-      const tagKeys = Object.keys(tagRanked);
-
-      // Pass 1: 1 top track per artist, round-robin by tag ranking (cap 40)
-      const PASS1_CAP = 40;
-      let tagIdx = 0, exhausted = 0;
-      while (crossPicked.length < PASS1_CAP && exhausted < tagKeys.length) {
-        const tag = tagKeys[tagIdx % tagKeys.length];
-        let found = false;
-        for (const name of tagRanked[tag]) {
-          const aLow = name.toLowerCase();
-          if (seenCrossArtist.has(aLow)) continue;
-          const cand = crossSrc.find(c => c.artistName.toLowerCase() === aLow);
-          if (cand) {
-            seenCrossArtist.add(aLow);
-            crossPickedKeys.add(aLow + '|||' + cand.name.toLowerCase());
-            crossPicked.push(cand);
-            found = true;
-            break;
-          }
-        }
-        if (found) exhausted = 0; else exhausted++;
-        tagIdx++;
-      }
-
-      // Pass 2: 1 additional track per artist (round-robin, fills remaining slots)
-      if (crossPicked.length < SPOTIFY_CAP) {
-        const pass2Artists = new Set();
-        tagIdx = 0; exhausted = 0;
-        while (crossPicked.length < SPOTIFY_CAP && exhausted < tagKeys.length) {
-          const tag = tagKeys[tagIdx % tagKeys.length];
-          let found = false;
-          for (const name of tagRanked[tag]) {
-            const aLow = name.toLowerCase();
-            if (!seenCrossArtist.has(aLow)) continue;
-            if (pass2Artists.has(aLow)) continue;
-            const cand = crossSrc.find(c => {
-              const tKey = c.artistName.toLowerCase() + '|||' + c.name.toLowerCase();
-              return c.artistName.toLowerCase() === aLow && !crossPickedKeys.has(tKey);
-            });
-            if (cand) {
-              pass2Artists.add(aLow);
-              crossPickedKeys.add(cand.artistName.toLowerCase() + '|||' + cand.name.toLowerCase());
-              crossPicked.push(cand);
-              found = true;
-              break;
-            }
-          }
-          if (found) exhausted = 0; else exhausted++;
-          tagIdx++;
-        }
-      }
-
-      // Assemble: multi-source → local (cap 10) → cross-genre (fill rest)
-      const lfmCandidateList = [
-        ...multiSrc,
-        ...localSrc.slice(0, 10),
-        ...crossPicked,
-      ].slice(0, SPOTIFY_CAP);
+      lfmCandidateAll.sort((a, b) => {
+        const keyA = a.artistName.toLowerCase() + '|||' + a.name.toLowerCase();
+        const keyB = b.artistName.toLowerCase() + '|||' + b.name.toLowerCase();
+        const srcA = sourceMap.get(keyA)?.size || 0;
+        const srcB = sourceMap.get(keyB)?.size || 0;
+        if (srcA !== srcB) return srcB - srcA;
+        const tagA = tagMatchMap.get(keyA)?.size || 0;
+        const tagB = tagMatchMap.get(keyB)?.size || 0;
+        if (tagA !== tagB) return tagB - tagA;
+        return (b.match || 0) - (a.match || 0);
+      });
+      const lfmCandidateList = lfmCandidateAll.slice(0, CANDIDATE_CAP);
 
       // ─── Step 2: Last.fm track info (parallel, no Spotify) ───
       showLoading('Analyzing tracks...');
@@ -542,11 +471,11 @@ permalink: /digging/
         lastfmFetch({ method: 'track.getInfo', artist: lt.artistName, track: lt.name, autocorrect: '1' })
           .then(data => ({
             key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(),
-            tags: (data?.track?.toptags?.tag || []).map(tg => tg.name.toLowerCase()),
             playcount: parseInt(data?.track?.playcount) || 0,
             listeners: parseInt(data?.track?.listeners) || 0,
             image: data?.track?.album?.image?.[2]?.['#text'] || '',
-          })).catch(() => ({ key: '', tags: [], playcount: 0, listeners: 0, image: '' }))
+            tags: (data?.track?.toptags?.tag || []).map(tg => tg.name.toLowerCase()),
+          })).catch(() => ({ key: '', playcount: 0, listeners: 0, image: '', tags: [] }))
       );
 
       const infoResults = await batchAll(infoTasks, 20);
@@ -554,50 +483,48 @@ permalink: /digging/
       const lfmInfoByKey = {};
       for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
 
-      // ─── Step 3: Score (max 100) — 4-factor hybrid scoring ───
+      // ─── Step 3: Score (max 100) — vibe-match scoring ───
+      const numSeedTags = crossGenreTags.length || 1;
       const scored = [];
+
       for (const lt of lfmCandidateList) {
-        // Exclude seed artist
         if (lt.artistName.toLowerCase() === seedArtistName.toLowerCase()) continue;
 
         const candKey = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
         const info = lfmInfoByKey[candKey] || {};
         const sources = sourceMap.get(candKey) || new Set();
+        const matchedTags = tagMatchMap.get(candKey) || new Set();
 
-        // 1. Listener Behavior (15%) — Last.fm similarity score
+        // 1. Listener Behavior (15%) — Last.fm track similarity
         const behaviorScore = (lt.match || 0) * 15;
 
-        // 2. Tag Match (25%) — cross-genre seed tags vs candidate tags
-        const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
-        let tagScore = 0;
-        if (matchTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 25;
-        }
+        // 2. Vibe Match (35%) — how many seed tags this track was discovered under
+        //    Found via 6/8 tags = very similar vibe, 1/8 = loosely related
+        const vibeScore = (matchedTags.size / numSeedTags) * 35;
 
-        // 3. Digging Index (45%) — engagement depth + heavy obscurity bonus
-        //    10M+ listeners → 0pts, 100K → 17.5pts, 10K → 26.25pts, 1K → 35pts
+        // 3. Digging Index (35%) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          const obscurity = Math.max(0, Math.min(35, (7 - Math.log10(info.listeners)) * 8.75));
+          const obscurity = Math.max(0, Math.min(25, (7 - Math.log10(info.listeners)) * 6.25));
           diggingScore = engagement + obscurity;
         }
 
-        // 4. Multi-Source Confidence (15%) — bonus for track confirmed by both methods
+        // 4. Multi-Source Confidence (15%) — bonus for both similar + tag-discovered
         let sourceScore = 0;
         if (sources.size >= 2) sourceScore = 15;
 
-        // 5. Cross-Genre Discovery — penalize same-genre, reward international finds
+        // 5. Cross-Genre — penalize K-POP, reward international finds
         const candTags = info.tags || [];
         const isKpop = candTags.some(t => kpopFilter.has(t));
         const crossGenreScore = isKpop ? -15 : 10;
 
-        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore + crossGenreScore;
+        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossGenreScore;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
           image: info.image || '',
-          match: Math.round(Math.min(100, finalScore)),
+          match: Math.round(Math.min(100, Math.max(0, finalScore))),
         });
       }
 
