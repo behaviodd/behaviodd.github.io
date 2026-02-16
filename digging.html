@@ -564,27 +564,28 @@ permalink: /digging/
         const info = lfmInfoByKey[candKey] || {};
         const sources = sourceMap.get(candKey) || new Set();
 
-        // 1. Listener Behavior (25%) — Last.fm similarity score
-        const behaviorScore = (lt.match || 0) * 25;
+        // 1. Listener Behavior (15%) — Last.fm similarity score
+        const behaviorScore = (lt.match || 0) * 15;
 
-        // 2. Tag Match (35%) — cross-genre seed tags vs candidate tags
+        // 2. Tag Match (25%) — cross-genre seed tags vs candidate tags
         const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
         let tagScore = 0;
         if (matchTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 35;
+          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 25;
         }
 
-        // 3. Digging Index (20%) — engagement depth + obscurity bonus
+        // 3. Digging Index (45%) — engagement depth + heavy obscurity bonus
+        //    10M+ listeners → 0pts, 100K → 17.5pts, 10K → 26.25pts, 1K → 35pts
         let diggingScore = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          const obscurity = Math.max(0, Math.min(10, (7 - Math.log10(info.listeners)) * 2.5));
+          const obscurity = Math.max(0, Math.min(35, (7 - Math.log10(info.listeners)) * 8.75));
           diggingScore = engagement + obscurity;
         }
 
-        // 4. Multi-Source Confidence (20%) — bonus for track confirmed by both methods
+        // 4. Multi-Source Confidence (15%) — bonus for track confirmed by both methods
         let sourceScore = 0;
-        if (sources.size >= 2) sourceScore = 20;
+        if (sources.size >= 2) sourceScore = 15;
 
         const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
         scored.push({
