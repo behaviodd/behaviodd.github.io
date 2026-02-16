@@ -760,27 +760,50 @@ permalink: /digging/
       });
     }
 
-    function renderPlayerBySearch(name, artist, index) {
+    const deezerPreviewCache = new Map();
+
+    async function renderPlayerBySearch(name, artist, index) {
       $player.innerHTML =
         '<div class="dig-player-inner">' +
         '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
-        '<div id="spotifyEmbed"></div>' +
+        '<div id="spotifyEmbed" style="display:flex;align-items:center;gap:12px;padding:8px 0">' +
+        '<div class="dig-loading" style="font-size:12px">Loading preview...</div>' +
+        '</div>' +
         '</div>';
 
       $player.classList.add('dig-player-show');
       document.body.classList.add('dig-player-open');
 
-      const query = encodeURIComponent(name + ' ' + artist);
-      const embedEl = document.getElementById('spotifyEmbed');
-      embedEl.innerHTML =
-        '<iframe src="https://open.spotify.com/embed/search/' + query + '?utm_source=generator&theme=0" ' +
-        'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
-        'loading="lazy"></iframe>';
-
       // Highlight playing item
       document.querySelectorAll('.dig-result-item').forEach(el => {
         el.classList.toggle('dig-playing', el.dataset.index === String(index));
       });
+
+      const cacheKey = artist.toLowerCase() + '|||' + name.toLowerCase();
+      let previewUrl = deezerPreviewCache.get(cacheKey);
+
+      if (!previewUrl) {
+        const data = await deezerFetch('search/track', { q: name + ' ' + artist, limit: '1' });
+        const track = data?.data?.[0];
+        if (track?.preview) {
+          previewUrl = track.preview;
+          deezerPreviewCache.set(cacheKey, previewUrl);
+        }
+      }
+
+      const embedEl = document.getElementById('spotifyEmbed');
+      if (!embedEl) return;
+
+      if (previewUrl) {
+        embedEl.innerHTML =
+          '<audio id="digAudio" autoplay style="width:100%;height:32px;filter:invert(1) hue-rotate(180deg)" controls src="' + escHtml(previewUrl) + '"></audio>' +
+          '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fg)">' +
+          '<span style="color:var(--accent)">' + escHtml(name) + '</span> — ' + escHtml(artist) +
+          '</div>';
+      } else {
+        embedEl.innerHTML =
+          '<div style="font-size:12px;color:var(--fg-60)">Preview not available</div>';
+      }
     }
 
     function showLoading(msg) {
@@ -827,10 +850,10 @@ permalink: /digging/
     }
 
     /* ── Global handlers (accessible from inline onclick) ── */
-    window.__digPlay = function (index) {
+    window.__digPlay = async function (index) {
       const r = recommendedTracks[index];
       if (!r) return;
-      renderPlayerBySearch(r.name, r.artistName, index);
+      await renderPlayerBySearch(r.name, r.artistName, index);
     };
 
     window.__digCloseOverlay = function () {
