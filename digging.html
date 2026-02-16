@@ -455,10 +455,13 @@ permalink: /digging/
         // 1. Listener Behavior (25%) — Last.fm similarity score
         const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 25;
 
-        // 2. Tag Match (35%) — combined seed tags (track + artist) vs candidate tags
+        // 2. Tag Match (35%) — cross-genre seed tags vs candidate tags
+        //    Uses only genre-relevant tags (excludes k-pop/kpop/korean filler)
+        //    so genuinely similar foreign tracks score higher
+        const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
         let tagScore = 0;
-        if (allSeedTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (allSeedTags.filter(t => info.tags.includes(t)).length / allSeedTags.length) * 35;
+        if (matchTags.length > 0 && info.tags?.length > 0) {
+          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 35;
         }
 
         // 3. Digging Index (20%) — deep-cut metric
