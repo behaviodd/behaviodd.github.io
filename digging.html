@@ -67,33 +67,40 @@ permalink: /digging/
       spotifyIFrameAPI = IFrameAPI;
     };
 
-    /* ── API Proxy with 429 retry ── */
+    /* ── API Proxy with exponential backoff ── */
     let rateLimitHits = 0;
 
     async function proxyFetch(endpoint) {
       const url = CONFIG.workerUrl + '/api/spotify?endpoint=' + encodeURIComponent(endpoint);
-      let res = await fetch(url);
+      const MAX_RETRIES = 3;
+      let delay = 1000;
 
-      // Single fast retry on 429
-      if (res.status === 429) {
-        rateLimitHits++;
-        await new Promise(r => setTimeout(r, 1000));
-        res = await fetch(url);
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const res = await fetch(url);
+        if (res.status === 429) {
+          rateLimitHits++;
+          if (attempt < MAX_RETRIES) {
+            const retryAfter = res.headers.get('Retry-After');
+            const wait = retryAfter ? parseInt(retryAfter) * 1000 : delay;
+            await new Promise(r => setTimeout(r, wait));
+            delay *= 2;
+            continue;
+          }
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'API error ' + res.status);
+        }
+        return res.json();
       }
-
-      if (!res.ok) {
-        if (res.status === 429) rateLimitHits++;
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || 'API error ' + res.status);
-      }
-      return res.json();
     }
 
-    /* ── Batch runner ── */
-    async function batchAll(tasks, batchSize) {
+    /* ── Batch runner (optional inter-batch delay) ── */
+    async function batchAll(tasks, batchSize, delayMs) {
       batchSize = batchSize || 8;
       const results = [];
       for (let i = 0; i < tasks.length; i += batchSize) {
+        if (i > 0 && delayMs) await new Promise(r => setTimeout(r, delayMs));
         const batch = tasks.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(fn => fn()));
         results.push(...batchResults);
@@ -559,7 +566,7 @@ permalink: /digging/
       );
 
       const [spotifyResults, infoResults] = await Promise.all([
-        batchAll(searchTasks, 5),
+        batchAll(searchTasks, 5, 300),
         batchAll(infoTasks, 20),
       ]);
 
