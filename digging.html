@@ -587,7 +587,12 @@ permalink: /digging/
         let sourceScore = 0;
         if (sources.size >= 2) sourceScore = 15;
 
-        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
+        // 5. Cross-Genre Discovery — penalize same-genre, reward international finds
+        const candTags = info.tags || [];
+        const isKpop = candTags.some(t => kpopFilter.has(t));
+        const crossGenreScore = isKpop ? -15 : 10;
+
+        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore + crossGenreScore;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
