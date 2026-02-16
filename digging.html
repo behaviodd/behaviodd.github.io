@@ -364,15 +364,15 @@ permalink: /digging/
 
       for (const item of scored) {
         if (result.length >= 30) break;
-        const primaryArtistId = (item.track.artists || [])[0]?.id;
-        if (!primaryArtistId) continue;
+        const artistKey = item.artistName.toLowerCase();
+        if (!artistKey) continue;
 
-        if (seenArtists.has(primaryArtistId)) continue;
+        if (seenArtists.has(artistKey)) continue;
 
-        const titleKey = normalizeTitle(item.track.name) + '|||' + primaryArtistId;
+        const titleKey = normalizeTitle(item.name) + '|||' + artistKey;
         if (seenTitles.has(titleKey)) continue;
 
-        seenArtists.add(primaryArtistId);
+        seenArtists.add(artistKey);
         seenTitles.add(titleKey);
         result.push(item);
       }
@@ -535,25 +535,8 @@ permalink: /digging/
         ...crossPicked,
       ].slice(0, SPOTIFY_CAP);
 
-      // ─── Step 2: Spotify search + Last.fm info (parallel) ───
-      showLoading('Searching Spotify...');
-      const lfmBehaviorMap = new Map();
-      const spotifySourceMap = new Map();  // spotifyId -> Set<source>
-
-      const searchTasks = lfmCandidateList.map(lt => () =>
-        proxyFetch(
-          '/v1/search?q=' + encodeURIComponent(lt.name + ' ' + lt.artistName) +
-          '&type=track&limit=1'
-        ).then(data => {
-          const found = data.tracks?.items?.[0];
-          if (found) {
-            lfmBehaviorMap.set(found.id, lt.match);
-            const lfmKey = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
-            spotifySourceMap.set(found.id, sourceMap.get(lfmKey) || new Set());
-          }
-          return found;
-        }).catch(() => null)
-      );
+      // ─── Step 2: Last.fm track info (parallel, no Spotify) ───
+      showLoading('Analyzing tracks...');
 
       const infoTasks = lfmCandidateList.map(lt => () =>
         lastfmFetch({ method: 'track.getInfo', artist: lt.artistName, track: lt.name, autocorrect: '1' })
@@ -562,36 +545,27 @@ permalink: /digging/
             tags: (data?.track?.toptags?.tag || []).map(tg => tg.name.toLowerCase()),
             playcount: parseInt(data?.track?.playcount) || 0,
             listeners: parseInt(data?.track?.listeners) || 0,
-          })).catch(() => ({ key: '', tags: [], playcount: 0, listeners: 0 }))
+            image: data?.track?.album?.image?.[2]?.['#text'] || '',
+          })).catch(() => ({ key: '', tags: [], playcount: 0, listeners: 0, image: '' }))
       );
 
-      const [spotifyResults, infoResults] = await Promise.all([
-        batchAll(searchTasks, 5, 300),
-        batchAll(infoTasks, 20),
-      ]);
+      const infoResults = await batchAll(infoTasks, 20);
 
       const lfmInfoByKey = {};
       for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
 
-      // Build candidate map (exclude seed track & seed artist)
-      const candidateMap = new Map();
-      for (const t of spotifyResults) {
-        if (t && t.id !== seed.id && t.artists?.[0]?.id !== seedArtistId) {
-          candidateMap.set(t.id, t);
-        }
-      }
-      const candidates = [...candidateMap.values()];
-      if (candidates.length === 0) return [];
-
       // ─── Step 3: Score (max 100) — 4-factor hybrid scoring ───
       const scored = [];
-      for (const track of candidates) {
-        const candKey = (track.artists[0]?.name || '').toLowerCase() + '|||' + track.name.toLowerCase();
+      for (const lt of lfmCandidateList) {
+        // Exclude seed artist
+        if (lt.artistName.toLowerCase() === seedArtistName.toLowerCase()) continue;
+
+        const candKey = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
         const info = lfmInfoByKey[candKey] || {};
-        const sources = spotifySourceMap.get(track.id) || new Set();
+        const sources = sourceMap.get(candKey) || new Set();
 
         // 1. Listener Behavior (25%) — Last.fm similarity score
-        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 25;
+        const behaviorScore = (lt.match || 0) * 25;
 
         // 2. Tag Match (35%) — cross-genre seed tags vs candidate tags
         const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
@@ -614,7 +588,9 @@ permalink: /digging/
 
         const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
         scored.push({
-          track: track,
+          name: lt.name,
+          artistName: lt.artistName,
+          image: info.image || '',
           match: Math.round(Math.min(100, finalScore)),
         });
       }
@@ -654,11 +630,7 @@ permalink: /digging/
 
         if (scored.length === 0) {
           hideLoading();
-          if (rateLimitHits > 0) {
-            showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
-          } else {
-            showError('비슷한 곡을 찾지 못했습니다.');
-          }
+          showError('비슷한 곡을 찾지 못했습니다.');
           return;
         }
 
@@ -667,20 +639,13 @@ permalink: /digging/
 
         recommendedTracks = results;
         hideLoading();
-        if (results.length === 0 && rateLimitHits > 0) {
-          showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
-        }
         renderResults(results);
         renderPlaylistBar();
         renderAuth();
 
       } catch (err) {
         hideLoading();
-        if (rateLimitHits > 0) {
-          showError('API 사용량을 초과했습니다. 잠시 후 다시 시도해주세요.');
-        } else {
-          showError(err.message || 'Something went wrong. Please try again.');
-        }
+        showError(err.message || 'Something went wrong. Please try again.');
       } finally {
         $btn.disabled = false;
         $btn.textContent = 'Dig';
@@ -724,14 +689,14 @@ permalink: /digging/
         '<div class="dig-result-list">';
 
       results.forEach((r, i) => {
-        const img = r.track.album?.images?.[2]?.url || r.track.album?.images?.[0]?.url || '';
+        const img = r.image || '';
         html +=
-          '<div class="dig-result-item" data-index="' + i + '" data-track-id="' + r.track.id + '" onclick="window.__digPlay(' + i + ')">' +
+          '<div class="dig-result-item" data-index="' + i + '" onclick="window.__digPlay(' + i + ')">' +
           '<input type="checkbox" class="dig-result-check" onclick="event.stopPropagation()">' +
-          '<img class="dig-result-img" src="' + escHtml(img) + '" alt="">' +
+          (img ? '<img class="dig-result-img" src="' + escHtml(img) + '" alt="">' : '') +
           '<div class="dig-result-info">' +
-          '<div class="dig-result-title">' + escHtml(r.track.name) + '</div>' +
-          '<div class="dig-result-artist">' + escHtml(r.track.artists.map(a => a.name).join(', ')) + '</div>' +
+          '<div class="dig-result-title">' + escHtml(r.name) + '</div>' +
+          '<div class="dig-result-artist">' + escHtml(r.artistName) + '</div>' +
           '</div>' +
           '</div>';
       });
@@ -820,10 +785,35 @@ permalink: /digging/
       return div.innerHTML;
     }
 
+    /* ── Lazy Spotify resolver (1 search per interaction, cached) ── */
+    const spotifyIdCache = new Map();
+
+    async function resolveSpotifyId(name, artist) {
+      const key = artist.toLowerCase() + '|||' + name.toLowerCase();
+      if (spotifyIdCache.has(key)) return spotifyIdCache.get(key);
+      try {
+        const data = await proxyFetch(
+          '/v1/search?q=' + encodeURIComponent(name + ' ' + artist) + '&type=track&limit=1'
+        );
+        const found = data.tracks?.items?.[0];
+        if (found) {
+          spotifyIdCache.set(key, { id: found.id, uri: found.uri });
+          return { id: found.id, uri: found.uri };
+        }
+      } catch { }
+      return null;
+    }
+
     /* ── Global handlers (accessible from inline onclick) ── */
-    window.__digPlay = function (index) {
+    window.__digPlay = async function (index) {
       const r = recommendedTracks[index];
-      if (r) renderPlayer(r.track.id);
+      if (!r) return;
+      const resolved = await resolveSpotifyId(r.name, r.artistName);
+      if (resolved) {
+        renderPlayer(resolved.id);
+      } else {
+        showToast('Spotify에서 트랙을 찾을 수 없습니다.');
+      }
     };
 
     window.__digCloseOverlay = function () {
@@ -864,16 +854,28 @@ permalink: /digging/
         return;
       }
 
-      const checked = [];
+      const selected = [];
       document.querySelectorAll('.dig-result-item').forEach((el, i) => {
         const cb = el.querySelector('.dig-result-check');
         if (cb && cb.checked && recommendedTracks[i]) {
-          checked.push(recommendedTracks[i].track.uri);
+          selected.push(recommendedTracks[i]);
         }
       });
 
-      if (checked.length === 0) {
+      if (selected.length === 0) {
         showToast('Select at least one track');
+        return;
+      }
+
+      // Lazy resolve Spotify URIs
+      showToast('Resolving tracks on Spotify...');
+      const resolved = await Promise.all(
+        selected.map(r => resolveSpotifyId(r.name, r.artistName))
+      );
+      const checked = resolved.filter(Boolean).map(r => r.uri);
+
+      if (checked.length === 0) {
+        showToast('Spotify에서 트랙을 찾을 수 없습니다.');
         return;
       }
 
