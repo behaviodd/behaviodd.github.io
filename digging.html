@@ -350,8 +350,8 @@ permalink: /digging/
       for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
       for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
 
-      // Source-balanced candidate selection (cap 50 Spotify searches)
-      const SPOTIFY_CAP = 50;
+      // Source-balanced candidate selection (cap 60 Spotify searches)
+      const SPOTIFY_CAP = 60;
       const lfmCandidateAll = [...lfmDeduped.values()];
 
       // Separate by primary source
@@ -366,28 +366,62 @@ permalink: /digging/
       multiSrc.sort((a, b) => (b.match - a.match));
       localSrc.sort((a, b) => (b.match - a.match));
 
-      // Cross-genre: 1 per artist, interleave by tag for diversity
-      const crossByTag = {};
-      for (const result of tagArtistResults) crossByTag[result.tag] = new Set(result.artists.map(n => n.toLowerCase()));
+      // Cross-genre: 2-pass selection using tag ranking order
+      const tagRanked = {};
+      for (const result of tagArtistResults) tagRanked[result.tag] = result.artists;
       const crossPicked = [];
+      const crossPickedKeys = new Set();
       const seenCrossArtist = new Set();
-      // Round-robin: cycle through tags, pick 1 unseen artist's top track each round
-      const tagKeys = Object.keys(crossByTag);
+      const tagKeys = Object.keys(tagRanked);
+
+      // Pass 1: 1 top track per artist, round-robin by tag ranking (cap 40)
+      const PASS1_CAP = 40;
       let tagIdx = 0, exhausted = 0;
-      while (crossPicked.length < SPOTIFY_CAP && exhausted < tagKeys.length) {
+      while (crossPicked.length < PASS1_CAP && exhausted < tagKeys.length) {
         const tag = tagKeys[tagIdx % tagKeys.length];
-        const cand = crossSrc.find(c => {
-          const aLow = c.artistName.toLowerCase();
-          return crossByTag[tag].has(aLow) && !seenCrossArtist.has(aLow);
-        });
-        if (cand) {
-          seenCrossArtist.add(cand.artistName.toLowerCase());
-          crossPicked.push(cand);
-          exhausted = 0;
-        } else {
-          exhausted++;
+        let found = false;
+        for (const name of tagRanked[tag]) {
+          const aLow = name.toLowerCase();
+          if (seenCrossArtist.has(aLow)) continue;
+          const cand = crossSrc.find(c => c.artistName.toLowerCase() === aLow);
+          if (cand) {
+            seenCrossArtist.add(aLow);
+            crossPickedKeys.add(aLow + '|||' + cand.name.toLowerCase());
+            crossPicked.push(cand);
+            found = true;
+            break;
+          }
         }
+        if (found) exhausted = 0; else exhausted++;
         tagIdx++;
+      }
+
+      // Pass 2: 1 additional track per artist (round-robin, fills remaining slots)
+      if (crossPicked.length < SPOTIFY_CAP) {
+        const pass2Artists = new Set();
+        tagIdx = 0; exhausted = 0;
+        while (crossPicked.length < SPOTIFY_CAP && exhausted < tagKeys.length) {
+          const tag = tagKeys[tagIdx % tagKeys.length];
+          let found = false;
+          for (const name of tagRanked[tag]) {
+            const aLow = name.toLowerCase();
+            if (!seenCrossArtist.has(aLow)) continue;
+            if (pass2Artists.has(aLow)) continue;
+            const cand = crossSrc.find(c => {
+              const tKey = c.artistName.toLowerCase() + '|||' + c.name.toLowerCase();
+              return c.artistName.toLowerCase() === aLow && !crossPickedKeys.has(tKey);
+            });
+            if (cand) {
+              pass2Artists.add(aLow);
+              crossPickedKeys.add(cand.artistName.toLowerCase() + '|||' + cand.name.toLowerCase());
+              crossPicked.push(cand);
+              found = true;
+              break;
+            }
+          }
+          if (found) exhausted = 0; else exhausted++;
+          tagIdx++;
+        }
       }
 
       // Assemble: multi-source → local (cap 10) → cross-genre (fill rest)
