@@ -398,20 +398,40 @@ permalink: /digging/
       const artistTags = (seedLfmArtistInfo?.artist?.tags?.tag || []).map(t => t.name.toLowerCase());
       const allSeedTags = [...new Set([...trackTags, ...artistTags])];
 
-      // Cross-genre tags: filter out K-pop specific & junk tags
+      // K-POP tag filter (broad)
       const kpopFilter = new Set(['k-pop', 'kpop', 'korean', 'korean pop', 'k pop', 'hallyu',
-        'k-pop boy group', 'k-pop girl group', 'kpop boy group', 'kpop girl group']);
+        'k-pop boy group', 'k-pop girl group', 'kpop boy group', 'kpop girl group',
+        'korean r&b', 'korean hip-hop', 'korean hip hop', 'korean rnb',
+        'korean indie', 'korean rock', 'korean ballad']);
+
+      // Detect if seed is K-POP
+      const seedIsKpop = allSeedTags.some(t => kpopFilter.has(t));
+
+      // Cross-genre tags: filter out ALL Korean-specific tags
       const crossGenreTags = allSeedTags.filter(t => !kpopFilter.has(t) && t.length <= 25);
 
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
 
-      // ─── Step 1.5: Build K-POP blocklist + Tag & Deezer discovery (parallel) ───
+      // ─── Step 1.5: K-POP blocklist + Tag & Deezer discovery (all parallel) ───
       showLoading('Discovering similar vibes...');
 
-      // Fetch K-POP artist blocklist (1 API call, 200 artists)
-      const kpopBlocklistPromise = lastfmFetch({ method: 'tag.getTopArtists', tag: 'k-pop', limit: '200' })
-        .then(data => new Set((data?.topartists?.artist || []).map(a => a.name.toLowerCase())))
-        .catch(() => new Set());
+      // Korean character detector (Hangul)
+      function hasKorean(str) {
+        return /[\uAC00-\uD7AF\u3130-\u318F]/.test(str);
+      }
+
+      // Build K-POP artist blocklist from 3 tag variants (parallel, ~500 unique artists)
+      const kpopBlocklistPromise = Promise.all([
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'k-pop', limit: '200' }),
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'kpop', limit: '200' }),
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'korean pop', limit: '200' }),
+      ]).then(results => {
+        const set = new Set();
+        for (const data of results) {
+          for (const a of (data?.topartists?.artist || [])) set.add(a.name.toLowerCase());
+        }
+        return set;
+      }).catch(() => new Set());
 
       // Source C: Last.fm tag → tracks (direct)
       const tagTrackTasks = crossGenreTags.slice(0, 8).map(tag => () =>
@@ -422,9 +442,9 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      // Source D: Deezer search by seed tags (international tracks)
-      const deezerTasks = crossGenreTags.slice(0, 4).map(tag => () =>
-        deezerFetch('search/track', { q: tag, limit: '25' })
+      // Source D: Deezer search by seed tags (broader international pool)
+      const deezerTasks = crossGenreTags.slice(0, 6).map(tag => () =>
+        deezerFetch('search/track', { q: tag, limit: '40' })
           .then(data => ({
             tag: tag,
             tracks: (data?.data || []).map(t => ({
@@ -434,15 +454,20 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      // Run all in parallel: blocklist + Last.fm tags + Deezer tags
+      // Run all in parallel
       const [kpopBlocklist, tagTrackResults, deezerResults] = await Promise.all([
         kpopBlocklistPromise,
         batchAll(tagTrackTasks, 10),
         batchAll(deezerTasks, 10),
       ]);
 
-      // Also block seed artist
+      // Block seed artist too
       kpopBlocklist.add(seedArtistName.toLowerCase());
+
+      // Combined K-POP check: blocklist OR Korean characters in name
+      function isKpopArtist(name) {
+        return kpopBlocklist.has(name.toLowerCase()) || hasKorean(name);
+      }
 
       // ─── Merge & deduplicate all candidates ───
       const sourceMap = new Map();
@@ -460,32 +485,32 @@ permalink: /digging/
         sourceMap.get(key).add(source);
       }
 
-      // Source A: Last.fm similar tracks (filter out K-POP artists)
-      for (const lt of lfmSimilarTracks.slice(0, 50)) {
-        const aLow = (lt.artist?.name || '').toLowerCase();
-        if (kpopBlocklist.has(aLow)) continue;
-        addCandidate(lt, 'lfm-similar');
+      // Source A: Last.fm similar tracks
+      // When seed is K-POP, track.getSimilar returns 95%+ K-POP → skip entirely
+      if (!seedIsKpop) {
+        for (const lt of lfmSimilarTracks.slice(0, 50)) {
+          if (isKpopArtist(lt.artist?.name || '')) continue;
+          addCandidate(lt, 'lfm-similar');
+        }
       }
 
-      // Source C: Last.fm tag-discovered tracks (filter out K-POP)
+      // Source C: Last.fm tag-discovered tracks (strict K-POP filter)
       for (const result of tagTrackResults) {
         for (const lt of result.tracks.slice(0, 50)) {
-          const aLow = (lt.artist?.name || '').toLowerCase();
-          if (kpopBlocklist.has(aLow)) continue;
+          if (isKpopArtist(lt.artist?.name || '')) continue;
           addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'tag-discovery');
-          const key = aLow + '|||' + (lt.name || '').toLowerCase();
+          const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
           if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
           tagMatchMap.get(key).add(result.tag);
         }
       }
 
-      // Source D: Deezer tag search tracks (filter out K-POP)
+      // Source D: Deezer tag search (strict K-POP filter)
       for (const result of deezerResults) {
         for (const lt of result.tracks) {
-          const aLow = (lt.artist?.name || '').toLowerCase();
-          if (kpopBlocklist.has(aLow)) continue;
+          if (isKpopArtist(lt.artist?.name || '')) continue;
           addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'deezer-tag');
-          const key = aLow + '|||' + (lt.name || '').toLowerCase();
+          const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
           if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
           tagMatchMap.get(key).add(result.tag);
         }
@@ -538,10 +563,10 @@ permalink: /digging/
         const sources = sourceMap.get(candKey) || new Set();
         const matchedTags = tagMatchMap.get(candKey) || new Set();
 
-        // Hard-exclude: skip if candidate's own tags reveal K-POP
+        // Hard-exclude: skip if K-POP artist or K-POP tagged track
+        if (isKpopArtist(lt.artistName)) continue;
         const candTags = info.tags || [];
-        const isKpop = candTags.some(t => kpopFilter.has(t));
-        if (isKpop) continue;
+        if (candTags.some(t => kpopFilter.has(t))) continue;
 
         // 1. Listener Behavior (15%) — Last.fm track similarity
         const behaviorScore = (lt.match || 0) * 15;
