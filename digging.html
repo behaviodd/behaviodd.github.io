@@ -186,14 +186,11 @@ permalink: /digging/
       try {
         const data = await listenbrainzFetch(
           'similar-artists/json',
-          [{ artist_mbid: artistMbid, algorithm: 'session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30' }]
+          [{ artist_mbids: [artistMbid], algorithm: 'session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30' }]
         );
         if (!data || !Array.isArray(data)) return [];
-        // LB returns array of rows; first row contains results
-        const row = data[0];
-        if (!row || !Array.isArray(row)) return [];
-        return row.slice(0, 15).map(r => ({
-          name: r.artist_name || r.name || '',
+        return data.slice(0, 15).map(r => ({
+          name: r.name || '',
           mbid: r.artist_mbid || '',
           score: r.score || 0,
         })).filter(a => a.name);
