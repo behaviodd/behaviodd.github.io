@@ -373,32 +373,18 @@ permalink: /digging/
       return result;
     }
 
-    /* ── Hybrid Digging Algorithm (Last.fm + MusicBrainz + ListenBrainz + Deezer) ── */
+    /* ── Hybrid Digging Algorithm (Last.fm track similarity + tag graph) ── */
     async function discoverAndScore(seed) {
       const seedArtistId = seed.artists[0]?.id;
       const seedArtistName = seed.artists[0]?.name || '';
 
-      // ─── Phase 0 + Step 1: MBID lookup (sequential 1req/s) + Last.fm core data (parallel) ───
+      // ─── Step 1: Core data + seed profile (parallel) ───
       showLoading('Finding similar tracks...');
-
-      // Phase 0: MusicBrainz MBID resolution (runs concurrently with Last.fm Step 1)
-      const mbidPromise = (async () => {
-        const artistMbid = await resolveArtistMBID(seedArtistName);
-        const recordingMbid = await resolveRecordingMBID(seed.name, seedArtistName);
-        return { artistMbid, recordingMbid };
-      })();
-
-      // Step 1: Last.fm core data (existing, parallel)
-      const lfmCorePromise = Promise.all([
+      const [lfmSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo] = await Promise.all([
         lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seed.name, limit: '50', autocorrect: '1' }),
-        lastfmFetch({ method: 'artist.getSimilar', artist: seedArtistName, limit: '10', autocorrect: '1' }),
         lastfmFetch({ method: 'track.getInfo', artist: seedArtistName, track: seed.name, autocorrect: '1' }),
         lastfmFetch({ method: 'artist.getInfo', artist: seedArtistName, autocorrect: '1' }),
       ]);
-
-      // Wait for both Phase 0 and Step 1
-      const [mbids, [lfmSimilarRaw, lfmArtistSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo]] =
-        await Promise.all([mbidPromise, lfmCorePromise]);
 
       // Build combined seed tag profile (track + artist)
       const trackTags = (seedLfmTrackInfo?.track?.toptags?.tag || []).map(t => t.name.toLowerCase());
@@ -410,20 +396,9 @@ permalink: /digging/
       const crossGenreTags = allSeedTags.filter(t => !kpopFilter.has(t) && t.length <= 25);
 
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
-      const similarArtists = lfmArtistSimilarRaw?.similarartists?.artist || [];
-      const similarArtistNames = new Set(similarArtists.map(a => a.name.toLowerCase()));
 
-      // ─── Step 1.5: All sources in parallel ───
+      // ─── Step 1.5: Tag-based cross-genre discovery ───
       showLoading('Discovering cross-genre tracks...');
-
-      // Source B: similar artist top tracks (genre-local)
-      const artistTopTasks = similarArtists.slice(0, 8).map(a => () =>
-        lastfmFetch({ method: 'artist.getTopTracks', artist: a.name, limit: '3', autocorrect: '1' })
-          .then(data => (data?.toptracks?.track || []).map(t => ({
-            name: t.name, artist: { name: a.name },
-            match: parseFloat(a.match) * 0.5,
-          }))).catch(() => [])
-      );
 
       // Source C: tag-based cross-genre artist discovery
       const tagArtistTasks = crossGenreTags.slice(0, 4).map(tag => () =>
@@ -431,35 +406,20 @@ permalink: /digging/
           .then(data => ({
             tag: tag,
             artists: (data?.topartists?.artist || [])
-              .filter(a => a.name.toLowerCase() !== seedArtistName.toLowerCase()
-                        && !similarArtistNames.has(a.name.toLowerCase()))
+              .filter(a => a.name.toLowerCase() !== seedArtistName.toLowerCase())
               .map(a => a.name),
           })).catch(() => ({ tag: tag, artists: [] }))
       );
 
-      // Source D: ListenBrainz similar artists (NEW)
-      const lbSimilarPromise = getListenBrainzSimilarArtists(mbids.artistMbid);
+      const tagArtistResults = await batchAll(tagArtistTasks, 10);
 
-      // Source E: Deezer related artists (NEW)
-      const deezerRelatedPromise = getDeezerRelatedArtists(seedArtistName);
-
-      const [artistTopResults, tagArtistResults, lbSimilarArtists, deezerRelatedArtists] = await Promise.all([
-        batchAll(artistTopTasks, 10),
-        batchAll(tagArtistTasks, 10),
-        lbSimilarPromise,
-        deezerRelatedPromise,
-      ]);
-
-      // ─── Step 1.75: Fetch top tracks for new source artists (parallel) ───
-      showLoading('Expanding discovery sources...');
-
-      // Collect ALL unique cross-genre artists (no cap — breadth over depth)
+      // Collect ALL unique cross-genre artists
       const crossGenreArtistSet = new Set();
       for (const result of tagArtistResults) {
         for (const name of result.artists) crossGenreArtistSet.add(name);
       }
 
-      // Cross-genre top tracks (existing)
+      // Fetch top tracks for cross-genre artists
       const crossGenreTrackTasks = [...crossGenreArtistSet].map(name => () =>
         lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '5', autocorrect: '1' })
           .then(data => (data?.toptracks?.track || []).map(t => ({
@@ -467,26 +427,7 @@ permalink: /digging/
             match: 0.3,
           }))).catch(() => [])
       );
-
-      // LB similar artists → Last.fm top tracks (NEW)
-      const lbTrackTasks = lbSimilarArtists.slice(0, 10).map(a => () =>
-        lastfmFetch({ method: 'artist.getTopTracks', artist: a.name, limit: '3', autocorrect: '1' })
-          .then(data => (data?.toptracks?.track || []).map(t => ({
-            name: t.name, artist: { name: a.name },
-            match: Math.max(0.2, a.score * 0.5),
-          }))).catch(() => [])
-      );
-
-      // Deezer related artists → Deezer top tracks (NEW)
-      const deezerTrackTasks = deezerRelatedArtists.slice(0, 10).map(a => () =>
-        getDeezerArtistTopTracks(a.id)
-      );
-
-      const [crossGenreTrackResults, lbTrackResults, deezerTrackResults] = await Promise.all([
-        batchAll(crossGenreTrackTasks, 10),
-        batchAll(lbTrackTasks, 10),
-        batchAll(deezerTrackTasks, 10),
-      ]);
+      const crossGenreTrackResults = await batchAll(crossGenreTrackTasks, 10);
 
       // ─── Merge & deduplicate all candidates ───
       const sourceMap = new Map();  // lfmKey -> Set<source>
@@ -504,10 +445,7 @@ permalink: /digging/
       }
 
       for (const lt of lfmSimilarTracks.slice(0, 30)) addCandidate(lt, 'lfm-similar');
-      for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
       for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
-      for (const lt of lbTrackResults.flat()) addCandidate(lt, 'lb-similar');
-      for (const lt of deezerTrackResults.flat()) addCandidate(lt, 'deezer-related');
 
       // Source-balanced candidate selection (cap 60 Spotify searches)
       const SPOTIFY_CAP = 60;
@@ -519,7 +457,7 @@ permalink: /digging/
         const key = c.artistName.toLowerCase() + '|||' + c.name.toLowerCase();
         const s = sourceMap.get(key) || new Set();
         if (s.size > 1) multiSrc.push(c);
-        else if (s.has('lfm-similar') || s.has('lfm-artist-top')) localSrc.push(c);
+        else if (s.has('lfm-similar')) localSrc.push(c);
         else crossSrc.push(c);
       }
       multiSrc.sort((a, b) => (b.match - a.match));
@@ -638,55 +576,36 @@ permalink: /digging/
       const candidates = [...candidateMap.values()];
       if (candidates.length === 0) return [];
 
-      // ─── Step 3: Score (max 100) — 5-factor hybrid scoring ───
-      // Platform mapping for cross-platform factor
-      const platformMap = {
-        'lfm-similar': 'lastfm', 'lfm-artist-top': 'lastfm', 'tag-discovery': 'lastfm',
-        'lb-similar': 'listenbrainz',
-        'deezer-related': 'deezer',
-      };
-
+      // ─── Step 3: Score (max 100) — 4-factor hybrid scoring ───
       const scored = [];
       for (const track of candidates) {
         const candKey = (track.artists[0]?.name || '').toLowerCase() + '|||' + track.name.toLowerCase();
         const info = lfmInfoByKey[candKey] || {};
         const sources = spotifySourceMap.get(track.id) || new Set();
 
-        // 1. Listener Behavior (20%) — Last.fm similarity score
-        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 20;
+        // 1. Listener Behavior (25%) — Last.fm similarity score
+        const behaviorScore = (lfmBehaviorMap.get(track.id) || 0) * 25;
 
-        // 2. Tag Match (30%) — cross-genre seed tags vs candidate tags
+        // 2. Tag Match (35%) — cross-genre seed tags vs candidate tags
         const matchTags = crossGenreTags.length > 0 ? crossGenreTags : allSeedTags;
         let tagScore = 0;
         if (matchTags.length > 0 && info.tags?.length > 0) {
-          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 30;
+          tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 35;
         }
 
-        // 3. Digging Index (15%) — engagement depth + obscurity bonus
+        // 3. Digging Index (20%) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
-          const engagement = Math.min(7.5, ((info.playcount / info.listeners) / 3.0) * 7.5);
-          const obscurity = Math.max(0, Math.min(7.5, (7 - Math.log10(info.listeners)) * 1.875));
+          const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
+          const obscurity = Math.max(0, Math.min(10, (7 - Math.log10(info.listeners)) * 2.5));
           diggingScore = engagement + obscurity;
         }
 
-        // 4. Multi-Source Confidence (20%) — bonus for appearing in multiple sources
+        // 4. Multi-Source Confidence (20%) — bonus for track confirmed by both methods
         let sourceScore = 0;
-        if (sources.size >= 4) sourceScore = 20;
-        else if (sources.size === 3) sourceScore = 16;
-        else if (sources.size === 2) sourceScore = 10;
+        if (sources.size >= 2) sourceScore = 20;
 
-        // 5. Cross-Platform Verification (15%) — bonus for confirmation across platforms
-        const platforms = new Set();
-        for (const src of sources) {
-          const p = platformMap[src];
-          if (p) platforms.add(p);
-        }
-        let crossPlatformScore = 0;
-        if (platforms.size >= 3) crossPlatformScore = 15;
-        else if (platforms.size === 2) crossPlatformScore = 9;
-
-        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore + crossPlatformScore;
+        const finalScore = behaviorScore + tagScore + diggingScore + sourceScore;
         scored.push({
           track: track,
           match: Math.round(Math.min(100, finalScore)),
