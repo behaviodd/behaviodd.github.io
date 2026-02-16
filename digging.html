@@ -498,10 +498,15 @@ permalink: /digging/
           tagScore = (matchTags.filter(t => info.tags.includes(t)).length / matchTags.length) * 35;
         }
 
-        // 3. Digging Index (20%) — deep-cut metric
+        // 3. Digging Index (20%) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
-          diggingScore = Math.min(20, ((info.playcount / info.listeners) / 3.0) * 20);
+          // Engagement depth (0–10): replay intensity
+          const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
+          // Obscurity bonus (0–10): lesser-known tracks rank higher
+          // 10M+ listeners → 0pts, 100K → 5pts, 10K → 7.5pts, 1K → 10pts
+          const obscurity = Math.max(0, Math.min(10, (7 - Math.log10(info.listeners)) * 2.5));
+          diggingScore = engagement + obscurity;
         }
 
         // 4. Multi-Source Confidence (20%) — bonus for appearing in multiple sources
