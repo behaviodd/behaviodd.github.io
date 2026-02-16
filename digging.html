@@ -748,7 +748,6 @@ permalink: /digging/
           controller.play();
         });
       } else {
-        // Fallback if API not loaded yet
         embedEl.innerHTML =
           '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
           'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
@@ -757,7 +756,30 @@ permalink: /digging/
 
       // Highlight playing item
       document.querySelectorAll('.dig-result-item').forEach(el => {
-        el.classList.toggle('dig-playing', el.dataset.trackId === trackId);
+        el.classList.toggle('dig-playing', el.dataset.index === String(trackId));
+      });
+    }
+
+    function renderPlayerBySearch(name, artist, index) {
+      $player.innerHTML =
+        '<div class="dig-player-inner">' +
+        '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
+        '<div id="spotifyEmbed"></div>' +
+        '</div>';
+
+      $player.classList.add('dig-player-show');
+      document.body.classList.add('dig-player-open');
+
+      const query = encodeURIComponent(name + ' ' + artist);
+      const embedEl = document.getElementById('spotifyEmbed');
+      embedEl.innerHTML =
+        '<iframe src="https://open.spotify.com/embed/search/' + query + '?utm_source=generator&theme=0" ' +
+        'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+        'loading="lazy"></iframe>';
+
+      // Highlight playing item
+      document.querySelectorAll('.dig-result-item').forEach(el => {
+        el.classList.toggle('dig-playing', el.dataset.index === String(index));
       });
     }
 
@@ -805,15 +827,10 @@ permalink: /digging/
     }
 
     /* ── Global handlers (accessible from inline onclick) ── */
-    window.__digPlay = async function (index) {
+    window.__digPlay = function (index) {
       const r = recommendedTracks[index];
       if (!r) return;
-      const resolved = await resolveSpotifyId(r.name, r.artistName);
-      if (resolved) {
-        renderPlayer(resolved.id);
-      } else {
-        showToast('Spotify에서 트랙을 찾을 수 없습니다.');
-      }
+      renderPlayerBySearch(r.name, r.artistName, index);
     };
 
     window.__digCloseOverlay = function () {
