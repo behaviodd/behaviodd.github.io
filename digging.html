@@ -321,9 +321,9 @@ permalink: /digging/
         for (const name of result.artists) crossGenreArtistSet.add(name);
       }
 
-      // Fetch top tracks for cross-genre artists (limit=3, batch fast)
+      // Fetch top tracks for cross-genre artists (limit=15 for deeper catalog)
       const crossGenreTrackTasks = [...crossGenreArtistSet].map(name => () =>
-        lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '3', autocorrect: '1' })
+        lastfmFetch({ method: 'artist.getTopTracks', artist: name, limit: '15', autocorrect: '1' })
           .then(data => (data?.toptracks?.track || []).map(t => ({
             name: t.name, artist: { name: name },
             match: 0.3,
@@ -369,15 +369,23 @@ permalink: /digging/
       for (const lt of artistTopResults.flat()) addCandidate(lt, 'lfm-artist-top');
       for (const lt of crossGenreTrackResults.flat()) addCandidate(lt, 'tag-discovery');
 
-      // Prioritize: lfm-similar first, then multi-source, then rest. Cap at 100 for Spotify.
+      // Prioritize: keyword match → multi-source → match score. Cap at 150 for Spotify.
+      const seedKeywords = seed.name.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/)
+        .filter(w => w.length >= 3 && !stopWords.has(w));
       const lfmCandidateAll = [...lfmDeduped.values()];
       const prioritized = lfmCandidateAll.sort((a, b) => {
-        const sa = sourceMap.get(a.artistName.toLowerCase() + '|||' + a.name.toLowerCase());
-        const sb = sourceMap.get(b.artistName.toLowerCase() + '|||' + b.name.toLowerCase());
-        const scoreA = (b.match - a.match) || 0;
+        // 1st: boost tracks whose name contains seed keywords (e.g. "shy" → "SHY GUY")
+        const aName = a.name.toLowerCase(), bName = b.name.toLowerCase();
+        const aKw = seedKeywords.some(kw => aName.includes(kw)) ? 1 : 0;
+        const bKw = seedKeywords.some(kw => bName.includes(kw)) ? 1 : 0;
+        if (bKw !== aKw) return bKw - aKw;
+        // 2nd: multi-source tracks first
+        const sa = sourceMap.get(a.artistName.toLowerCase() + '|||' + aName);
+        const sb = sourceMap.get(b.artistName.toLowerCase() + '|||' + bName);
         const sizeA = sa ? sa.size : 0, sizeB = sb ? sb.size : 0;
         if (sizeB !== sizeA) return sizeB - sizeA;
-        return scoreA;
+        // 3rd: higher match score first
+        return (b.match - a.match) || 0;
       });
       const lfmCandidateList = prioritized.slice(0, 150);
 
