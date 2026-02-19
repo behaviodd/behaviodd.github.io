@@ -232,6 +232,19 @@ permalink: /digging/
       } catch { return []; }
     }
 
+    /* ── Seed BPM from Deezer ── */
+    async function getSeedBpm(trackName, artistName) {
+      try {
+        const data = await deezerFetch('search/track', {
+          q: trackName + ' ' + artistName, limit: '3'
+        });
+        for (const t of (data?.data || [])) {
+          if (t.bpm && t.bpm > 0) return { bpm: t.bpm, deezerId: t.id };
+        }
+        return { bpm: null, deezerId: null };
+      } catch { return { bpm: null, deezerId: null }; }
+    }
+
     /* ── PKCE Auth ── */
     function generateCodeVerifier() {
       const arr = new Uint8Array(64);
@@ -380,6 +393,87 @@ permalink: /digging/
       return result;
     }
 
+    /* ── BPM Match Score (harmonic: half/double tempo) ── */
+    function bpmMatchScore(seedBpm, candidateBpm) {
+      if (!seedBpm || !candidateBpm) return null;
+      const directDiff = Math.abs(seedBpm - candidateBpm);
+      const halfDiff = Math.abs(seedBpm / 2 - candidateBpm);
+      const doubleDiff = Math.abs(seedBpm * 2 - candidateBpm);
+      const bestDiff = Math.min(directDiff, halfDiff, doubleDiff);
+      if (bestDiff <= 3) return 1.0;
+      if (bestDiff <= 10) return 1.0 - (bestDiff - 3) / 7 * 0.3;
+      if (bestDiff <= 25) return 0.7 - (bestDiff - 10) / 15 * 0.5;
+      if (bestDiff <= 40) return 0.2 - (bestDiff - 25) / 15 * 0.2;
+      return 0;
+    }
+
+    /* ── Taste Profile (localStorage) ── */
+    function loadTasteProfile() {
+      try {
+        const raw = localStorage.getItem('digging_taste_profile');
+        if (!raw) return { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] };
+        const p = JSON.parse(raw);
+        return p.version === 1 ? p : { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] };
+      } catch { return { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] }; }
+    }
+
+    function saveTasteProfile(profile) {
+      profile.feedbackLog = profile.feedbackLog.slice(-200);
+      try { localStorage.setItem('digging_taste_profile', JSON.stringify(profile)); }
+      catch { profile.feedbackLog = profile.feedbackLog.slice(-50);
+               localStorage.setItem('digging_taste_profile', JSON.stringify(profile)); }
+    }
+
+    function recordFeedback(trackName, artistName, tags, action) {
+      const profile = loadTasteProfile();
+      const delta = action === 'like' ? 1.0 : -1.0;
+      for (const tag of tags) {
+        profile.tagBias[tag] = Math.max(-5, Math.min(5, (profile.tagBias[tag] || 0) + delta));
+      }
+      const ak = artistName.toLowerCase();
+      profile.artistBias[ak] = Math.max(-5, Math.min(5, (profile.artistBias[ak] || 0) + delta * 1.5));
+      profile.feedbackLog.push({ track: trackName, artist: artistName, tags, action, ts: Date.now() });
+      saveTasteProfile(profile);
+    }
+
+    function computeFeedbackBias(candidateTags, artistName, profile) {
+      if (!profile || !profile.feedbackLog.length) return 0;
+      let bias = 0;
+      const relevant = candidateTags.filter(t => profile.tagBias[t] !== undefined);
+      if (relevant.length > 0) {
+        bias += relevant.reduce((s, t) => s + profile.tagBias[t], 0) / relevant.length;
+      }
+      const ak = artistName.toLowerCase();
+      if (profile.artistBias[ak]) bias += profile.artistBias[ak] * 0.5;
+      return Math.max(-8, Math.min(8, bias));
+    }
+
+    /* ── TF-IDF Tag Weighting ── */
+    function buildCorpusIDF(infoByKey, candidateList) {
+      const docCount = candidateList.length || 1;
+      const tagDocFreq = new Map();
+      for (const lt of candidateList) {
+        const key = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
+        const tags = new Set(infoByKey[key]?.tags || []);
+        for (const tag of tags) tagDocFreq.set(tag, (tagDocFreq.get(tag) || 0) + 1);
+      }
+      const idf = new Map();
+      for (const [tag, df] of tagDocFreq) idf.set(tag, Math.log(docCount / (1 + df)));
+      return idf;
+    }
+
+    function computeTfidfVibeScore(seedTags, candidateTags, tagIdf, maxPoints) {
+      if (!seedTags.length || !candidateTags.length) return 0;
+      const candSet = new Set(candidateTags);
+      let weightedSum = 0, maxWeight = 0;
+      for (const tag of seedTags) {
+        const w = tagIdf.get(tag) ?? Math.log(81);
+        maxWeight += w;
+        if (candSet.has(tag)) weightedSum += w;
+      }
+      return maxWeight > 0 ? (weightedSum / maxWeight) * maxPoints : 0;
+    }
+
     /* ── Hybrid Digging Algorithm (Last.fm track similarity + tag graph) ── */
     async function discoverAndScore(seed) {
       const seedArtistId = seed.artists[0]?.id;
@@ -387,10 +481,11 @@ permalink: /digging/
 
       // ─── Step 1: Core data + seed profile (parallel) ───
       showLoading('Finding similar tracks...');
-      const [lfmSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo] = await Promise.all([
+      const [lfmSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo, seedArtistMBID] = await Promise.all([
         lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seed.name, limit: '50', autocorrect: '1' }),
         lastfmFetch({ method: 'track.getInfo', artist: seedArtistName, track: seed.name, autocorrect: '1' }),
         lastfmFetch({ method: 'artist.getInfo', artist: seedArtistName, autocorrect: '1' }),
+        resolveArtistMBID(seedArtistName),
       ]);
 
       // Build combined seed tag profile (track + artist)
@@ -454,12 +549,21 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
+      // NEW: additional parallel discovery sources
+      const seedBpmPromise = getSeedBpm(seed.name, seedArtistName);
+      const lbzArtistsPromise = getListenBrainzSimilarArtists(seedArtistMBID);
+      const deezerRelArtistsPromise = getDeezerRelatedArtists(seedArtistName);
+
       // Run all in parallel
-      const [kpopBlocklist, tagTrackResults, deezerResults] = await Promise.all([
-        kpopBlocklistPromise,
-        batchAll(tagTrackTasks, 10),
-        batchAll(deezerTasks, 10),
-      ]);
+      const [kpopBlocklist, tagTrackResults, deezerResults, seedBpmData, lbzArtists, deezerRelArtists] =
+        await Promise.all([
+          kpopBlocklistPromise,
+          batchAll(tagTrackTasks, 10),
+          batchAll(deezerTasks, 10),
+          seedBpmPromise,
+          lbzArtistsPromise,
+          deezerRelArtistsPromise,
+        ]);
 
       // Block seed artist too
       kpopBlocklist.add(seedArtistName.toLowerCase());
@@ -516,6 +620,33 @@ permalink: /digging/
         }
       }
 
+      // Source E: ListenBrainz similar artists → Deezer top tracks
+      // Source F: Deezer related artists → Deezer top tracks
+      const lbzNonKpop = lbzArtists.filter(a => !isKpopArtist(a.name)).slice(0, 10);
+      const deezerRelNonKpop = deezerRelArtists.filter(a => !isKpopArtist(a.name)).slice(0, 8);
+
+      const sourceEFTasks = [
+        ...lbzNonKpop.map(a => () =>
+          deezerFetch('search/artist', { q: a.name, limit: '1' })
+            .then(d => d?.data?.[0]?.id ? getDeezerArtistTopTracks(d.data[0].id) : [])
+            .then(tracks => tracks.map(t => ({ ...t, _source: 'lbz-artist' })))
+            .catch(() => [])
+        ),
+        ...deezerRelNonKpop.map(a => () =>
+          getDeezerArtistTopTracks(a.id)
+            .then(tracks => tracks.map(t => ({ ...t, _source: 'deezer-related' })))
+            .catch(() => [])
+        ),
+      ];
+      const sourceEFResults = await batchAll(sourceEFTasks, 8);
+
+      for (const group of sourceEFResults) {
+        for (const t of (Array.isArray(group) ? group : [])) {
+          if (!t.name || !t.artist?.name || isKpopArtist(t.artist.name)) continue;
+          addCandidate({ name: t.name, artist: t.artist, match: t.match || 0.4 }, t._source);
+        }
+      }
+
       // Candidate selection: prioritize multi-source, then tag overlap count
       const CANDIDATE_CAP = 80;
       const lfmCandidateAll = [...lfmDeduped.values()];
@@ -546,10 +677,34 @@ permalink: /digging/
           })).catch(() => ({ key: '', playcount: 0, listeners: 0, image: '', tags: [] }))
       );
 
-      const infoResults = await batchAll(infoTasks, 20);
+      const bpmTasks = lfmCandidateList.map(lt => () =>
+        deezerFetch('search/track', { q: lt.name + ' ' + lt.artistName, limit: '1' })
+          .then(data => {
+            const t = data?.data?.[0];
+            return {
+              key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(),
+              bpm: (t?.bpm && t.bpm > 0) ? t.bpm : null,
+            };
+          })
+          .catch(() => ({ key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(), bpm: null }))
+      );
+
+      const [infoResults, bpmResults] = await Promise.all([
+        batchAll(infoTasks, 20),
+        batchAll(bpmTasks, 15),
+      ]);
+
+      const bpmByKey = {};
+      for (const r of bpmResults) { if (r.key && r.bpm) bpmByKey[r.key] = r.bpm; }
 
       const lfmInfoByKey = {};
       for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
+
+      // Build TF-IDF corpus from candidate tags
+      const corpusIdf = buildCorpusIDF(lfmInfoByKey, lfmCandidateList);
+
+      // Load taste profile for feedback bias
+      const tasteProfile = loadTasteProfile();
 
       // ─── Step 3: Score (max 100) — vibe-match scoring ───
       const numSeedTags = crossGenreTags.length || 1;
@@ -568,36 +723,48 @@ permalink: /digging/
         const candTags = info.tags || [];
         if (candTags.some(t => kpopFilter.has(t))) continue;
 
-        // 1. Listener Behavior (15%) — Last.fm track similarity
-        const behaviorScore = (lt.match || 0) * 15;
+        // 1. Listener Behavior (12) — Last.fm track similarity
+        const behaviorScore = (lt.match || 0) * 12;
 
-        // 2. Vibe Match (30%) — how many seed tags this track was discovered under
-        const vibeScore = (matchedTags.size / numSeedTags) * 30;
+        // 2. Vibe Match (25) — TF-IDF weighted tag similarity
+        const vibeScore = computeTfidfVibeScore(crossGenreTags, candTags, corpusIdf, 25);
 
-        // 3. Digging Index (30%) — engagement depth + obscurity bonus
+        // 3. Digging Index (28) — engagement depth + obscurity bonus
         let diggingScore = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          const obscurity = Math.max(0, Math.min(20, (7 - Math.log10(info.listeners)) * 5));
+          const obscurity = Math.max(0, Math.min(18, (7 - Math.log10(info.listeners)) * 5));
           diggingScore = engagement + obscurity;
         }
 
-        // 4. Multi-Source Confidence (15%) — bonus for multiple discovery methods
+        // 4. Multi-Source Confidence (15) — bonus for multiple discovery methods
         let sourceScore = 0;
-        if (sources.size >= 3) sourceScore = 15;
-        else if (sources.size >= 2) sourceScore = 10;
+        if (sources.size >= 4) sourceScore = 15;
+        else if (sources.size >= 3) sourceScore = 12;
+        else if (sources.size >= 2) sourceScore = 8;
 
-        // 5. Cross-Platform (10%) — bonus if found on both Last.fm AND Deezer
+        // 5. Cross-Platform (10) — bonus for multiple platform coverage
         const hasLastfm = sources.has('lfm-similar') || sources.has('tag-discovery');
-        const hasDeezer = sources.has('deezer-tag');
-        const crossPlatformScore = (hasLastfm && hasDeezer) ? 10 : 0;
+        const hasDeezer = sources.has('deezer-tag') || sources.has('deezer-related');
+        const hasLBZ = sources.has('lbz-artist');
+        const platformCount = [hasLastfm, hasDeezer, hasLBZ].filter(Boolean).length;
+        const crossPlatformScore = platformCount >= 3 ? 10 : platformCount >= 2 ? 6 : 0;
 
-        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossPlatformScore;
+        // 6. BPM Match (10) — tempo similarity with harmonic matching
+        const candBpm = bpmByKey[candKey] || null;
+        const bpmRaw = bpmMatchScore(seedBpmData.bpm, candBpm);
+        const bpmScore = bpmRaw !== null ? bpmRaw * 10 : 5;
+
+        // 7. Feedback Bias (±8) — user taste profile adjustment
+        const feedbackBias = computeFeedbackBias(candTags, lt.artistName, tasteProfile);
+
+        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossPlatformScore + bpmScore + feedbackBias;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
           image: info.image || '',
           match: Math.round(Math.min(100, Math.max(0, finalScore))),
+          tags: candTags,
         });
       }
 
@@ -703,6 +870,10 @@ permalink: /digging/
           '<div class="dig-result-info">' +
           '<div class="dig-result-title">' + escHtml(r.name) + '</div>' +
           '<div class="dig-result-artist">' + escHtml(r.artistName) + '</div>' +
+          '</div>' +
+          '<div class="dig-feedback-btns">' +
+          '<button class="dig-fb-btn dig-fb-like" onclick="event.stopPropagation();window.__digFeedback(' + i + ',\'like\')" title="Like">&#9825;</button>' +
+          '<button class="dig-fb-btn dig-fb-dislike" onclick="event.stopPropagation();window.__digFeedback(' + i + ',\'dislike\')" title="Skip">&#10005;</button>' +
           '</div>' +
           '</div>';
       });
@@ -860,6 +1031,18 @@ permalink: /digging/
       const r = recommendedTracks[index];
       if (!r) return;
       await renderPlayerBySearch(r.name, r.artistName, index);
+    };
+
+    window.__digFeedback = function(index, action) {
+      const r = recommendedTracks[index];
+      if (!r) return;
+      recordFeedback(r.name, r.artistName, r.tags || [], action);
+      const item = document.querySelector('.dig-result-item[data-index="' + index + '"]');
+      if (item) {
+        item.querySelector('.dig-fb-like')?.classList.toggle('dig-fb-active', action === 'like');
+        item.querySelector('.dig-fb-dislike')?.classList.toggle('dig-fb-active', action === 'dislike');
+      }
+      showToast(action === 'like' ? 'Added to taste profile' : 'Noted');
     };
 
     window.__digCloseOverlay = function () {
