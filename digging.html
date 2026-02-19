@@ -469,14 +469,34 @@ permalink: /digging/
 
     function recordFeedback(trackName, artistName, tags, action) {
       const profile = loadTasteProfile();
-      const delta = action === 'like' ? 1.0 : -1.0;
-      for (const tag of tags) {
-        profile.tagBias[tag] = Math.max(-5, Math.min(5, (profile.tagBias[tag] || 0) + delta));
-      }
-      const ak = artistName.toLowerCase();
-      profile.artistBias[ak] = Math.max(-5, Math.min(5, (profile.artistBias[ak] || 0) + delta * 1.5));
       profile.feedbackLog.push({ track: trackName, artist: artistName, tags, action, ts: Date.now() });
+      // Rebuild biases from recent feedback with time decay
+      rebuildBiases(profile);
       saveTasteProfile(profile);
+    }
+
+    function rebuildBiases(profile) {
+      const now = Date.now();
+      const HALF_LIFE = 7 * 24 * 60 * 60 * 1000; // 7 days
+      profile.tagBias = {};
+      profile.artistBias = {};
+      for (const entry of profile.feedbackLog) {
+        const age = now - (entry.ts || now);
+        const decay = Math.pow(0.5, age / HALF_LIFE);
+        const delta = (entry.action === 'like' ? 1.0 : -1.0) * decay;
+        for (const tag of (entry.tags || [])) {
+          profile.tagBias[tag] = (profile.tagBias[tag] || 0) + delta;
+        }
+        const ak = (entry.artist || '').toLowerCase();
+        if (ak) profile.artistBias[ak] = (profile.artistBias[ak] || 0) + delta * 1.5;
+      }
+      // Clamp values
+      for (const key in profile.tagBias) {
+        profile.tagBias[key] = Math.max(-5, Math.min(5, profile.tagBias[key]));
+      }
+      for (const key in profile.artistBias) {
+        profile.artistBias[key] = Math.max(-5, Math.min(5, profile.artistBias[key]));
+      }
     }
 
     function computeFeedbackBias(candidateTags, artistName, profile) {
@@ -644,6 +664,16 @@ permalink: /digging/
           deezerRelArtistsPromise,
         ]);
 
+      // ─── Source reliability tracking ───
+      const sourceStats = {
+        'Last.fm Similar': lfmSimilarRaw?.similartracks?.track?.length > 0,
+        'Last.fm Tags': tagTrackResults.some(r => r.tracks.length > 0),
+        'Deezer Tags': deezerResults.some(r => r.tracks.length > 0),
+        'ListenBrainz': lbzArtists.length > 0,
+        'Deezer Related': deezerRelArtists.length > 0,
+        'BPM Data': !!(seedBpmData.bpm),
+      };
+
       // Block seed artist too
       kpopBlocklist.add(seedArtistName.toLowerCase());
 
@@ -724,7 +754,7 @@ permalink: /digging/
         }
       }
 
-      // Candidate selection: prioritize multi-source, then tag overlap count
+      // Candidate selection: weighted composite pre-score
       const CANDIDATE_CAP = 80;
       const lfmCandidateAll = [...lfmDeduped.values()];
       lfmCandidateAll.sort((a, b) => {
@@ -732,11 +762,11 @@ permalink: /digging/
         const keyB = b.artistName.toLowerCase() + '|||' + b.name.toLowerCase();
         const srcA = sourceMap.get(keyA)?.size || 0;
         const srcB = sourceMap.get(keyB)?.size || 0;
-        if (srcA !== srcB) return srcB - srcA;
         const tagA = tagMatchMap.get(keyA)?.size || 0;
         const tagB = tagMatchMap.get(keyB)?.size || 0;
-        if (tagA !== tagB) return tagB - tagA;
-        return (b.match || 0) - (a.match || 0);
+        const preScoreA = srcA * 3 + tagA * 2 + (a.match || 0) * 5;
+        const preScoreB = srcB * 3 + tagB * 2 + (b.match || 0) * 5;
+        return preScoreB - preScoreA;
       });
       const lfmCandidateList = lfmCandidateAll.slice(0, CANDIDATE_CAP);
 
@@ -853,7 +883,7 @@ permalink: /digging/
         });
       }
 
-      return scored;
+      return { scored, sourceStats };
     }
 
     /* ── Main Flow ── */
@@ -884,7 +914,7 @@ permalink: /digging/
         renderSeedTrack(track);
 
         // 2. Hybrid Digging Algorithm
-        const scored = await discoverAndScore(track);
+        const { scored, sourceStats } = await discoverAndScore(track);
 
         if (scored.length === 0) {
           hideLoading();
@@ -897,7 +927,7 @@ permalink: /digging/
 
         recommendedTracks = results;
         hideLoading();
-        renderResults(results);
+        renderResults(results, sourceStats);
         renderPlaylistBar();
         renderAuth();
 
@@ -934,15 +964,30 @@ permalink: /digging/
         '</div>';
     }
 
-    function renderResults(results) {
+    function renderResults(results, sourceStats) {
       if (results.length === 0) {
         $results.innerHTML = '<div class="dig-error">No similar tracks found.</div>';
         return;
       }
 
+      // Source reliability indicator
+      let sourceHtml = '';
+      if (sourceStats) {
+        const total = Object.keys(sourceStats).length;
+        const active = Object.values(sourceStats).filter(Boolean).length;
+        const dots = Object.entries(sourceStats).map(([name, ok]) =>
+          '<span title="' + escHtml(name) + '" style="display:inline-block;width:6px;height:6px;border-radius:50;background:' +
+          (ok ? 'var(--accent-sub)' : 'var(--fg-faint)') + ';opacity:' + (ok ? '1' : '0.3') + '"></span>'
+        ).join('');
+        sourceHtml = '<span class="dig-source-stats" style="font-size:11px;color:var(--fg-faint);display:flex;align-items:center;gap:4px">' +
+          dots + ' ' + active + '/' + total + ' sources' +
+          '</span>';
+      }
+
       let html =
         '<div class="dig-results-header">' +
         '<span class="dig-results-count">' + results.length + ' Results</span>' +
+        sourceHtml +
         '</div>' +
         '<div class="dig-result-list">';
 
