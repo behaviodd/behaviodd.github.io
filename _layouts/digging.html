@@ -5,12 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ page.title }} — K-POP Digging Club</title>
-  <link rel="stylesheet" as="style" crossorigin
-    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
     *,
     *::before,
@@ -23,13 +23,16 @@
     :root {
       --fg: #ececf1;
       --fg-80: #ececf1cc;
-      --fg-60: #888;
-      --fg-50: #555;
+      --fg-60: #aaa;
+      --fg-50: #999;
       --bg: #000;
-      --border: rgba(255, 255, 255, 0.12);
-      --border-strong: rgba(255, 255, 255, 0.25);
-      --accent: #FFCC00;
-      --accent-dim: #FFCC00b3;
+      --border: rgba(255, 255, 255, 0.2);
+      --border-strong: rgba(255, 255, 255, 0.35);
+      --accent: #B2B9F4;
+      --accent-dim: #B2B9F4b3;
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
       --surface: rgba(255, 255, 255, 0.03);
       --surface-solid: #000;
       --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -55,6 +58,28 @@
       padding-bottom: 120px;
     }
 
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg);
+    }
+
     /* ── Scrollbar ── */
     ::-webkit-scrollbar {
       width: 6px;
@@ -65,12 +90,31 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(92, 201, 202, 0.2);
       border-radius: 999px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.3);
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    /* ── Back Link ── */
+    .dig-back {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dig-back a {
+      color: var(--fg-50);
+      text-decoration: none;
+      font-size: 11px;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .dig-back a:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
     }
 
     /* ── Main ── */
@@ -87,6 +131,19 @@
       align-self: flex-start;
     }
 
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(3.5px, 1.05vw, 7px);
+      line-height: 1.1;
+      color: var(--accent);
+      margin-bottom: 16px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.7;
+    }
+
     /* ── Hero ── */
     .hero {
       margin-bottom: 48px;
@@ -94,7 +151,7 @@
 
     .hero h1 {
       font-size: clamp(28px, 7vw, 44px);
-      font-weight: 700;
+      font-weight: 400;
       line-height: 1.15;
       letter-spacing: -1px;
       margin-bottom: 12px;
@@ -113,14 +170,12 @@
     }
 
     .prompt {
-      color: var(--fg-60);
-      font-weight: 400;
+      color: var(--accent-sub);
     }
 
     .cursor {
       animation: blink 1s step-end infinite;
       color: var(--accent);
-      font-weight: 700;
     }
 
     @keyframes blink {
@@ -157,14 +212,14 @@
       color: var(--fg);
       background: transparent;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 0;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .dig-url-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-sub);
+      box-shadow: 0 0 12px rgba(92, 201, 202, 0.15);
     }
 
     .dig-url-input::placeholder {
@@ -181,7 +236,7 @@
       height: 28px;
       background: none;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--fg-50);
       cursor: pointer;
       transition: color 0.2s, border-color 0.2s, text-shadow 0.2s;
@@ -189,8 +244,8 @@
 
     .dig-paste-btn:hover {
       color: var(--fg);
-      border-color: var(--accent);
-      text-shadow: 0 0 4px #FFCC00;
+      border-color: var(--accent-sub);
+      text-shadow: 0 0 4px var(--accent-sub);
     }
 
     .dig-submit-btn {
@@ -199,17 +254,17 @@
       font-weight: 700;
       font-family: var(--font);
       color: #000;
-      background: #FFCC00;
+      background: var(--accent);
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      transition: transform 0.2s, text-shadow 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s;
       flex-shrink: 0;
     }
 
     .dig-submit-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+      box-shadow: 0 0 16px var(--accent-glow);
     }
 
     .dig-submit-btn:disabled {
@@ -225,7 +280,7 @@
       gap: 16px;
       padding: 16px;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 0;
       margin-bottom: 32px;
       align-items: center;
       background: var(--surface);
@@ -239,9 +294,10 @@
     .dig-seed img {
       width: 80px;
       height: 80px;
-      border-radius: 4px;
+      border-radius: 0;
       object-fit: cover;
       flex-shrink: 0;
+      border: 1px solid var(--border);
     }
 
     .dig-seed-info {
@@ -250,8 +306,8 @@
     }
 
     .dig-seed-title {
-      font-weight: 700;
       font-size: 15px;
+      color: var(--fg);
       margin-bottom: 2px;
       white-space: nowrap;
       overflow: hidden;
@@ -273,10 +329,10 @@
     .dig-feature-tag {
       font-size: 10px;
       padding: 3px 10px;
-      border-radius: 4px;
+      border-radius: 0;
       border: 1px solid var(--border);
       background: transparent;
-      color: var(--fg-60);
+      color: var(--accent-sub);
       white-space: nowrap;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -297,7 +353,7 @@
       height: 24px;
       margin: 16px auto 0;
       border: 2px solid var(--border);
-      border-top-color: var(--fg);
+      border-top-color: var(--accent-sub);
       border-radius: 50%;
       animation: dig-spin 0.6s linear infinite;
     }
@@ -318,10 +374,9 @@
 
     .dig-results-count {
       font-size: 11px;
-      color: var(--fg-60);
+      color: var(--accent-sub);
       text-transform: uppercase;
       letter-spacing: 2px;
-      font-weight: 700;
     }
 
     .dig-result-list {
@@ -335,9 +390,9 @@
       gap: 12px;
       padding: 12px 8px;
       border-top: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 0;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s, text-shadow 0.2s;
+      transition: background 0.2s, border-color 0.2s;
     }
 
     .dig-result-item:last-child {
@@ -345,37 +400,40 @@
     }
 
     .dig-result-item:hover {
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(92, 201, 202, 0.04);
       border-color: var(--border-strong);
     }
 
     .dig-result-item:hover .dig-result-title {
-      text-shadow: 0 0 4px #FFCC00;
+      color: var(--accent);
+      text-shadow: 0 0 6px var(--accent-glow);
     }
 
     .dig-result-item.dig-playing {
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(178, 185, 244, 0.06);
       border-color: var(--border-strong);
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.05);
+      box-shadow: 0 0 8px rgba(178, 185, 244, 0.05);
     }
 
     .dig-result-item.dig-playing .dig-result-title {
-      text-shadow: 0 0 4px #FFCC00;
+      color: var(--accent);
+      text-shadow: 0 0 6px var(--accent-glow);
     }
 
     .dig-result-check {
       flex-shrink: 0;
       width: 16px;
       height: 16px;
-      accent-color: var(--fg);
+      accent-color: var(--accent-sub);
     }
 
     .dig-result-img {
       width: 44px;
       height: 44px;
-      border-radius: 4px;
+      border-radius: 0;
       object-fit: cover;
       flex-shrink: 0;
+      border: 1px solid var(--border);
     }
 
     .dig-result-info {
@@ -384,12 +442,12 @@
     }
 
     .dig-result-title {
-      font-weight: 700;
       font-size: 12px;
+      color: var(--fg);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      transition: text-shadow 0.2s;
+      transition: all 0.2s;
     }
 
     .dig-result-artist {
@@ -405,12 +463,13 @@
       align-items: center;
       flex-shrink: 0;
     }
+
     .dig-fb-btn {
       -webkit-appearance: none;
       appearance: none;
       background: transparent;
       border: 1px solid var(--border-strong);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--fg-60);
       cursor: pointer;
       font-family: "Apple Color Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
@@ -421,22 +480,30 @@
       padding: 4px 6px;
       transition: all 0.15s;
     }
+
     .dig-fb-btn:hover {
       color: var(--fg);
-      border-color: var(--accent-dim);
-      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--accent-sub);
+      background: rgba(92, 201, 202, 0.06);
     }
+
     .dig-fb-like.dig-fb-active {
       color: #e05;
       border-color: #e05;
       background: rgba(238, 0, 85, 0.1);
     }
+
     .dig-fb-dislike.dig-fb-active {
       color: var(--fg-50);
       border-color: var(--fg-50);
       opacity: 0.6;
     }
-    .dig-taste-indicator { font-size: 11px; color: var(--fg-60); padding: 4px 0; }
+
+    .dig-taste-indicator {
+      font-size: 11px;
+      color: var(--fg-60);
+      padding: 4px 0;
+    }
 
     /* ── Playlist Bar ── */
     .dig-playlist-bar {
@@ -476,14 +543,14 @@
     }
 
     .dig-auth-section a {
-      color: var(--fg);
+      color: var(--accent-sub);
       text-decoration: none;
       cursor: pointer;
       transition: text-shadow 0.2s;
     }
 
     .dig-auth-section a:hover {
-      text-shadow: 0 0 4px #FFCC00;
+      text-shadow: 0 0 6px var(--accent-sub-glow);
       text-decoration: underline;
     }
 
@@ -494,7 +561,7 @@
       left: 0;
       right: 0;
       background: #000;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--accent-sub);
       z-index: 50;
       padding: 8px 16px;
       transform: translateY(100%);
@@ -528,13 +595,13 @@
 
     .dig-player-bar .dig-player-close:hover {
       color: var(--fg);
-      text-shadow: 0 0 4px #FFCC00;
+      text-shadow: 0 0 4px var(--accent-sub);
     }
 
     .dig-player-bar iframe {
       width: 100%;
       border: none;
-      border-radius: 4px;
+      border-radius: 0;
       display: block;
     }
 
@@ -544,12 +611,11 @@
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(80px);
-      background: #FFCC00;
+      background: var(--accent-sub);
       color: #000;
       padding: 10px 20px;
-      border-radius: 4px;
+      border-radius: 0;
       font-size: 13px;
-      font-weight: 700;
       opacity: 0;
       transition: all 0.3s ease;
       z-index: 100;
@@ -569,7 +635,7 @@
     .dig-error {
       padding: 12px 16px;
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 0;
       color: var(--fg-60);
       font-size: 13px;
       margin-bottom: 16px;
@@ -616,6 +682,16 @@
       color: var(--fg-50);
       letter-spacing: 1px;
     }
+
+    .dig-footer a {
+      color: var(--accent-sub);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .dig-footer a:hover {
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
   </style>
 </head>
 
@@ -627,7 +703,9 @@
     </div>
   </main>
 
-  <footer class="dig-footer">2026 by bhvd.</footer>
+  <footer class="dig-footer">
+    <a href="/">bhvd</a> / 2026
+  </footer>
 
 </body>
 
