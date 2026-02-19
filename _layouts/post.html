@@ -4,8 +4,9 @@ layout: default
 
 <article>
   <div class="hero">
+    <div class="term-cmd">$ <span>cat ~/blog/{{ page.slug }}.md</span></div>
     <h1>{{ page.title }}</h1>
-    <p>{{ page.date | date: "%Y-%m-%d" }}</p>
+    <p style="color:var(--fg-faint);font-size:11px;margin-top:4px;">{{ page.date | date: "%Y-%m-%d" }}</p>
   </div>
 
   <div class="prose">

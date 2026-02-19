@@ -4,7 +4,14 @@ title: Home
 ---
 
 <div class="hero">
-  <h1>Projects</h1>
+  <pre class="ascii-art"> ________  ___  ___  ___      ___ ________
+|\   __  \|\  \|\  \|\  \    /  /|\   ___ \
+\ \  \|\ /\ \  \\\  \ \  \  /  / | \  \_|\ \
+ \ \   __  \ \   __  \ \  \/  / / \ \  \ \\ \
+  \ \  \|\  \ \  \ \  \ \    / /   \ \  \_\\ \
+   \ \_______\ \__\ \__\ \__/ /     \ \_______\
+    \|_______|\|__|\|__|\|__|/       \|_______|</pre>
+  <div class="term-cmd">$ <span>ls ~/projects/</span></div>
   <p>A collection of things I've built.</p>
 </div>
 
@@ -12,24 +19,33 @@ title: Home
 
 <div class="project-list">
   <a href="https://matome-keyword.vercel.app/" class="project" target="_blank" rel="noopener">
-    <span class="project-name">MATOME Keyword</span>
-    <span class="project-desc">News aggregation & AI summary</span>
-    <span class="arrow">&rarr;</span>
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">MATOME Keyword</span>
+    </div>
+    <span class="project-desc">News aggregation &amp; AI summary</span>
+
   </a>
   <a href="https://aerowriting.vercel.app/" class="project" target="_blank" rel="noopener">
-    <span class="project-name">Aero Writing</span>
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">Aero Writing</span>
+    </div>
     <span class="project-desc">Writing tool</span>
-    <span class="arrow">&rarr;</span>
+
   </a>
   <a href="/digging/" class="project" target="_blank" rel="noopener">
-    <span class="project-name">K-POP Digging Club</span>
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">K-POP Digging Club</span>
+    </div>
     <span class="project-desc">Find similar K-POP tracks</span>
-    <span class="arrow">&rarr;</span>
+
   </a>
 </div>
 
 {% if site.posts.size > 0 %}
-<div class="section-label" style="margin-top: 64px;">Recent Posts</div>
+<div class="section-label" style="margin-top: 48px;">Recent Posts</div>
 
 <div class="project-list">
   {% for post in site.posts limit:5 %}

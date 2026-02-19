@@ -4,13 +4,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}NVY Design</title>
-  <link rel="stylesheet" as="style" crossorigin
-    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}bhvd</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
     *,
     *::before,
@@ -21,30 +21,26 @@
     }
 
     :root {
-      --fg: #111;
-      --fg-muted: #666;
+      --fg: #c8c8c8;
+      --fg-bright: #ececf1;
+      --fg-muted: #aaa;
       --fg-faint: #999;
-      --bg: #fff;
-      --border: #e0e0e0;
-      --accent: #4c4cb1;
-      --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --fg: #e8e8e8;
-        --fg-muted: #999;
-        --fg-faint: #666;
-        --bg: #111;
-        --border: #2a2a2a;
-        --accent: #8888e8;
-      }
+      --bg: #0a0a0a;
+      --accent: #B2B9F4;
+      --accent-dim: rgba(178, 185, 244, 0.08);
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-dim: rgba(92, 201, 202, 0.08);
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --border: #444;
+      --surface: rgba(255, 255, 255, 0.03);
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
     }
 
     html {
       font-family: var(--font);
-      font-size: 15px;
-      line-height: 1.6;
+      font-size: 11px;
+      line-height: 1.7;
       color: var(--fg);
       background: var(--bg);
       -webkit-font-smoothing: antialiased;
@@ -54,6 +50,41 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
     }
 
     .container {
@@ -63,111 +94,209 @@
       width: 100%;
     }
 
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg-bright);
+    }
+
     /* ── Header ── */
     header {
-      padding: 32px 0;
-      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-prompt {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: text-shadow 0.2s;
+    }
+
+    .site-prompt:hover {
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
 
     nav {
       display: flex;
       align-items: center;
-      gap: 24px;
-    }
-
-    nav .name {
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--fg);
-      text-decoration: none;
-      margin-right: auto;
+      gap: 2px;
     }
 
     nav a {
       color: var(--fg-muted);
       text-decoration: none;
-      font-size: 14px;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
     }
 
-    nav a:hover {
-      color: var(--fg);
+    nav a:hover,
+    nav a.active {
+      color: var(--accent-sub);
+      border-color: var(--border);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--fg-faint);
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
     }
 
     /* ── Main ── */
     main {
       flex: 1;
-      padding: 64px 0;
+      padding: 48px 0;
     }
 
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(6px, 1.8vw, 11px);
+      line-height: 1.15;
+      color: var(--accent);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    /* ── Hero ── */
     .hero {
-      margin-bottom: 64px;
+      margin-bottom: 48px;
+      padding: 24px 20px;
+      border: 1px dashed var(--border);
     }
 
     .hero h1 {
-      font-size: clamp(32px, 8vw, 56px);
-      font-weight: 700;
-      line-height: 1.1;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
+      font-size: clamp(22px, 5.5vw, 36px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 8px;
     }
 
     .hero p {
-      font-size: 16px;
+      font-size: 11px;
       color: var(--fg-muted);
-      max-width: 480px;
+    }
+
+    .hero .term-cmd {
+      font-size: 11px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+    }
+
+    .hero .term-cmd span {
+      color: var(--fg-muted);
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .section-label::before {
+      content: '/* ';
+      color: var(--fg-faint);
+    }
+
+    .section-label::after {
+      content: ' */';
+      color: var(--fg-faint);
     }
 
     /* ── Projects ── */
-    .section-label {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--fg-faint);
-      margin-bottom: 24px;
-    }
-
     .project-list {
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
 
     .project {
       display: flex;
       align-items: baseline;
-      justify-content: space-between;
-      gap: 16px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
+      gap: 12px;
+      padding: 10px 8px;
       text-decoration: none;
       color: inherit;
-      transition: opacity 0.15s;
-    }
-
-    .project:last-child {
-      border-bottom: 1px solid var(--border);
+      transition: all 0.15s;
     }
 
     .project:hover {
-      opacity: 0.6;
+      background: var(--accent-sub-dim);
+    }
+
+    .project:hover .project-name {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .project:hover .arrow {
+      color: var(--accent-sub);
+      transform: translateX(2px);
+    }
+
+    .project-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .project-prefix {
+      color: var(--accent-sub);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
     }
 
     .project-name {
-      font-weight: 700;
-      font-size: 15px;
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
     }
 
     .project-desc {
-      font-size: 13px;
-      color: var(--fg-muted);
-      text-align: right;
-      flex-shrink: 1;
-    }
-
-    .arrow {
-      font-size: 14px;
+      font-size: 11px;
       color: var(--fg-faint);
+      margin-left: auto;
+      white-space: nowrap;
       flex-shrink: 0;
     }
 
@@ -176,78 +305,98 @@
       display: flex;
       align-items: baseline;
       gap: 16px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
+      padding: 10px 8px;
       text-decoration: none;
       color: inherit;
-      transition: opacity 0.15s;
-    }
-
-    .post-item:last-child {
-      border-bottom: 1px solid var(--border);
+      transition: all 0.15s;
     }
 
     .post-item:hover {
-      opacity: 0.6;
+      background: var(--accent-sub-dim);
+    }
+
+    .post-item:hover .post-title {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
     }
 
     .post-date {
-      font-size: 13px;
-      color: var(--fg-faint);
+      font-size: 11px;
+      color: var(--accent-sub);
       flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
     }
 
     .post-title {
-      font-weight: 700;
-      font-size: 15px;
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
     }
 
     /* ── Prose (blog content) ── */
     .prose h2 {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 48px 0 16px;
+      font-size: 14px;
+      font-weight: 400;
+      margin: 40px 0 12px;
+      color: var(--accent);
+    }
+
+    .prose h2::before {
+      content: '## ';
+      color: var(--accent-sub);
     }
 
     .prose h3 {
-      font-size: 16px;
-      font-weight: 700;
-      margin: 32px 0 12px;
+      font-size: 12px;
+      font-weight: 400;
+      margin: 28px 0 10px;
+      color: var(--fg-bright);
+    }
+
+    .prose h3::before {
+      content: '### ';
+      color: var(--accent-sub);
     }
 
     .prose p {
       margin-bottom: 16px;
-      color: var(--fg);
     }
 
     .prose ul,
     .prose ol {
-      margin: 0 0 16px 24px;
+      margin: 0 0 16px 20px;
     }
 
     .prose li {
       margin-bottom: 4px;
     }
 
+    .prose li::marker {
+      color: var(--accent-sub);
+    }
+
     .prose blockquote {
-      border-left: 3px solid var(--border);
-      padding-left: 16px;
+      border-left: 2px solid var(--accent-sub);
+      padding: 8px 16px;
       color: var(--fg-muted);
       margin: 0 0 16px;
+      background: var(--surface);
     }
 
     .prose code {
-      font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", "Liberation Mono", "Menlo", monospace;
-      font-size: 14px;
-      background: var(--border);
+      font-family: var(--font);
+      font-size: 11px;
+      background: rgba(92, 201, 202, 0.08);
+      color: var(--accent-sub);
       padding: 2px 6px;
-      border-radius: 3px;
+      border-radius: 2px;
     }
 
     .prose pre {
-      background: var(--border);
+      background: #000;
+      border: 1px dashed var(--border);
       padding: 16px;
-      border-radius: 4px;
       overflow-x: auto;
       margin-bottom: 16px;
     }
@@ -255,19 +404,20 @@
     .prose pre code {
       background: none;
       padding: 0;
+      color: var(--fg);
     }
 
     .prose hr {
       border: none;
-      border-top: 1px solid var(--border);
+      border-top: 1px dashed var(--border);
       margin: 32px 0;
     }
 
     .prose img {
       max-width: 100%;
       height: auto;
-      border-radius: 4px;
       margin-bottom: 16px;
+      border: 1px dashed var(--border);
     }
 
     .prose a {
@@ -277,6 +427,7 @@
 
     .prose a:hover {
       text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
     }
 
     /* ── Profile ── */
@@ -287,31 +438,27 @@
     .profile-list {
       display: flex;
       flex-direction: column;
-      gap: 0;
     }
 
     .profile-row {
       display: flex;
       align-items: baseline;
       gap: 16px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
-    }
-
-    .profile-row:last-child {
-      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
     }
 
     .profile-row dt {
-      font-size: 13px;
-      color: var(--fg-faint);
+      font-size: 11px;
+      color: var(--accent-sub);
       flex-shrink: 0;
       min-width: 80px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .profile-row dd {
-      font-weight: 700;
-      font-size: 15px;
+      font-size: 11px;
+      color: var(--fg-bright);
     }
 
     .profile-row dd a {
@@ -321,44 +468,47 @@
 
     .profile-row dd a:hover {
       text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
     }
 
     /* ── Footer ── */
     footer {
-      padding: 32px 0;
-      border-top: 1px solid var(--border);
+      padding: 24px 0;
+      border-top: 1px dashed var(--border);
     }
 
     .footer-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 13px;
+      font-size: 11px;
       color: var(--fg-faint);
+      letter-spacing: 0.5px;
     }
 
-    .footer-links {
-      display: flex;
-      gap: 16px;
+    .footer-inner .status {
+      color: var(--accent-sub);
+      opacity: 0.7;
     }
 
-    .footer-links a {
-      color: var(--fg-faint);
-      text-decoration: none;
-    }
-
-    .footer-links a:hover {
-      color: var(--fg);
-    }
-
+    /* ── Responsive ── */
     @media (max-width: 480px) {
       .project {
-        flex-direction: column;
-        gap: 4px;
+        flex-wrap: wrap;
       }
 
       .project-desc {
-        text-align: left;
+        margin-left: 28px;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .hero {
+        padding: 16px 14px;
       }
     }
   </style>
@@ -368,16 +518,22 @@
 
   <header>
     <div class="container">
-      <nav>
-        <a href="/" class="name">NVY Design</a>
-        <a href="/blog/">Blog</a>
-        <a href="/profile/">Profile</a>
-      </nav>
+      <div class="header-inner">
+        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <nav>
+          <a href="/">home</a>
+          <a href="/blog/">blog</a>
+          <a href="/profile/">profile</a>
+        </nav>
+      </div>
     </div>
   </header>
 
   <main>
     <div class="container">
+      {% if page.title != "Home" %}
+      <a href="javascript:history.back()" class="back-link">&lt; cd ..</a>
+      {% endif %}
       {{ content }}
     </div>
   </main>
@@ -385,7 +541,8 @@
   <footer>
     <div class="container">
       <div class="footer-inner">
-        <span>&copy; 2026 NVY</span>
+        <span>&copy; 2026 bhvd</span>
+        <span class="status">all systems operational</span>
       </div>
     </div>
   </footer>
