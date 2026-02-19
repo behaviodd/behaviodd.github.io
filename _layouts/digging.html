@@ -398,13 +398,45 @@
     }
 
     /* ── Feedback Buttons ── */
-    .dig-feedback-btns { display:flex; gap:4px; margin-left:auto; align-items:center; flex-shrink:0; }
-    .dig-fb-btn { background:none; border:1px solid var(--border); border-radius:4px;
-      color:var(--fg-60); cursor:pointer; font-size:13px; padding:2px 6px; transition:all 0.15s; }
-    .dig-fb-btn:hover { color:var(--fg); border-color:var(--border-strong); }
-    .dig-fb-like.dig-fb-active { color:#e05; border-color:#e05; }
-    .dig-fb-dislike.dig-fb-active { color:var(--fg-50); border-color:var(--fg-50); text-decoration:line-through; }
-    .dig-taste-indicator { font-size:11px; color:var(--fg-60); padding:4px 0; }
+    .dig-feedback-btns {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .dig-fb-btn {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: 4px;
+      color: var(--fg-60);
+      cursor: pointer;
+      font-family: "Apple Color Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+      font-size: 14px;
+      line-height: 1;
+      min-width: 28px;
+      min-height: 28px;
+      padding: 4px 6px;
+      transition: all 0.15s;
+    }
+    .dig-fb-btn:hover {
+      color: var(--fg);
+      border-color: var(--accent-dim);
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .dig-fb-like.dig-fb-active {
+      color: #e05;
+      border-color: #e05;
+      background: rgba(238, 0, 85, 0.1);
+    }
+    .dig-fb-dislike.dig-fb-active {
+      color: var(--fg-50);
+      border-color: var(--fg-50);
+      opacity: 0.6;
+    }
+    .dig-taste-indicator { font-size: 11px; color: var(--fg-60); padding: 4px 0; }
 
     /* ── Playlist Bar ── */
     .dig-playlist-bar {
