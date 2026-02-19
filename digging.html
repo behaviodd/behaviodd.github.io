@@ -1067,9 +1067,62 @@ permalink: /digging/
       });
     }
 
+    // Preview cache with TTL (Deezer URLs expire after ~1 hour)
     const deezerPreviewCache = new Map();
+    const PREVIEW_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+    function getCachedPreview(key) {
+      const entry = deezerPreviewCache.get(key);
+      if (!entry) return null;
+      if (Date.now() - entry.ts > PREVIEW_CACHE_TTL) {
+        deezerPreviewCache.delete(key);
+        return null;
+      }
+      return entry.url;
+    }
+
+    function setCachedPreview(key, url) {
+      deezerPreviewCache.set(key, { url, ts: Date.now() });
+    }
+
+    // Race condition guard: track current playback request
+    let currentPlayRequestId = 0;
+
+    // Search Deezer for preview with improved matching
+    async function findDeezerPreview(name, artist) {
+      // Try exact search first, then fallback with normalized name
+      const queries = [
+        name + ' ' + artist,
+        normalizeTitle(name) + ' ' + artist,
+      ];
+
+      for (const q of queries) {
+        const data = await deezerFetch('search/track', { q: q, limit: '5' });
+        if (!data?.data) continue;
+
+        // Find best match: prefer exact title+artist match with preview
+        const artistLower = artist.toLowerCase();
+        const nameLower = normalizeTitle(name);
+
+        for (const t of data.data) {
+          if (!t.preview || t.preview === '') continue;
+          const tArtist = (t.artist?.name || '').toLowerCase();
+          const tTitle = normalizeTitle(t.title || t.title_short || '');
+          if (tArtist === artistLower || tTitle === nameLower) return t.preview;
+        }
+
+        // Fallback: first result with a valid preview
+        for (const t of data.data) {
+          if (t.preview && t.preview !== '') return t.preview;
+        }
+      }
+
+      return null;
+    }
 
     async function renderPlayerBySearch(name, artist, index) {
+      const requestId = ++currentPlayRequestId;
+
       $player.innerHTML =
         '<div class="dig-player-inner">' +
         '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
@@ -1087,16 +1140,15 @@ permalink: /digging/
       });
 
       const cacheKey = artist.toLowerCase() + '|||' + name.toLowerCase();
-      let previewUrl = deezerPreviewCache.get(cacheKey);
+      let previewUrl = getCachedPreview(cacheKey);
 
       if (!previewUrl) {
-        const data = await deezerFetch('search/track', { q: name + ' ' + artist, limit: '1' });
-        const track = data?.data?.[0];
-        if (track?.preview) {
-          previewUrl = track.preview;
-          deezerPreviewCache.set(cacheKey, previewUrl);
-        }
+        previewUrl = await findDeezerPreview(name, artist);
+        if (previewUrl) setCachedPreview(cacheKey, previewUrl);
       }
+
+      // Race condition: abort if another request was started while we waited
+      if (requestId !== currentPlayRequestId) return;
 
       const embedEl = document.getElementById('spotifyEmbed');
       if (!embedEl) return;
@@ -1107,9 +1159,29 @@ permalink: /digging/
           '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fg)">' +
           '<span style="color:var(--accent)">' + escHtml(name) + '</span> — ' + escHtml(artist) +
           '</div>';
+
+        // Handle audio load failure (expired URL) — retry once without cache
+        const audio = document.getElementById('digAudio');
+        if (audio) {
+          audio.addEventListener('error', async function onAudioError() {
+            audio.removeEventListener('error', onAudioError);
+            if (requestId !== currentPlayRequestId) return;
+            deezerPreviewCache.delete(cacheKey);
+            const retryUrl = await findDeezerPreview(name, artist);
+            if (requestId !== currentPlayRequestId) return;
+            if (retryUrl) {
+              setCachedPreview(cacheKey, retryUrl);
+              audio.src = retryUrl;
+              audio.play().catch(() => {});
+            } else {
+              const el = document.getElementById('spotifyEmbed');
+              if (el) el.innerHTML = '<div style="font-size:11px;color:var(--fg-faint)">Preview not available</div>';
+            }
+          }, { once: true });
+        }
       } else {
         embedEl.innerHTML =
-          '<div style="font-size:12px;color:var(--fg-60)">Preview not available</div>';
+          '<div style="font-size:11px;color:var(--fg-faint)">Preview not available</div>';
       }
     }
 

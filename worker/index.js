@@ -269,11 +269,30 @@ async function handleDeezer(url, origin) {
       });
     }
 
+    // Deezer returns HTTP 200 with error object for rate limits and other errors
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed.error) {
+        return new Response(body, {
+          status: parsed.error.code === 4 ? 429 : 502,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+            ...corsHeaders(origin),
+          },
+        });
+      }
+    } catch { /* not JSON or no error field — proceed normally */ }
+
+    // Shorter cache for search results (preview URLs expire), longer for metadata
+    const isSearch = path.startsWith('search/');
+    const cacheMaxAge = isSearch ? 1800 : 86400; // 30min for search, 24h for others
+
     return new Response(body, {
       status: dzRes.status,
       headers: {
         'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=86400', // 24 hours
+        'Cache-Control': 'public, max-age=' + cacheMaxAge,
         ...corsHeaders(origin),
       },
     });
