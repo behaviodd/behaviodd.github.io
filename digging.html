@@ -492,12 +492,13 @@ permalink: /digging/
     }
 
     /* ── TF-IDF Tag Weighting ── */
-    function buildCorpusIDF(infoByKey, candidateList) {
+    function buildCorpusIDF(infoByKey, candidateList, tagFilter) {
       const docCount = candidateList.length || 1;
       const tagDocFreq = new Map();
       for (const lt of candidateList) {
         const key = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
-        const tags = new Set(infoByKey[key]?.tags || []);
+        const rawTags = infoByKey[key]?.tags || [];
+        const tags = new Set(tagFilter ? rawTags.filter(tagFilter) : rawTags);
         for (const tag of tags) tagDocFreq.set(tag, (tagDocFreq.get(tag) || 0) + 1);
       }
       const idf = new Map();
@@ -545,12 +546,47 @@ permalink: /digging/
       // Detect if seed is K-POP
       const seedIsKpop = allSeedTags.some(t => kpopFilter.has(t));
 
-      // Cross-genre tags: filter out ALL Korean-specific tags
-      const crossGenreTags = allSeedTags.filter(t => !kpopFilter.has(t) && t.length <= 25);
+      // Non-musical tag blacklist
+      const nonMusicalTags = new Set([
+        'seen live', 'favorites', 'favourite', 'favorites', 'my playlist',
+        'check out', 'love', 'beautiful', 'awesome', 'amazing',
+        'spotify', 'under 2000 listeners', 'good', 'cool', 'nice',
+        'chill', 'party', 'summer', 'winter', 'spring', 'autumn',
+        'happy', 'sad', 'relax', 'sleep', 'study', 'workout',
+        'driving', 'morning', 'night', 'road trip', 'throwback',
+        '00s', '10s', '20s', '70s', '80s', '90s',
+        '2000s', '2010s', '2020s', '2024', '2025', '2026',
+        'male vocalists', 'female vocalists', 'all time favorite',
+        'albums i own', 'british', 'american', 'canadian', 'australian',
+        'japanese', 'swedish', 'german', 'french', 'irish',
+      ]);
+
+      function isMusicalTag(t) {
+        return !nonMusicalTags.has(t) && !kpopFilter.has(t) && t.length >= 2 && t.length <= 25;
+      }
+
+      // Cross-genre tags: filter out K-POP + non-musical tags
+      const crossGenreTags = allSeedTags.filter(isMusicalTag);
 
       const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
 
-      // ─── Step 1.5: K-POP blocklist + Tag & Deezer discovery (all parallel) ───
+      // ─── Step 1.5: Expand tags via tag.getSimilar (adjacent genre discovery) ───
+      showLoading('Expanding genre map...');
+      const similarTagPromises = crossGenreTags.slice(0, 4).map(tag =>
+        lastfmFetch({ method: 'tag.getSimilar', tag: tag })
+          .then(data => (data?.similartags?.tag || [])
+            .slice(0, 5)
+            .map(t => t.name.toLowerCase())
+            .filter(isMusicalTag)
+          ).catch(() => [])
+      );
+      const expandedTagArrays = await Promise.all(similarTagPromises);
+      const expandedTags = [...new Set(expandedTagArrays.flat())].filter(t => !crossGenreTags.includes(t));
+
+      // Combine: original seed tags first, then adjacent genre tags
+      const allDiscoveryTags = [...crossGenreTags, ...expandedTags.slice(0, 6)];
+
+      // ─── Step 1.6: K-POP blocklist + Tag & Deezer discovery (all parallel) ───
       showLoading('Discovering similar vibes...');
 
       // Korean character detector (Hangul)
@@ -571,8 +607,8 @@ permalink: /digging/
         return set;
       }).catch(() => new Set());
 
-      // Source C: Last.fm tag → tracks (direct)
-      const tagTrackTasks = crossGenreTags.slice(0, 8).map(tag => () =>
+      // Source C: Last.fm tag → tracks (use expanded tags for broader discovery)
+      const tagTrackTasks = allDiscoveryTags.slice(0, 12).map(tag => () =>
         lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '50' })
           .then(data => ({
             tag: tag,
@@ -580,8 +616,8 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      // Source D: Deezer search by seed tags (broader international pool)
-      const deezerTasks = crossGenreTags.slice(0, 6).map(tag => () =>
+      // Source D: Deezer search by tags (use expanded tags for broader pool)
+      const deezerTasks = allDiscoveryTags.slice(0, 8).map(tag => () =>
         deezerFetch('search/track', { q: tag, limit: '40' })
           .then(data => ({
             tag: tag,
@@ -592,7 +628,7 @@ permalink: /digging/
           })).catch(() => ({ tag: tag, tracks: [] }))
       );
 
-      // NEW: additional parallel discovery sources
+      // Additional parallel discovery sources
       const seedBpmPromise = getSeedBpm(seed.name, seedArtistName);
       const lbzArtistsPromise = getListenBrainzSimilarArtists(seedArtistMBID);
       const deezerRelArtistsPromise = getDeezerRelatedArtists(seedArtistName);
@@ -632,13 +668,11 @@ permalink: /digging/
         sourceMap.get(key).add(source);
       }
 
-      // Source A: Last.fm similar tracks
-      // When seed is K-POP, track.getSimilar returns 95%+ K-POP → skip entirely
-      if (!seedIsKpop) {
-        for (const lt of lfmSimilarTracks.slice(0, 50)) {
-          if (isKpopArtist(lt.artist?.name || '')) continue;
-          addCandidate(lt, 'lfm-similar');
-        }
+      // Source A: Last.fm similar tracks (always include, filter K-POP)
+      // Even when seed is K-POP, keep non-K-POP results that survive the filter
+      for (const lt of lfmSimilarTracks.slice(0, seedIsKpop ? 100 : 50)) {
+        if (isKpopArtist(lt.artist?.name || '')) continue;
+        addCandidate(lt, 'lfm-similar');
       }
 
       // Source C: Last.fm tag-discovered tracks (strict K-POP filter)
@@ -743,8 +777,8 @@ permalink: /digging/
       const lfmInfoByKey = {};
       for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
 
-      // Build TF-IDF corpus from candidate tags
-      const corpusIdf = buildCorpusIDF(lfmInfoByKey, lfmCandidateList);
+      // Build TF-IDF corpus from candidate tags (filtered for musical relevance)
+      const corpusIdf = buildCorpusIDF(lfmInfoByKey, lfmCandidateList, isMusicalTag);
 
       // Load taste profile for feedback bias
       const tasteProfile = loadTasteProfile();
@@ -763,22 +797,27 @@ permalink: /digging/
 
         // Hard-exclude: skip if K-POP artist or K-POP tagged track
         if (isKpopArtist(lt.artistName)) continue;
-        const candTags = info.tags || [];
-        if (candTags.some(t => kpopFilter.has(t))) continue;
+        const candTagsRaw = info.tags || [];
+        if (candTagsRaw.some(t => kpopFilter.has(t))) continue;
+        // Filter non-musical tags from candidate for cleaner scoring
+        const candTags = candTagsRaw.filter(isMusicalTag);
 
         // 1. Listener Behavior (12) — Last.fm track similarity
         const behaviorScore = (lt.match || 0) * 12;
 
-        // 2. Vibe Match (25) — TF-IDF weighted tag similarity
+        // 2. Vibe Match (25) — TF-IDF weighted tag similarity (includes expanded genre tags)
         const vibeScore = computeTfidfVibeScore(crossGenreTags, candTags, corpusIdf, 25);
 
         // 3. Digging Index (28) — engagement depth + obscurity bonus
-        let diggingScore = 0;
+        //    Dampened when vibeScore is low to prevent obscure-but-irrelevant tracks from ranking high
+        let diggingScoreRaw = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
           const obscurity = Math.max(0, Math.min(18, (7 - Math.log10(info.listeners)) * 5));
-          diggingScore = engagement + obscurity;
+          diggingScoreRaw = engagement + obscurity;
         }
+        const vibeDampen = vibeScore < 5 ? 0.5 : vibeScore < 10 ? 0.75 : 1.0;
+        const diggingScore = diggingScoreRaw * vibeDampen;
 
         // 4. Multi-Source Confidence (15) — bonus for multiple discovery methods
         let sourceScore = 0;
@@ -793,15 +832,18 @@ permalink: /digging/
         const platformCount = [hasLastfm, hasDeezer, hasLBZ].filter(Boolean).length;
         const crossPlatformScore = platformCount >= 3 ? 10 : platformCount >= 2 ? 6 : 0;
 
-        // 6. BPM Match (10) — tempo similarity with harmonic matching
+        // 6. BPM Match (dynamic) — 0 when data missing, redistribute to other scores
         const candBpm = bpmByKey[candKey] || null;
         const bpmRaw = bpmMatchScore(seedBpmData.bpm, candBpm);
-        const bpmScore = bpmRaw !== null ? bpmRaw * 10 : 5;
+        const hasBpmData = bpmRaw !== null;
+        const bpmScore = hasBpmData ? bpmRaw * 10 : 0;
+        // When BPM unavailable, boost vibe and digging proportionally (+5 each split)
+        const bpmCompensation = hasBpmData ? 0 : 5;
 
         // 7. Feedback Bias (±8) — user taste profile adjustment
         const feedbackBias = computeFeedbackBias(candTags, lt.artistName, tasteProfile);
 
-        const finalScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossPlatformScore + bpmScore + feedbackBias;
+        const finalScore = behaviorScore + (vibeScore + bpmCompensation * 0.6) + (diggingScore + bpmCompensation * 0.4) + sourceScore + crossPlatformScore + bpmScore + feedbackBias;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
