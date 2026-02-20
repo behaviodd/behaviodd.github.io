@@ -1176,30 +1176,12 @@ permalink: /digging/
     }
 
     function renderAuth() {
-      const profile = loadTasteProfile();
-      const feedbackCount = profile.feedbackLog.length;
-      const tasteInfo = feedbackCount > 0
-        ? ' <span style="color:var(--fg-faint)">(' + feedbackCount + ' feedbacks)</span>'
-        : '';
-
       if (isLoggedIn()) {
         $auth.innerHTML =
-          '<div class="dig-auth-section">Spotify connected. <a onclick="window.__digLogout()">Disconnect</a></div>' +
-          '<div class="dig-auth-section" style="margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">' +
-          '<span style="color:var(--fg-faint)">Taste Profile' + tasteInfo + '</span>' +
-          '<a onclick="window.__digExportProfile()" style="cursor:pointer">Export</a>' +
-          '<a onclick="window.__digImportProfile()" style="cursor:pointer">Import</a>' +
-          (feedbackCount > 0 ? '<a onclick="window.__digResetProfile()" style="cursor:pointer;color:var(--fg-faint)">Reset</a>' : '') +
-          '</div>';
+          '<div class="dig-auth-section">Spotify connected. <a onclick="window.__digLogout()">Disconnect</a></div>';
       } else {
         $auth.innerHTML =
-          '<div class="dig-auth-section">Connect Spotify to create playlists. <a onclick="window.__digConnectSpotify()">Connect</a></div>' +
-          '<div class="dig-auth-section" style="margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">' +
-          '<span style="color:var(--fg-faint)">Taste Profile' + tasteInfo + '</span>' +
-          '<a onclick="window.__digExportProfile()" style="cursor:pointer">Export</a>' +
-          '<a onclick="window.__digImportProfile()" style="cursor:pointer">Import</a>' +
-          (feedbackCount > 0 ? '<a onclick="window.__digResetProfile()" style="cursor:pointer;color:var(--fg-faint)">Reset</a>' : '') +
-          '</div>';
+          '<div class="dig-auth-section">Connect Spotify to create playlists. <a onclick="window.__digConnectSpotify()">Connect</a></div>';
       }
     }
 
@@ -1486,64 +1468,6 @@ permalink: /digging/
     window.__digLogout = function () {
       logout();
       renderPlaylistBar();
-    };
-
-    window.__digExportProfile = function () {
-      const profile = loadTasteProfile();
-      if (!profile.feedbackLog.length) {
-        showToast('No taste data to export');
-        return;
-      }
-      const json = JSON.stringify(profile, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'digging-taste-profile.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      showToast('Profile exported');
-    };
-
-    window.__digImportProfile = function () {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-          try {
-            const imported = JSON.parse(ev.target.result);
-            if (imported.version !== 1 || !Array.isArray(imported.feedbackLog)) {
-              showToast('Invalid profile format');
-              return;
-            }
-            // Merge: append imported feedbackLog, deduplicate by timestamp
-            const current = loadTasteProfile();
-            const existingTs = new Set(current.feedbackLog.map(e => e.ts));
-            const newEntries = imported.feedbackLog.filter(e => !existingTs.has(e.ts));
-            current.feedbackLog.push(...newEntries);
-            current.feedbackLog.sort((a, b) => (a.ts || 0) - (b.ts || 0));
-            rebuildBiases(current);
-            saveTasteProfile(current);
-            renderAuth();
-            showToast('Imported ' + newEntries.length + ' new feedbacks');
-          } catch {
-            showToast('Failed to parse profile file');
-          }
-        };
-        reader.readAsText(file);
-      };
-      input.click();
-    };
-
-    window.__digResetProfile = function () {
-      if (!confirm('Reset taste profile? This cannot be undone.')) return;
-      localStorage.removeItem('digging_taste_profile');
-      renderAuth();
-      showToast('Taste profile reset');
     };
 
     window.__digCreatePlaylist = async function () {
