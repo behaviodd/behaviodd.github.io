@@ -1312,6 +1312,30 @@ permalink: /digging/
       return null;
     }
 
+    async function findItunesTrackUrl(name, artist) {
+      const queries = [name + ' ' + artist, normalizeTitle(name) + ' ' + artist];
+      for (const q of queries) {
+        try {
+          const data = await itunesJsonp(
+            'https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=music&entity=song&limit=5'
+          );
+          if (!data?.results) continue;
+          const artistLower = artist.toLowerCase();
+          const nameLower = normalizeTitle(name);
+          for (const t of data.results) {
+            if (!t.trackViewUrl) continue;
+            const tArtist = (t.artistName || '').toLowerCase();
+            const tTitle = normalizeTitle(t.trackName || '');
+            if (tArtist === artistLower || tTitle === nameLower) return t.trackViewUrl;
+          }
+          for (const t of data.results) {
+            if (t.trackViewUrl) return t.trackViewUrl;
+          }
+        } catch { continue; }
+      }
+      return null;
+    }
+
     async function renderPlayerBySearch(name, artist, index) {
       const requestId = ++currentPlayRequestId;
 
@@ -1352,6 +1376,7 @@ permalink: /digging/
           '<audio id="digAudio" autoplay style="width:100%;height:32px;filter:invert(1) hue-rotate(180deg)" controls src="' + escHtml(previewUrl) + '"></audio>' +
           '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fg)">' +
           '<span style="color:var(--accent)">' + escHtml(name) + '</span> — ' + escHtml(artist) +
+          ' <span id="digExternalLink"></span>' +
           '</div>';
 
         // Handle audio load failure (expired URL) — retry once without cache
@@ -1375,8 +1400,25 @@ permalink: /digging/
         }
       } else {
         embedEl.innerHTML =
-          '<div style="font-size:11px;color:var(--fg-faint)">Preview not available</div>';
+          '<div style="font-size:11px;color:var(--fg-faint)">Preview not available' +
+          ' <span id="digExternalLink"></span></div>';
       }
+
+      // Resolve external link: Spotify preferred, Apple Music fallback
+      (async function () {
+        const [spotifyResult, itunesUrl] = await Promise.all([
+          resolveSpotifyId(name, artist),
+          findItunesTrackUrl(name, artist),
+        ]);
+        if (requestId !== currentPlayRequestId) return;
+        const linkEl = document.getElementById('digExternalLink');
+        if (!linkEl) return;
+        if (spotifyResult) {
+          linkEl.innerHTML = '<a href="https://open.spotify.com/track/' + spotifyResult.id + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px" title="Open in Spotify">↗ Spotify</a>';
+        } else if (itunesUrl) {
+          linkEl.innerHTML = '<a href="' + escHtml(itunesUrl) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;font-size:11px" title="Open in Apple Music">↗ Apple Music</a>';
+        }
+      })();
     }
 
     function showLoading(msg) {
