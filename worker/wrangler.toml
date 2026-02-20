@@ -4,3 +4,7 @@ compatibility_date = "2024-01-01"
 
 # Set secrets via: npx wrangler secret put SPOTIFY_CLIENT_ID
 #                  npx wrangler secret put SPOTIFY_CLIENT_SECRET
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "13e1f839e9894b0fbddf13aca78159c7"

@@ -49,13 +49,13 @@ permalink: /digging/
 
 <div class="hero">
   <h1>K-POP Digging Club<span class="cursor">_</span></h1>
-  <p class="prompt-line"><span class="prompt">@visitor:$</span> paste a spotify track link and discover similar songs
+  <p class="prompt-line"><span class="prompt">@visitor:$</span> paste a spotify or apple music track link and discover similar songs
   </p>
 </div>
 
 <form class="dig-form" id="digForm" onsubmit="return handleSubmit(event)">
   <div class="dig-input-wrap">
-    <input type="text" class="dig-url-input" id="trackInput" placeholder="https://open.spotify.com/track/..."
+    <input type="text" class="dig-url-input" id="trackInput" placeholder="Spotify or Apple Music URL"
       autocomplete="off" />
     <button type="button" class="dig-paste-btn" id="pasteBtn" aria-label="Paste">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -379,24 +379,63 @@ permalink: /digging/
       showToast('Logged out');
     }
 
-    /* ── Track URL Parser ── */
-    function parseTrackId(input) {
+    /* ── Track URL Parser (Spotify + Apple Music) ── */
+    function parseTrackInput(input) {
       input = input.trim();
+      // Spotify URI
       const urnMatch = input.match(/^spotify:track:([a-zA-Z0-9]{22})$/);
-      if (urnMatch) return urnMatch[1];
+      if (urnMatch) return { type: 'spotify', id: urnMatch[1] };
       try {
         const url = new URL(input);
+        // Spotify URL
         if (url.hostname === 'open.spotify.com') {
           const parts = url.pathname.split('/').filter(Boolean);
           const trackIdx = parts.indexOf('track');
           if (trackIdx !== -1 && parts[trackIdx + 1]) {
             const id = parts[trackIdx + 1];
-            if (/^[a-zA-Z0-9]{22}$/.test(id)) return id;
+            if (/^[a-zA-Z0-9]{22}$/.test(id)) return { type: 'spotify', id: id };
           }
         }
+        // Apple Music URL
+        if (url.hostname === 'music.apple.com' || url.hostname === 'geo.music.apple.com') {
+          const trackId = url.searchParams.get('i');
+          if (trackId && /^\d+$/.test(trackId)) return { type: 'apple', id: trackId };
+        }
       } catch { }
-      if (/^[a-zA-Z0-9]{22}$/.test(input)) return input;
+      // Raw Spotify ID
+      if (/^[a-zA-Z0-9]{22}$/.test(input)) return { type: 'spotify', id: input };
       return null;
+    }
+
+    /* ── Apple Music: iTunes lookup → Spotify-compatible format ── */
+    function itunesTrackToSpotifyFormat(itunes) {
+      return {
+        id: null,
+        name: itunes.trackName,
+        artists: [{ name: itunes.artistName, id: null }],
+        album: {
+          name: itunes.collectionName,
+          release_date: itunes.releaseDate ? itunes.releaseDate.slice(0, 10) : '',
+          images: [
+            { url: (itunes.artworkUrl100 || '').replace('100x100bb', '300x300bb') },
+            { url: itunes.artworkUrl100 || '' },
+          ],
+        },
+        duration_ms: itunes.trackTimeMillis || 0,
+        _source: 'apple',
+        _appleTrackId: itunes.trackId,
+        _previewUrl: itunes.previewUrl || null,
+      };
+    }
+
+    async function fetchAppleMusicTrack(appleTrackId) {
+      const url = CONFIG.workerUrl + '/api/itunes?endpoint=' + encodeURIComponent('/lookup?id=' + appleTrackId);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('iTunes lookup failed: ' + res.status);
+      const data = await res.json();
+      const track = (data.results || []).find(r => r.wrapperType === 'track');
+      if (!track) throw new Error('Track not found on Apple Music.');
+      return itunesTrackToSpotifyFormat(track);
     }
 
     /* ── Title normalizer for dedup ── */
@@ -448,6 +487,71 @@ permalink: /digging/
       if (bestDiff <= 25) return 0.7 - (bestDiff - 10) / 15 * 0.5;
       if (bestDiff <= 40) return 0.2 - (bestDiff - 25) / 15 * 0.2;
       return 0;
+    }
+
+    /* ── Track Feature Similarity (Deezer gain/BPM/duration) ── */
+    function trackFeatureSimilarity(seedTF, candTF) {
+      if (!seedTF || !candTF) return null;
+      let score = 0, totalWeight = 0;
+      // Gain similarity (weight 0.50) — loudness as energy proxy
+      if (seedTF.gain !== null && candTF.gain !== null) {
+        const gainSim = Math.max(0, 1 - Math.abs(seedTF.gain - candTF.gain) / 15);
+        score += gainSim * 0.50; totalWeight += 0.50;
+      }
+      // BPM similarity (weight 0.30) — refined data from Worker /track endpoint
+      if (seedTF.bpm > 0 && candTF.bpm > 0) {
+        score += (bpmMatchScore(seedTF.bpm, candTF.bpm) || 0) * 0.30; totalWeight += 0.30;
+      }
+      // Duration similarity (weight 0.20) — 3min diff = max penalty
+      if (seedTF.duration > 0 && candTF.duration > 0) {
+        const durSim = Math.max(0, 1 - Math.abs(seedTF.duration - candTF.duration) / 180);
+        score += durSim * 0.20; totalWeight += 0.20;
+      }
+      return totalWeight > 0 ? score / totalWeight : null;
+    }
+
+    async function enrichWithTrackFeatures(seedTrack, filtered) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        const res = await fetch(CONFIG.workerUrl + '/api/deezer/track-features', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            seed: { name: seedTrack.name, artist: seedTrack.artists?.[0]?.name || '' },
+            candidates: filtered.map(r => ({ name: r.name, artist: r.artistName })),
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!res.ok) throw new Error('Track features fetch failed');
+        return await res.json();
+      } catch (err) {
+        console.warn('Track features enrichment failed:', err.message);
+        return { seed: null, candidates: {}, stats: { cacheHits: 0, apiCalls: 0, rateLimited: false } };
+      }
+    }
+
+    function rerankWithTrackFeatures(filtered, seedTF, candidateMap) {
+      const TF_MAX = 15;
+      const STAGE1_BUDGET = 85;
+      const TOTAL_BUDGET = 100;
+      for (const item of filtered) {
+        const key = item.artistName.toLowerCase() + '|||' + item.name.toLowerCase();
+        const candTF = candidateMap[key] || null;
+        const sim = trackFeatureSimilarity(seedTF, candTF);
+        if (sim !== null) {
+          // TF data available: add TF score directly
+          item.trackFeatureScore = sim * TF_MAX;
+          item.match = Math.round(Math.min(100, Math.max(0, item.match + item.trackFeatureScore)));
+        } else {
+          // TF data missing: renormalize Stage 1 score to fill total budget
+          item.trackFeatureScore = 0;
+          item.match = Math.round(Math.min(100, Math.max(0, item.match * (TOTAL_BUDGET / STAGE1_BUDGET))));
+        }
+      }
+      filtered.sort((a, b) => b.match - a.match);
+      return filtered;
     }
 
     /* ── Taste Profile (localStorage) ── */
@@ -847,48 +951,50 @@ permalink: /digging/
         // Filter non-musical tags from candidate for cleaner scoring
         const candTags = candTagsRaw.filter(isMusicalTag);
 
-        // 1. Listener Behavior (12) — Last.fm track similarity
-        const behaviorScore = (lt.match || 0) * 12;
+        // 1. Listener Behavior (10) — Last.fm track similarity
+        const behaviorScore = (lt.match || 0) * 10;
 
-        // 2. Vibe Match (25) — TF-IDF weighted tag similarity (includes expanded genre tags)
-        const vibeScore = computeTfidfVibeScore(crossGenreTags, candTags, corpusIdf, 25);
+        // 2. Vibe Match (22) — TF-IDF weighted tag similarity (includes expanded genre tags)
+        const vibeScore = computeTfidfVibeScore(crossGenreTags, candTags, corpusIdf, 22);
 
-        // 3. Digging Index (28) — engagement depth + obscurity bonus
+        // 3. Digging Index (23) — engagement depth + obscurity bonus
         //    Dampened when vibeScore is low to prevent obscure-but-irrelevant tracks from ranking high
         let diggingScoreRaw = 0;
         if (info.listeners > 0) {
           const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
-          const obscurity = Math.max(0, Math.min(18, (7 - Math.log10(info.listeners)) * 5));
+          const obscurity = Math.max(0, Math.min(13, (7 - Math.log10(info.listeners)) * 5));
           diggingScoreRaw = engagement + obscurity;
         }
         const vibeDampen = vibeScore < 5 ? 0.5 : vibeScore < 10 ? 0.75 : 1.0;
         const diggingScore = diggingScoreRaw * vibeDampen;
 
-        // 4. Multi-Source Confidence (15) — bonus for multiple discovery methods
+        // 4. Multi-Source Confidence (12) — bonus for multiple discovery methods
         let sourceScore = 0;
-        if (sources.size >= 4) sourceScore = 15;
-        else if (sources.size >= 3) sourceScore = 12;
-        else if (sources.size >= 2) sourceScore = 8;
+        if (sources.size >= 4) sourceScore = 12;
+        else if (sources.size >= 3) sourceScore = 10;
+        else if (sources.size >= 2) sourceScore = 6;
 
-        // 5. Cross-Platform (10) — bonus for multiple platform coverage
+        // 5. Cross-Platform (8) — bonus for multiple platform coverage
         const hasLastfm = sources.has('lfm-similar') || sources.has('tag-discovery');
         const hasDeezer = sources.has('deezer-tag') || sources.has('deezer-related');
         const hasLBZ = sources.has('lbz-artist');
         const platformCount = [hasLastfm, hasDeezer, hasLBZ].filter(Boolean).length;
-        const crossPlatformScore = platformCount >= 3 ? 10 : platformCount >= 2 ? 6 : 0;
+        const crossPlatformScore = platformCount >= 3 ? 8 : platformCount >= 2 ? 5 : 0;
 
-        // 6. BPM Match (dynamic) — 0 when data missing, redistribute to other scores
+        // 6. BPM Match (dynamic) — renormalized when data missing
         const candBpm = bpmByKey[candKey] || null;
         const bpmRaw = bpmMatchScore(seedBpmData.bpm, candBpm);
         const hasBpmData = bpmRaw !== null;
         const bpmScore = hasBpmData ? bpmRaw * 10 : 0;
-        // When BPM unavailable, boost vibe and digging proportionally (+5 each split)
-        const bpmCompensation = hasBpmData ? 0 : 5;
 
         // 7. Feedback Bias (±8) — user taste profile adjustment
         const feedbackBias = computeFeedbackBias(candTags, lt.artistName, tasteProfile);
 
-        const finalScore = behaviorScore + (vibeScore + bpmCompensation * 0.6) + (diggingScore + bpmCompensation * 0.4) + sourceScore + crossPlatformScore + bpmScore + feedbackBias;
+        // Renormalize: when BPM missing, scale core factors to fill 85-point budget
+        const rawScore = behaviorScore + vibeScore + diggingScore + sourceScore + crossPlatformScore + bpmScore;
+        const rawMax = hasBpmData ? 85 : 75;  // 75 = core factors only, 85 = core + BPM
+        const normalizedScore = rawMax > 0 ? (rawScore / rawMax) * 85 : 0;
+        const finalScore = normalizedScore + feedbackBias;
         scored.push({
           name: lt.name,
           artistName: lt.artistName,
@@ -904,9 +1010,9 @@ permalink: /digging/
     /* ── Main Flow ── */
     async function handleSubmit(e) {
       e.preventDefault();
-      const trackId = parseTrackId($input.value);
-      if (!trackId) {
-        showError('Please enter a valid Spotify track URL.');
+      const parsed = parseTrackInput($input.value);
+      if (!parsed) {
+        showError('Please enter a valid Spotify or Apple Music URL.');
         return false;
       }
 
@@ -924,7 +1030,12 @@ permalink: /digging/
 
       try {
         // 1. Get seed track info
-        const track = await proxyFetch('/v1/tracks/' + trackId);
+        let track;
+        if (parsed.type === 'spotify') {
+          track = await proxyFetch('/v1/tracks/' + parsed.id);
+        } else {
+          track = await fetchAppleMusicTrack(parsed.id);
+        }
         currentSeedTrack = track;
         renderSeedTrack(track);
 
@@ -938,11 +1049,18 @@ permalink: /digging/
         }
 
         // 3. Apply diversity filter (strict 1 per artist)
-        const results = applyDiversityFilter(scored);
+        const filtered = applyDiversityFilter(scored);
+
+        // 4. Enrich with Deezer Track Features (2nd-stage scoring)
+        const tfData = await enrichWithTrackFeatures(track, filtered);
+        const tfStats = tfData.stats || {};
+        // Add Track Features status to sourceStats
+        sourceStats['Track Features'] = !!(tfData.seed) && !tfStats.rateLimited;
+        const results = rerankWithTrackFeatures(filtered, tfData.seed, tfData.candidates);
 
         recommendedTracks = results;
         hideLoading();
-        renderResults(results, sourceStats);
+        renderResults(results, sourceStats, tfStats.rateLimited);
         renderPlaylistBar();
         renderAuth();
 
@@ -979,7 +1097,7 @@ permalink: /digging/
         '</div>';
     }
 
-    function renderResults(results, sourceStats) {
+    function renderResults(results, sourceStats, tfRateLimited) {
       if (results.length === 0) {
         $results.innerHTML = '<div class="dig-error">No similar tracks found.</div>';
         return;
@@ -994,8 +1112,9 @@ permalink: /digging/
           '<span title="' + escHtml(name) + '" style="display:inline-block;width:6px;height:6px;border-radius:50;background:' +
           (ok ? 'var(--accent-sub)' : 'var(--fg-faint)') + ';opacity:' + (ok ? '1' : '0.3') + '"></span>'
         ).join('');
+        const limitedNote = tfRateLimited ? ' <span style="opacity:0.6">(audio features limited)</span>' : '';
         sourceHtml = '<span class="dig-source-stats" style="font-size:11px;color:var(--fg-faint);display:flex;align-items:center;gap:4px">' +
-          dots + ' ' + active + '/' + total + ' sources' +
+          dots + ' ' + active + '/' + total + ' sources' + limitedNote +
           '</span>';
       }
 
@@ -1153,6 +1272,42 @@ permalink: /digging/
       return null;
     }
 
+    // Search iTunes for preview URL
+    async function findItunesPreview(name, artist) {
+      const queries = [
+        name + ' ' + artist,
+        normalizeTitle(name) + ' ' + artist,
+      ];
+
+      for (const q of queries) {
+        try {
+          const endpoint = '/search?term=' + encodeURIComponent(q) + '&media=music&entity=song&limit=5';
+          const res = await fetch(CONFIG.workerUrl + '/api/itunes?endpoint=' + encodeURIComponent(endpoint));
+          if (!res.ok) continue;
+          const data = await res.json();
+          if (!data?.results) continue;
+
+          const artistLower = artist.toLowerCase();
+          const nameLower = normalizeTitle(name);
+
+          // Best match: exact title+artist with preview
+          for (const t of data.results) {
+            if (!t.previewUrl) continue;
+            const tArtist = (t.artistName || '').toLowerCase();
+            const tTitle = normalizeTitle(t.trackName || '');
+            if (tArtist === artistLower || tTitle === nameLower) return t.previewUrl;
+          }
+
+          // Fallback: first result with preview
+          for (const t of data.results) {
+            if (t.previewUrl) return t.previewUrl;
+          }
+        } catch { continue; }
+      }
+
+      return null;
+    }
+
     async function renderPlayerBySearch(name, artist, index) {
       const requestId = ++currentPlayRequestId;
 
@@ -1176,7 +1331,9 @@ permalink: /digging/
       let previewUrl = getCachedPreview(cacheKey);
 
       if (!previewUrl) {
-        previewUrl = await findDeezerPreview(name, artist);
+        // Try iTunes first (longer previews, no expiry), then Deezer fallback
+        previewUrl = await findItunesPreview(name, artist);
+        if (!previewUrl) previewUrl = await findDeezerPreview(name, artist);
         if (previewUrl) setCachedPreview(cacheKey, previewUrl);
       }
 
@@ -1200,7 +1357,7 @@ permalink: /digging/
             audio.removeEventListener('error', onAudioError);
             if (requestId !== currentPlayRequestId) return;
             deezerPreviewCache.delete(cacheKey);
-            const retryUrl = await findDeezerPreview(name, artist);
+            const retryUrl = await findItunesPreview(name, artist) || await findDeezerPreview(name, artist);
             if (requestId !== currentPlayRequestId) return;
             if (retryUrl) {
               setCachedPreview(cacheKey, retryUrl);
@@ -1290,7 +1447,12 @@ permalink: /digging/
     };
 
     window.__digPlaySeed = function () {
-      if (currentSeedTrack) renderPlayer(currentSeedTrack.id);
+      if (!currentSeedTrack) return;
+      if (currentSeedTrack._source === 'apple') {
+        renderPlayerBySearch(currentSeedTrack.name, currentSeedTrack.artists[0]?.name, -1);
+      } else {
+        renderPlayer(currentSeedTrack.id);
+      }
     };
 
     window.__digToggleAll = function (checked) {
