@@ -398,8 +398,15 @@ permalink: /digging/
         }
         // Apple Music URL
         if (url.hostname === 'music.apple.com' || url.hostname === 'geo.music.apple.com') {
-          const trackId = url.searchParams.get('i');
-          if (trackId && /^\d+$/.test(trackId)) return { type: 'apple', id: trackId };
+          // Pattern 1: /album/slug/albumId?i=trackId
+          const trackIdParam = url.searchParams.get('i');
+          if (trackIdParam && /^\d+$/.test(trackIdParam)) return { type: 'apple', id: trackIdParam };
+          // Pattern 2: /song/slug/trackId
+          const parts = url.pathname.split('/').filter(Boolean);
+          const songIdx = parts.indexOf('song');
+          if (songIdx !== -1 && parts[songIdx + 2] && /^\d+$/.test(parts[songIdx + 2])) {
+            return { type: 'apple', id: parts[songIdx + 2] };
+          }
         }
       } catch { }
       // Raw Spotify ID
