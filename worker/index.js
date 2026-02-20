@@ -315,7 +315,10 @@ async function handleItunes(url, origin) {
   }
 
   try {
-    const itunesRes = await fetch(ITUNES_API_BASE + endpoint);
+    const targetUrl = ITUNES_API_BASE + endpoint;
+    const itunesRes = await fetch(targetUrl, {
+      cf: { cacheTtl: 0 },
+    });
     const body = await itunesRes.text();
 
     if (!itunesRes.ok) {
