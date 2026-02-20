@@ -407,6 +407,25 @@ permalink: /digging/
       return null;
     }
 
+    /* ── iTunes JSONP (bypasses CORS without proxy) ── */
+    let jsonpCounter = 0;
+    function itunesJsonp(url) {
+      return new Promise(function (resolve, reject) {
+        var cb = '_itcb_' + (++jsonpCounter) + '_' + Date.now();
+        var script = document.createElement('script');
+        var timer = setTimeout(function () { cleanup(); reject(new Error('iTunes timeout')); }, 8000);
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[cb];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+        window[cb] = function (data) { cleanup(); resolve(data); };
+        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cb;
+        script.onerror = function () { cleanup(); reject(new Error('iTunes JSONP failed')); };
+        document.head.appendChild(script);
+      });
+    }
+
     /* ── Apple Music: iTunes lookup → Spotify-compatible format ── */
     function itunesTrackToSpotifyFormat(itunes) {
       return {
@@ -429,11 +448,8 @@ permalink: /digging/
     }
 
     async function fetchAppleMusicTrack(appleTrackId) {
-      const url = CONFIG.workerUrl + '/api/itunes?endpoint=' + encodeURIComponent('/lookup?id=' + appleTrackId);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('iTunes lookup failed: ' + res.status);
-      const data = await res.json();
-      const track = (data.results || []).find(r => r.wrapperType === 'track');
+      const data = await itunesJsonp('https://itunes.apple.com/lookup?id=' + appleTrackId);
+      const track = (data.results || []).find(function (r) { return r.wrapperType === 'track'; });
       if (!track) throw new Error('Track not found on Apple Music.');
       return itunesTrackToSpotifyFormat(track);
     }
@@ -1272,7 +1288,7 @@ permalink: /digging/
       return null;
     }
 
-    // Search iTunes for preview URL
+    // Search iTunes for preview URL (via JSONP)
     async function findItunesPreview(name, artist) {
       const queries = [
         name + ' ' + artist,
@@ -1281,10 +1297,9 @@ permalink: /digging/
 
       for (const q of queries) {
         try {
-          const endpoint = '/search?term=' + encodeURIComponent(q) + '&media=music&entity=song&limit=5';
-          const res = await fetch(CONFIG.workerUrl + '/api/itunes?endpoint=' + encodeURIComponent(endpoint));
-          if (!res.ok) continue;
-          const data = await res.json();
+          const data = await itunesJsonp(
+            'https://itunes.apple.com/search?term=' + encodeURIComponent(q) + '&media=music&entity=song&limit=5'
+          );
           if (!data?.results) continue;
 
           const artistLower = artist.toLowerCase();
