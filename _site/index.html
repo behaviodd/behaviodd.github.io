@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bhvd</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --fg: #c8c8c8;
+      --fg-bright: #ececf1;
+      --fg-muted: #aaa;
+      --fg-faint: #999;
+      --bg: #0a0a0a;
+      --accent: #B2B9F4;
+      --accent-dim: rgba(178, 185, 244, 0.08);
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-dim: rgba(92, 201, 202, 0.08);
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --border: #444;
+      --surface: rgba(255, 255, 255, 0.03);
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
+    }
+
+    html {
+      font-family: var(--font);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg-bright);
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-prompt {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: text-shadow 0.2s;
+    }
+
+    .site-prompt:hover {
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: var(--accent-sub);
+      border-color: var(--border);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--fg-faint);
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 48px 0;
+    }
+
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(6px, 1.8vw, 11px);
+      line-height: 1.15;
+      color: var(--accent);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 48px;
+      padding: 24px 20px;
+      border: 1px dashed var(--border);
+    }
+
+    .hero h1 {
+      font-size: clamp(22px, 5.5vw, 36px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .hero .term-cmd {
+      font-size: 11px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+    }
+
+    .hero .term-cmd span {
+      color: var(--fg-muted);
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .section-label::before {
+      content: '/* ';
+      color: var(--fg-faint);
+    }
+
+    .section-label::after {
+      content: ' */';
+      color: var(--fg-faint);
+    }
+
+    /* ── Projects ── */
+    .project-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .project {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .project:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .project:hover .project-name {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .project:hover .arrow {
+      color: var(--accent-sub);
+      transform: translateX(2px);
+    }
+
+    .project-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .project-prefix {
+      color: var(--accent-sub);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .project-name {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    .project-desc {
+      font-size: 11px;
+      color: var(--fg-faint);
+      margin-left: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Post list ── */
+    .post-item {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .post-item:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .post-item:hover .post-title {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .post-date {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+    }
+
+    .post-title {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    /* ── Prose (blog content) ── */
+    .prose h2 {
+      font-size: 14px;
+      font-weight: 400;
+      margin: 40px 0 12px;
+      color: var(--accent);
+    }
+
+    .prose h2::before {
+      content: '## ';
+      color: var(--accent-sub);
+    }
+
+    .prose h3 {
+      font-size: 12px;
+      font-weight: 400;
+      margin: 28px 0 10px;
+      color: var(--fg-bright);
+    }
+
+    .prose h3::before {
+      content: '### ';
+      color: var(--accent-sub);
+    }
+
+    .prose p {
+      margin-bottom: 16px;
+    }
+
+    .prose ul,
+    .prose ol {
+      margin: 0 0 16px 20px;
+    }
+
+    .prose li {
+      margin-bottom: 4px;
+    }
+
+    .prose li::marker {
+      color: var(--accent-sub);
+    }
+
+    .prose blockquote {
+      border-left: 2px solid var(--accent-sub);
+      padding: 8px 16px;
+      color: var(--fg-muted);
+      margin: 0 0 16px;
+      background: var(--surface);
+    }
+
+    .prose code {
+      font-family: var(--font);
+      font-size: 11px;
+      background: rgba(92, 201, 202, 0.08);
+      color: var(--accent-sub);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .prose pre {
+      background: #000;
+      border: 1px dashed var(--border);
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .prose pre code {
+      background: none;
+      padding: 0;
+      color: var(--fg);
+    }
+
+    .prose hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 32px 0;
+    }
+
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 16px;
+      border: 1px dashed var(--border);
+    }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .prose a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Profile ── */
+    .profile-section {
+      margin-bottom: 48px;
+    }
+
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+    }
+
+    .profile-row dt {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      min-width: 80px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .profile-row dd {
+      font-size: 11px;
+      color: var(--fg-bright);
+    }
+
+    .profile-row dd a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .profile-row dd a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 24px 0;
+      border-top: 1px dashed var(--border);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-faint);
+      letter-spacing: 0.5px;
+    }
+
+    .footer-inner .status {
+      color: var(--accent-sub);
+      opacity: 0.7;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .project {
+        flex-wrap: wrap;
+      }
+
+      .project-desc {
+        margin-left: 28px;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .hero {
+        padding: 16px 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <nav>
+          <a href="/">home</a>
+          <a href="/blog/">blog</a>
+          <a href="/profile/">profile</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      
+      <div class="hero">
+  <pre class="ascii-art"> ________  ___  ___  ___      ___ ________
+|\   __  \|\  \|\  \|\  \    /  /|\   ___ \
+\ \  \|\ /\ \  \\\  \ \  \  /  / | \  \_|\ \
+ \ \   __  \ \   __  \ \  \/  / / \ \  \ \\ \
+  \ \  \|\  \ \  \ \  \ \    / /   \ \  \_\\ \
+   \ \_______\ \__\ \__\ \__/ /     \ \_______\
+    \|_______|\|__|\|__|\|__|/       \|_______|</pre>
+  <div class="term-cmd">$ <span>ls ~/projects/</span></div>
+  <p>A collection of things I've built.</p>
+</div>
+
+<div class="section-label">Works</div>
+
+<div class="project-list">
+  <a href="https://matome-keyword.vercel.app/" class="project" target="_blank" rel="noopener">
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">MATOME Keyword</span>
+    </div>
+    <span class="project-desc">News aggregation &amp; AI summary</span>
+
+  </a>
+  <a href="https://aerowriting.vercel.app/" class="project" target="_blank" rel="noopener">
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">Aero Writing</span>
+    </div>
+    <span class="project-desc">Writing tool</span>
+
+  </a>
+  <a href="/digging/" class="project" target="_blank" rel="noopener">
+    <div class="project-left">
+      <span class="project-prefix">drwxr-xr-x</span>
+      <span class="project-name">K-POP Digging Club</span>
+    </div>
+    <span class="project-desc">Find similar K-POP tracks</span>
+
+  </a>
+</div>
+
+
+<div class="section-label" style="margin-top: 48px;">Recent Posts</div>
+
+<div class="project-list">
+  
+  <a href="/blog/digging/" class="post-item">
+    <span class="post-date">2026-02-19</span>
+    <span class="post-title">K-POP Digging Club Released.</span>
+  </a>
+  
+  <a href="/blog/lunanewyear/" class="post-item">
+    <span class="post-date">2026-02-15</span>
+    <span class="post-title">즐거운 명절입니다.</span>
+  </a>
+  
+  <a href="/blog/hello/" class="post-item">
+    <span class="post-date">2026-02-14</span>
+    <span class="post-title">Happy Valentine's Day!</span>
+  </a>
+  
+</div>
+
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span>&copy; 2026 bhvd</span>
+        <span class="status">all systems operational</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
