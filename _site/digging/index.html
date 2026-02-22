@@ -1,0 +1,2170 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digging Club — K-POP Digging Club</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --fg: #ececf1;
+      --fg-80: #ececf1cc;
+      --fg-60: #aaa;
+      --fg-50: #999;
+      --bg: #000;
+      --border: rgba(255, 255, 255, 0.2);
+      --border-strong: rgba(255, 255, 255, 0.35);
+      --accent: #B2B9F4;
+      --accent-dim: #B2B9F4b3;
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --surface: rgba(255, 255, 255, 0.03);
+      --surface-solid: #000;
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    html {
+      font-family: var(--font);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
+
+    body.dig-player-open main {
+      padding-bottom: 120px;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg);
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #000;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    /* ── Back Link ── */
+    .dig-back {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dig-back a {
+      color: var(--fg-50);
+      text-decoration: none;
+      font-size: 11px;
+      transition: all 0.2s;
+      letter-spacing: 0.5px;
+    }
+
+    .dig-back a:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 48px 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      align-self: flex-start;
+    }
+
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(3.5px, 1.05vw, 7px);
+      line-height: 1.1;
+      color: var(--accent);
+      margin-bottom: 16px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.7;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 48px;
+    }
+
+    .hero h1 {
+      font-size: clamp(28px, 7vw, 44px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    .hero p {
+      font-size: 12px;
+      color: var(--fg-50);
+    }
+
+    .prompt-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .prompt {
+      color: var(--accent-sub);
+    }
+
+    .cursor {
+      animation: blink 1s step-end infinite;
+      color: var(--accent);
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* ── Digging Club Form ── */
+    .dig-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .dig-input-wrap {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .dig-url-input {
+      width: 100%;
+      padding: 10px 40px 10px 14px;
+      font-size: 12px;
+      font-family: var(--font);
+      color: var(--fg);
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 0;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .dig-url-input:focus {
+      border-color: var(--accent-sub);
+      box-shadow: 0 0 12px rgba(92, 201, 202, 0.15);
+    }
+
+    .dig-url-input::placeholder {
+      color: var(--fg-50);
+    }
+
+    .dig-paste-btn {
+      position: absolute;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 0;
+      color: var(--fg-50);
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, text-shadow 0.2s;
+    }
+
+    .dig-paste-btn:hover {
+      color: var(--fg);
+      border-color: var(--accent-sub);
+      text-shadow: 0 0 4px var(--accent-sub);
+    }
+
+    .dig-submit-btn {
+      padding: 10px 20px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font);
+      color: #000;
+      background: var(--accent);
+      border: none;
+      border-radius: 0;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      flex-shrink: 0;
+    }
+
+    .dig-submit-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .dig-submit-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Seed Card ── */
+    .dig-seed {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 0;
+      margin-bottom: 32px;
+      align-items: center;
+      background: var(--surface);
+      transition: border-color 0.2s;
+    }
+
+    .dig-seed:hover {
+      border-color: var(--border-strong);
+    }
+
+    .dig-seed img {
+      width: 80px;
+      height: 80px;
+      border-radius: 0;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .dig-seed-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dig-seed-title {
+      font-size: 15px;
+      color: var(--fg);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .dig-seed-artist {
+      font-size: 13px;
+      color: var(--fg-60);
+      margin-bottom: 8px;
+    }
+
+    .dig-feature-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .dig-feature-tag {
+      font-size: 10px;
+      padding: 3px 10px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--accent-sub);
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Loading ── */
+    .dig-loading {
+      text-align: center;
+      padding: 48px 0;
+      color: var(--fg-60);
+      font-size: 14px;
+    }
+
+    .dig-loading::after {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 24px;
+      margin: 16px auto 0;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent-sub);
+      border-radius: 50%;
+      animation: dig-spin 0.6s linear infinite;
+    }
+
+    @keyframes dig-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ── Results ── */
+    .dig-results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .dig-results-count {
+      font-size: 11px;
+      color: var(--accent-sub);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .dig-result-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dig-result-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 8px;
+      border-top: 1px solid var(--border);
+      border-radius: 0;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .dig-result-item:last-child {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .dig-result-item:hover {
+      background: rgba(92, 201, 202, 0.04);
+      border-color: var(--border-strong);
+    }
+
+    .dig-result-item:hover .dig-result-title {
+      color: var(--accent);
+      text-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    .dig-result-item.dig-playing {
+      background: rgba(178, 185, 244, 0.06);
+      border-color: var(--border-strong);
+      box-shadow: 0 0 8px rgba(178, 185, 244, 0.05);
+    }
+
+    .dig-result-item.dig-playing .dig-result-title {
+      color: var(--accent);
+      text-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    .dig-result-check {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent-sub);
+    }
+
+    .dig-result-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 0;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .dig-result-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dig-result-title {
+      font-size: 12px;
+      color: var(--fg);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.2s;
+    }
+
+    .dig-result-artist {
+      font-size: 12px;
+      color: var(--fg-60);
+    }
+
+    /* ── Feedback Buttons ── */
+    .dig-feedback-btns {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .dig-fb-btn {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      border-radius: 0;
+      color: var(--fg-60);
+      cursor: pointer;
+      font-family: "Apple Color Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+      font-size: 14px;
+      line-height: 1;
+      min-width: 28px;
+      min-height: 28px;
+      padding: 4px 6px;
+      transition: all 0.15s;
+    }
+
+    .dig-fb-btn:hover {
+      color: var(--fg);
+      border-color: var(--accent-sub);
+      background: rgba(92, 201, 202, 0.06);
+    }
+
+    .dig-fb-like.dig-fb-active {
+      color: #e05;
+      border-color: #e05;
+      background: rgba(238, 0, 85, 0.1);
+    }
+
+    .dig-fb-dislike.dig-fb-active {
+      color: var(--fg-50);
+      border-color: var(--fg-50);
+      opacity: 0.6;
+    }
+
+    .dig-taste-indicator {
+      font-size: 11px;
+      color: var(--fg-60);
+      padding: 4px 0;
+    }
+
+    /* ── Playlist Bar ── */
+    .dig-playlist-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .dig-playlist-bar label {
+      font-size: 12px;
+      color: var(--fg-60);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .dig-playlist-bar .dig-submit-btn {
+      margin-left: auto;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    /* ── Auth Section ── */
+    .dig-auth-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--fg-50);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dig-auth-section a {
+      color: var(--accent-sub);
+      text-decoration: none;
+      cursor: pointer;
+      transition: text-shadow 0.2s;
+    }
+
+    .dig-auth-section a:hover {
+      text-shadow: 0 0 6px var(--accent-sub-glow);
+      text-decoration: underline;
+    }
+
+    /* ── Mini Player Bar ── */
+    .dig-player-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #000;
+      border-top: 1px solid var(--accent-sub);
+      z-index: 50;
+      padding: 8px 16px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+
+    .dig-player-bar.dig-player-show {
+      transform: translateY(0);
+    }
+
+    .dig-player-bar .dig-player-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .dig-player-bar .dig-player-close {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: none;
+      border: none;
+      color: var(--fg-50);
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      z-index: 2;
+      transition: color 0.15s, text-shadow 0.15s;
+    }
+
+    .dig-player-bar .dig-player-close:hover {
+      color: var(--fg);
+      text-shadow: 0 0 4px var(--accent-sub);
+    }
+
+    .dig-player-bar iframe {
+      width: 100%;
+      border: none;
+      border-radius: 0;
+      display: block;
+    }
+
+    /* ── Toast ── */
+    .dig-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--accent-sub);
+      color: #000;
+      padding: 10px 20px;
+      border-radius: 0;
+      font-size: 13px;
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    body.dig-player-open .dig-toast {
+      bottom: 110px;
+    }
+
+    .dig-toast.dig-toast-show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── Error ── */
+    .dig-error {
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 0;
+      color: var(--fg-60);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      main {
+        padding: 24px 12px;
+      }
+
+      .dig-form {
+        flex-direction: column;
+      }
+
+      .dig-url-input {
+        font-size: 16px;
+      }
+
+      .dig-seed {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .dig-seed img {
+        width: 120px;
+        height: 120px;
+      }
+
+      .dig-feature-tags {
+        justify-content: center;
+      }
+
+      .dig-playlist-bar {
+        flex-wrap: wrap;
+      }
+    }
+
+    /* ── Footer ── */
+    .dig-footer {
+      text-align: center;
+      padding: 32px 0 24px;
+      font-size: 11px;
+      color: var(--fg-50);
+      letter-spacing: 1px;
+    }
+
+    .dig-footer a {
+      color: var(--accent-sub);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .dig-footer a:hover {
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+  </style>
+</head>
+
+<body>
+
+  <main>
+    <div class="container">
+      <pre class="ascii-art">
+       ,--.          ,-.----.       ,----..   ,-.----.
+   ,--/  /|          \    /  \     /   /   \  \    /  \
+,---,': / '          |   :    \   /   .     : |   :    \
+:   : '/ /     ,---,.|   |  .\ : .   /   ;.  \|   |  .\ :
+|   '   ,    ,'  .' |.   :  |: |.   ;   /  ` ;.   :  |: |
+'   |  /   ,---.'   ,|   |   \ :;   |  ; \ ; ||   |   \ :
+|   ;  ;   |   |    ||   : .   /|   :  | ; | '|   : .   /
+:   '   \  :   :  .' ;   | |`-' .   |  ' ' ' :;   | |`-'
+|   |    ' :   |.'   |   | ;    '   ;  \; /  ||   | ;
+'   : |.  \`---'     :   ' |     \   \  ',  / :   ' |
+|   | '_\.'          :   : :      ;   :    /  :   : :
+'   : |              |   | :       \   \ .'   |   | :
+;   |,'              `---'.|        `---`     `---'.|
+'---'                  `---`                    `---`
+    ,---,
+  .'  .' `\    ,--,                          ,--,
+,---.'     \ ,--.'|                        ,--.'|         ,---,
+|   |  .`\  ||  |,     ,----._,.  ,----._,.|  |,      ,-+-. /  |  ,----._,.
+:   : |  '  |`--'_    /   /  ' / /   /  ' /`--'_     ,--.'|'   | /   /  ' /
+|   ' '  ;  :,' ,'|  |   :     ||   :     |,' ,'|   |   |  ,"' ||   :     |
+'   | ;  .  |'  | |  |   | .\  .|   | .\  .'  | |   |   | /  | ||   | .\  .
+|   | :  |  '|  | :  .   ; ';  |.   ; ';  ||  | :   |   | |  | |.   ; ';  |
+'   : | /  ; '  : |__'   .   . |'   .   . |'  : |__ |   | |  |/ '   .   . |
+|   | '` ,/  |  | '.'|`---`-'| | `---`-'| ||  | '.'||   | |--'   `---`-'| |
+;   :  .'    ;  :    ;.'__/\_: | .'__/\_: |;  :    ;|   |/       .'__/\_: |
+|   ,.'      |  ,   / |   :    : |   :    :|  ,   / '---'        |   :    :
+'---'         ---`-'   \   \  /   \   \  /  ---`-'                \   \  /
+  ,----..    ,--,       `--`-'     `--`-'                          `--`-'
+ /   /   \ ,--.'|                  ,---,
+|   :     :|  | :            ,--,,---.'|
+.   |  ;. /:  : '          ,'_ /||   | :
+.   ; /--` |  ' |     .--. |  | ::   : :
+;   | ;    '  | |   ,'_ /| :  . |:     |,-.
+|   : |    |  | :   |  ' | |  . .|   : '  |
+.   | '___ '  : |__ |  | ' |  | ||   |  / :
+'   ; : .'||  | '.'|:  | : ;  ; |'   : |: |
+'   | '/  :;  :    ;'  :  `--'   \   | '/ :
+|   :    / |  ,   / :  ,      .-./   :    |
+ \   \ .'   ---`-'   `--`----'   /    \  /
+  `---`                          `-'----'
+</pre>
+
+<div class="hero">
+  <h1>K-POP Digging Club<span class="cursor">_</span></h1>
+  <p class="prompt-line"><span class="prompt">@visitor:$</span> paste a spotify track link and discover similar songs
+  </p>
+</div>
+
+<form class="dig-form" id="digForm" onsubmit="return handleSubmit(event)">
+  <div class="dig-input-wrap">
+    <input type="text" class="dig-url-input" id="trackInput" placeholder="https://open.spotify.com/track/..."
+      autocomplete="off" />
+    <button type="button" class="dig-paste-btn" id="pasteBtn" aria-label="Paste">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="2" width="6" height="3" rx="1" />
+        <path d="M4 4H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-1" />
+      </svg>
+    </button>
+  </div>
+  <button type="submit" class="dig-submit-btn" id="digBtn">Dig</button>
+</form>
+
+<div id="seedCard"></div>
+<div id="loadingArea"></div>
+<div id="errorArea"></div>
+<div id="resultsArea"></div>
+<div id="playlistBar"></div>
+<div id="authSection"></div>
+<div id="playerArea" class="dig-player-bar"></div>
+<div id="toastEl" class="dig-toast"></div>
+
+<script>
+  (function () {
+    'use strict';
+
+    /* ── CONFIG ── */
+    const CONFIG = {
+      workerUrl: 'https://kpop-digging-proxy.behaviodd.workers.dev',
+      clientId: '73c2a2252db34c748e7eeb88c8a2aa20',
+      redirectUri: 'https://behaviodd.github.io/callback/',
+      scopes: 'playlist-modify-public playlist-modify-private',
+    };
+
+    /* ── DOM refs ── */
+    const $form = document.getElementById('digForm');
+    const $input = document.getElementById('trackInput');
+    const $btn = document.getElementById('digBtn');
+    const $seed = document.getElementById('seedCard');
+    const $loading = document.getElementById('loadingArea');
+    const $error = document.getElementById('errorArea');
+    const $results = document.getElementById('resultsArea');
+    const $playlistBar = document.getElementById('playlistBar');
+    const $auth = document.getElementById('authSection');
+    const $player = document.getElementById('playerArea');
+    const $toast = document.getElementById('toastEl');
+
+    let currentSeedTrack = null;
+    let recommendedTracks = [];
+    let spotifyIFrameAPI = null;
+
+    window.onSpotifyIframeApiReady = function (IFrameAPI) {
+      spotifyIFrameAPI = IFrameAPI;
+    };
+
+    /* ── API Proxy with exponential backoff ── */
+    let rateLimitHits = 0;
+
+    async function proxyFetch(endpoint) {
+      const url = CONFIG.workerUrl + '/api/spotify?endpoint=' + encodeURIComponent(endpoint);
+      const MAX_RETRIES = 3;
+      let delay = 1000;
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        const res = await fetch(url);
+        if (res.status === 429) {
+          rateLimitHits++;
+          if (attempt < MAX_RETRIES) {
+            const retryAfter = res.headers.get('Retry-After');
+            const wait = retryAfter ? parseInt(retryAfter) * 1000 : delay;
+            await new Promise(r => setTimeout(r, wait));
+            delay *= 2;
+            continue;
+          }
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || 'API error ' + res.status);
+        }
+        return res.json();
+      }
+    }
+
+    /* ── Batch runner (optional inter-batch delay) ── */
+    async function batchAll(tasks, batchSize, delayMs) {
+      batchSize = batchSize || 8;
+      const results = [];
+      for (let i = 0; i < tasks.length; i += batchSize) {
+        if (i > 0 && delayMs) await new Promise(r => setTimeout(r, delayMs));
+        const batch = tasks.slice(i, i + batchSize);
+        const batchResults = await Promise.all(batch.map(fn => fn()));
+        results.push(...batchResults);
+      }
+      return results;
+    }
+
+    /* ── Last.fm API Proxy ── */
+    async function lastfmFetch(params) {
+      try {
+        const qs = new URLSearchParams(params).toString();
+        const res = await fetch(CONFIG.workerUrl + '/api/lastfm?' + qs);
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    }
+
+    /* ── MusicBrainz API Proxy (1 req/s client-side queue) ── */
+    const mbQueue = [];
+    let mbProcessing = false;
+
+    function musicbrainzFetch(path, params) {
+      return new Promise((resolve) => {
+        mbQueue.push({ path, params, resolve });
+        if (!mbProcessing) processMbQueue();
+      });
+    }
+
+    async function processMbQueue() {
+      mbProcessing = true;
+      while (mbQueue.length > 0) {
+        const { path, params, resolve } = mbQueue.shift();
+        try {
+          const qs = new URLSearchParams({ path, ...(params || {}) }).toString();
+          const res = await fetch(CONFIG.workerUrl + '/api/musicbrainz?' + qs);
+          resolve(res.ok ? await res.json() : null);
+        } catch { resolve(null); }
+        if (mbQueue.length > 0) await new Promise(r => setTimeout(r, 1100));
+      }
+      mbProcessing = false;
+    }
+
+    /* ── ListenBrainz Labs API Proxy (POST) ── */
+    async function listenbrainzFetch(endpoint, body) {
+      try {
+        const res = await fetch(
+          CONFIG.workerUrl + '/api/listenbrainz?endpoint=' + encodeURIComponent(endpoint),
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        );
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    }
+
+    /* ── Deezer API Proxy ── */
+    async function deezerFetch(path, params) {
+      try {
+        const qs = new URLSearchParams({ path, ...(params || {}) }).toString();
+        const res = await fetch(CONFIG.workerUrl + '/api/deezer?' + qs);
+        if (!res.ok) return null;
+        return res.json();
+      } catch { return null; }
+    }
+
+    /* ── MusicBrainz MBID resolvers ── */
+    async function resolveArtistMBID(name) {
+      try {
+        const data = await musicbrainzFetch('artist', { query: name, limit: '1' });
+        const artist = data?.artists?.[0];
+        if (artist && artist.score >= 90) return artist.id;
+        return null;
+      } catch { return null; }
+    }
+
+    async function resolveRecordingMBID(track, artist) {
+      try {
+        const data = await musicbrainzFetch('recording', {
+          query: 'recording:"' + track + '" AND artist:"' + artist + '"',
+          limit: '1',
+        });
+        const rec = data?.recordings?.[0];
+        if (rec && rec.score >= 90) return rec.id;
+        return null;
+      } catch { return null; }
+    }
+
+    /* ── Source D: ListenBrainz similar artists ── */
+    async function getListenBrainzSimilarArtists(artistMbid) {
+      if (!artistMbid) return [];
+      try {
+        const data = await listenbrainzFetch(
+          'similar-artists/json',
+          [{ artist_mbids: [artistMbid], algorithm: 'session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30' }]
+        );
+        if (!data || !Array.isArray(data)) return [];
+        return data.slice(0, 15).map(r => ({
+          name: r.name || '',
+          mbid: r.artist_mbid || '',
+          score: r.score || 0,
+        })).filter(a => a.name);
+      } catch { return []; }
+    }
+
+    /* ── Source E: Deezer related artists + top tracks ── */
+    async function getDeezerRelatedArtists(artistName) {
+      try {
+        // Search for artist on Deezer
+        const searchData = await deezerFetch('search/artist', { q: artistName, limit: '1' });
+        const dzArtist = searchData?.data?.[0];
+        if (!dzArtist) return [];
+
+        // Get related artists
+        const relData = await deezerFetch('artist/' + dzArtist.id + '/related', { limit: '10' });
+        return (relData?.data || []).map(a => ({
+          id: a.id,
+          name: a.name,
+        }));
+      } catch { return []; }
+    }
+
+    async function getDeezerArtistTopTracks(artistId) {
+      try {
+        const data = await deezerFetch('artist/' + artistId + '/top', { limit: '3' });
+        return (data?.data || []).map(t => ({
+          name: t.title || t.title_short || '',
+          artist: { name: t.artist?.name || '' },
+          match: 0.4,
+        }));
+      } catch { return []; }
+    }
+
+    /* ── Seed BPM from Deezer ── */
+    async function getSeedBpm(trackName, artistName) {
+      try {
+        const data = await deezerFetch('search/track', {
+          q: trackName + ' ' + artistName, limit: '3'
+        });
+        for (const t of (data?.data || [])) {
+          if (t.bpm && t.bpm > 0) return { bpm: t.bpm, deezerId: t.id };
+        }
+        return { bpm: null, deezerId: null };
+      } catch { return { bpm: null, deezerId: null }; }
+    }
+
+    /* ── PKCE Auth ── */
+    function generateCodeVerifier() {
+      const arr = new Uint8Array(64);
+      crypto.getRandomValues(arr);
+      return btoa(String.fromCharCode(...arr))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async function sha256(plain) {
+      const data = new TextEncoder().encode(plain);
+      return crypto.subtle.digest('SHA-256', data);
+    }
+
+    function base64UrlEncode(buf) {
+      return btoa(String.fromCharCode(...new Uint8Array(buf)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async function buildAuthUrl() {
+      const verifier = generateCodeVerifier();
+      const challenge = base64UrlEncode(await sha256(verifier));
+      localStorage.setItem('pkce_verifier', verifier);
+      localStorage.setItem('pending_track_url', $input.value);
+
+      const params = new URLSearchParams({
+        client_id: CONFIG.clientId,
+        response_type: 'code',
+        redirect_uri: CONFIG.redirectUri,
+        scope: CONFIG.scopes,
+        code_challenge_method: 'S256',
+        code_challenge: challenge,
+      });
+      return 'https://accounts.spotify.com/authorize?' + params.toString();
+    }
+
+    function getStoredToken() {
+      const raw = localStorage.getItem('spotify_token');
+      if (!raw) return null;
+      try {
+        const t = JSON.parse(raw);
+        if (Date.now() > t.expires_at - 60000) return null;
+        return t;
+      } catch { return null; }
+    }
+
+    async function refreshUserToken() {
+      const raw = localStorage.getItem('spotify_token');
+      if (!raw) return null;
+      const t = JSON.parse(raw);
+      if (!t.refresh_token) return null;
+
+      const res = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: t.refresh_token,
+          client_id: CONFIG.clientId,
+        }),
+      });
+      if (!res.ok) {
+        localStorage.removeItem('spotify_token');
+        return null;
+      }
+      const data = await res.json();
+      const token = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token || t.refresh_token,
+        expires_at: Date.now() + data.expires_in * 1000,
+      };
+      localStorage.setItem('spotify_token', JSON.stringify(token));
+      return token;
+    }
+
+    async function getValidToken() {
+      let token = getStoredToken();
+      if (token) return token.access_token;
+      token = await refreshUserToken();
+      return token ? token.access_token : null;
+    }
+
+    function isLoggedIn() {
+      return !!getStoredToken();
+    }
+
+    function logout() {
+      localStorage.removeItem('spotify_token');
+      renderAuth();
+      showToast('Logged out');
+    }
+
+    /* ── Track URL Parser ── */
+    function parseTrackId(input) {
+      input = input.trim();
+      const urnMatch = input.match(/^spotify:track:([a-zA-Z0-9]{22})$/);
+      if (urnMatch) return urnMatch[1];
+      try {
+        const url = new URL(input);
+        if (url.hostname === 'open.spotify.com') {
+          const parts = url.pathname.split('/').filter(Boolean);
+          const trackIdx = parts.indexOf('track');
+          if (trackIdx !== -1 && parts[trackIdx + 1]) {
+            const id = parts[trackIdx + 1];
+            if (/^[a-zA-Z0-9]{22}$/.test(id)) return id;
+          }
+        }
+      } catch { }
+      if (/^[a-zA-Z0-9]{22}$/.test(input)) return input;
+      return null;
+    }
+
+    /* ── Title normalizer for dedup ── */
+    function normalizeTitle(name) {
+      if (!name) return '';
+      let s = name.toLowerCase();
+      s = s.replace(/\s*[\(\[\{][^\)\]\}]*[\)\]\}]\s*/g, ' ');   // (Remix), [Deluxe], {Ver.2}
+      s = s.replace(/\s*(feat\.?|ft\.?|featuring)\s+.*/i, '');     // feat. 이후 전부
+      s = s.replace(/\s+-\s+.*$/, '');                              // " - Remix" 등
+      s = s.replace(/\b(remix|remaster(ed)?|acoustic|live|ver\.?|version|inst\.?|instrumental|deluxe|special\s+edition|bonus\s+track)\b/gi, '');
+      s = s.replace(/\s+/g, ' ').trim();
+      return s;
+    }
+
+    /* ── Diversity post-filter: strict 1 per artist ── */
+    function applyDiversityFilter(scored) {
+      scored.sort((a, b) => b.match - a.match);
+      const result = [];
+      const seenArtists = new Set();
+      const seenTitles = new Set();
+
+      for (const item of scored) {
+        if (result.length >= 30) break;
+        const artistKey = item.artistName.toLowerCase();
+        if (!artistKey) continue;
+
+        if (seenArtists.has(artistKey)) continue;
+
+        const titleKey = normalizeTitle(item.name) + '|||' + artistKey;
+        if (seenTitles.has(titleKey)) continue;
+
+        seenArtists.add(artistKey);
+        seenTitles.add(titleKey);
+        result.push(item);
+      }
+
+      return result;
+    }
+
+    /* ── BPM Match Score (harmonic: half/double tempo) ── */
+    function bpmMatchScore(seedBpm, candidateBpm) {
+      if (!seedBpm || !candidateBpm) return null;
+      const directDiff = Math.abs(seedBpm - candidateBpm);
+      const halfDiff = Math.abs(seedBpm / 2 - candidateBpm);
+      const doubleDiff = Math.abs(seedBpm * 2 - candidateBpm);
+      const bestDiff = Math.min(directDiff, halfDiff, doubleDiff);
+      if (bestDiff <= 3) return 1.0;
+      if (bestDiff <= 10) return 1.0 - (bestDiff - 3) / 7 * 0.3;
+      if (bestDiff <= 25) return 0.7 - (bestDiff - 10) / 15 * 0.5;
+      if (bestDiff <= 40) return 0.2 - (bestDiff - 25) / 15 * 0.2;
+      return 0;
+    }
+
+    /* ── Taste Profile (localStorage) ── */
+    function loadTasteProfile() {
+      try {
+        const raw = localStorage.getItem('digging_taste_profile');
+        if (!raw) return { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] };
+        const p = JSON.parse(raw);
+        return p.version === 1 ? p : { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] };
+      } catch { return { version: 1, tagBias: {}, artistBias: {}, feedbackLog: [] }; }
+    }
+
+    function saveTasteProfile(profile) {
+      profile.feedbackLog = profile.feedbackLog.slice(-200);
+      try { localStorage.setItem('digging_taste_profile', JSON.stringify(profile)); }
+      catch { profile.feedbackLog = profile.feedbackLog.slice(-50);
+               localStorage.setItem('digging_taste_profile', JSON.stringify(profile)); }
+    }
+
+    function recordFeedback(trackName, artistName, tags, action) {
+      const profile = loadTasteProfile();
+      profile.feedbackLog.push({ track: trackName, artist: artistName, tags, action, ts: Date.now() });
+      // Rebuild biases from recent feedback with time decay
+      rebuildBiases(profile);
+      saveTasteProfile(profile);
+    }
+
+    function rebuildBiases(profile) {
+      const now = Date.now();
+      const HALF_LIFE = 7 * 24 * 60 * 60 * 1000; // 7 days
+      profile.tagBias = {};
+      profile.artistBias = {};
+      for (const entry of profile.feedbackLog) {
+        const age = now - (entry.ts || now);
+        const decay = Math.pow(0.5, age / HALF_LIFE);
+        const delta = (entry.action === 'like' ? 1.0 : -1.0) * decay;
+        for (const tag of (entry.tags || [])) {
+          profile.tagBias[tag] = (profile.tagBias[tag] || 0) + delta;
+        }
+        const ak = (entry.artist || '').toLowerCase();
+        if (ak) profile.artistBias[ak] = (profile.artistBias[ak] || 0) + delta * 1.5;
+      }
+      // Clamp values
+      for (const key in profile.tagBias) {
+        profile.tagBias[key] = Math.max(-5, Math.min(5, profile.tagBias[key]));
+      }
+      for (const key in profile.artistBias) {
+        profile.artistBias[key] = Math.max(-5, Math.min(5, profile.artistBias[key]));
+      }
+    }
+
+    function computeFeedbackBias(candidateTags, artistName, profile) {
+      if (!profile || !profile.feedbackLog.length) return 0;
+      let bias = 0;
+      const relevant = candidateTags.filter(t => profile.tagBias[t] !== undefined);
+      if (relevant.length > 0) {
+        bias += relevant.reduce((s, t) => s + profile.tagBias[t], 0) / relevant.length;
+      }
+      const ak = artistName.toLowerCase();
+      if (profile.artistBias[ak]) bias += profile.artistBias[ak] * 0.5;
+      return Math.max(-8, Math.min(8, bias));
+    }
+
+    /* ── TF-IDF Tag Weighting ── */
+    function buildCorpusIDF(infoByKey, candidateList, tagFilter) {
+      const docCount = candidateList.length || 1;
+      const tagDocFreq = new Map();
+      for (const lt of candidateList) {
+        const key = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
+        const rawTags = infoByKey[key]?.tags || [];
+        const tags = new Set(tagFilter ? rawTags.filter(tagFilter) : rawTags);
+        for (const tag of tags) tagDocFreq.set(tag, (tagDocFreq.get(tag) || 0) + 1);
+      }
+      const idf = new Map();
+      for (const [tag, df] of tagDocFreq) idf.set(tag, Math.log(docCount / (1 + df)));
+      return idf;
+    }
+
+    function computeTfidfVibeScore(seedTags, candidateTags, tagIdf, maxPoints) {
+      if (!seedTags.length || !candidateTags.length) return 0;
+      const candSet = new Set(candidateTags);
+      let weightedSum = 0, maxWeight = 0;
+      for (const tag of seedTags) {
+        const w = tagIdf.get(tag) ?? Math.log(81);
+        maxWeight += w;
+        if (candSet.has(tag)) weightedSum += w;
+      }
+      return maxWeight > 0 ? (weightedSum / maxWeight) * maxPoints : 0;
+    }
+
+    /* ── Hybrid Digging Algorithm (Last.fm track similarity + tag graph) ── */
+    async function discoverAndScore(seed) {
+      const seedArtistId = seed.artists[0]?.id;
+      const seedArtistName = seed.artists[0]?.name || '';
+
+      // ─── Step 1: Core data + seed profile (parallel) ───
+      showLoading('Finding similar tracks...');
+      const [lfmSimilarRaw, seedLfmTrackInfo, seedLfmArtistInfo, seedArtistMBID] = await Promise.all([
+        lastfmFetch({ method: 'track.getSimilar', artist: seedArtistName, track: seed.name, limit: '50', autocorrect: '1' }),
+        lastfmFetch({ method: 'track.getInfo', artist: seedArtistName, track: seed.name, autocorrect: '1' }),
+        lastfmFetch({ method: 'artist.getInfo', artist: seedArtistName, autocorrect: '1' }),
+        resolveArtistMBID(seedArtistName),
+      ]);
+
+      // Build combined seed tag profile (track + artist)
+      const trackTags = (seedLfmTrackInfo?.track?.toptags?.tag || []).map(t => t.name.toLowerCase());
+      const artistTags = (seedLfmArtistInfo?.artist?.tags?.tag || []).map(t => t.name.toLowerCase());
+      const allSeedTags = [...new Set([...trackTags, ...artistTags])];
+
+      // K-POP tag filter (broad)
+      const kpopFilter = new Set(['k-pop', 'kpop', 'korean', 'korean pop', 'k pop', 'hallyu',
+        'k-pop boy group', 'k-pop girl group', 'kpop boy group', 'kpop girl group',
+        'korean r&b', 'korean hip-hop', 'korean hip hop', 'korean rnb',
+        'korean indie', 'korean rock', 'korean ballad']);
+
+      // Detect if seed is K-POP
+      const seedIsKpop = allSeedTags.some(t => kpopFilter.has(t));
+
+      // Non-musical tag blacklist
+      const nonMusicalTags = new Set([
+        'seen live', 'favorites', 'favourite', 'favorites', 'my playlist',
+        'check out', 'love', 'beautiful', 'awesome', 'amazing',
+        'spotify', 'under 2000 listeners', 'good', 'cool', 'nice',
+        'chill', 'party', 'summer', 'winter', 'spring', 'autumn',
+        'happy', 'sad', 'relax', 'sleep', 'study', 'workout',
+        'driving', 'morning', 'night', 'road trip', 'throwback',
+        '00s', '10s', '20s', '70s', '80s', '90s',
+        '2000s', '2010s', '2020s', '2024', '2025', '2026',
+        'male vocalists', 'female vocalists', 'all time favorite',
+        'albums i own', 'british', 'american', 'canadian', 'australian',
+        'japanese', 'swedish', 'german', 'french', 'irish',
+      ]);
+
+      function isMusicalTag(t) {
+        return !nonMusicalTags.has(t) && !kpopFilter.has(t) && t.length >= 2 && t.length <= 25;
+      }
+
+      // Cross-genre tags: filter out K-POP + non-musical tags
+      const crossGenreTags = allSeedTags.filter(isMusicalTag);
+
+      const lfmSimilarTracks = lfmSimilarRaw?.similartracks?.track || [];
+
+      // ─── Step 1.5: Expand tags via tag.getSimilar (adjacent genre discovery) ───
+      showLoading('Expanding genre map...');
+      const similarTagPromises = crossGenreTags.slice(0, 4).map(tag =>
+        lastfmFetch({ method: 'tag.getSimilar', tag: tag })
+          .then(data => (data?.similartags?.tag || [])
+            .slice(0, 5)
+            .map(t => t.name.toLowerCase())
+            .filter(isMusicalTag)
+          ).catch(() => [])
+      );
+      const expandedTagArrays = await Promise.all(similarTagPromises);
+      const expandedTags = [...new Set(expandedTagArrays.flat())].filter(t => !crossGenreTags.includes(t));
+
+      // Combine: original seed tags first, then adjacent genre tags
+      const allDiscoveryTags = [...crossGenreTags, ...expandedTags.slice(0, 6)];
+
+      // ─── Step 1.6: K-POP blocklist + Tag & Deezer discovery (all parallel) ───
+      showLoading('Discovering similar vibes...');
+
+      // Korean character detector (Hangul)
+      function hasKorean(str) {
+        return /[\uAC00-\uD7AF\u3130-\u318F]/.test(str);
+      }
+
+      // Build K-POP artist blocklist from 3 tag variants (parallel, ~500 unique artists)
+      const kpopBlocklistPromise = Promise.all([
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'k-pop', limit: '200' }),
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'kpop', limit: '200' }),
+        lastfmFetch({ method: 'tag.getTopArtists', tag: 'korean pop', limit: '200' }),
+      ]).then(results => {
+        const set = new Set();
+        for (const data of results) {
+          for (const a of (data?.topartists?.artist || [])) set.add(a.name.toLowerCase());
+        }
+        return set;
+      }).catch(() => new Set());
+
+      // Source C: Last.fm tag → tracks (use expanded tags for broader discovery)
+      const tagTrackTasks = allDiscoveryTags.slice(0, 12).map(tag => () =>
+        lastfmFetch({ method: 'tag.getTopTracks', tag: tag, limit: '50' })
+          .then(data => ({
+            tag: tag,
+            tracks: (data?.tracks?.track || []),
+          })).catch(() => ({ tag: tag, tracks: [] }))
+      );
+
+      // Source D: Deezer search by tags (use expanded tags for broader pool)
+      // Use quoted tag + artist context for better precision
+      const deezerTasks = allDiscoveryTags.slice(0, 8).map(tag => () =>
+        deezerFetch('search/track', { q: '"' + tag + '"', limit: '30' })
+          .then(data => ({
+            tag: tag,
+            tracks: (data?.data || []).filter(t =>
+              // Filter: artist or album/track genre should loosely match the tag context
+              t.artist?.name && t.title
+            ).map(t => ({
+              name: t.title || t.title_short || '',
+              artist: { name: t.artist?.name || '' },
+            })),
+          })).catch(() => ({ tag: tag, tracks: [] }))
+      );
+
+      // Additional parallel discovery sources
+      const seedBpmPromise = getSeedBpm(seed.name, seedArtistName);
+      const lbzArtistsPromise = getListenBrainzSimilarArtists(seedArtistMBID);
+      const deezerRelArtistsPromise = getDeezerRelatedArtists(seedArtistName);
+
+      // Run all in parallel
+      const [kpopBlocklist, tagTrackResults, deezerResults, seedBpmData, lbzArtists, deezerRelArtists] =
+        await Promise.all([
+          kpopBlocklistPromise,
+          batchAll(tagTrackTasks, 10),
+          batchAll(deezerTasks, 10),
+          seedBpmPromise,
+          lbzArtistsPromise,
+          deezerRelArtistsPromise,
+        ]);
+
+      // ─── Source reliability tracking ───
+      const sourceStats = {
+        'Last.fm Similar': lfmSimilarRaw?.similartracks?.track?.length > 0,
+        'Last.fm Tags': tagTrackResults.some(r => r.tracks.length > 0),
+        'Deezer Tags': deezerResults.some(r => r.tracks.length > 0),
+        'ListenBrainz': lbzArtists.length > 0,
+        'Deezer Related': deezerRelArtists.length > 0,
+        'BPM Data': !!(seedBpmData.bpm),
+      };
+
+      // Block seed artist too
+      kpopBlocklist.add(seedArtistName.toLowerCase());
+
+      // Combined K-POP check: blocklist OR Korean characters in name
+      function isKpopArtist(name) {
+        return kpopBlocklist.has(name.toLowerCase()) || hasKorean(name);
+      }
+
+      // ─── Merge & deduplicate all candidates ───
+      const sourceMap = new Map();
+      const lfmDeduped = new Map();
+      const tagMatchMap = new Map();  // key -> Set<matched tag names>
+
+      function addCandidate(lt, source) {
+        const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
+        const matchVal = parseFloat(lt.match) || 0;
+        const existing = lfmDeduped.get(key);
+        if (!existing || matchVal > existing.match) {
+          lfmDeduped.set(key, { name: lt.name, artistName: lt.artist?.name || '', match: matchVal });
+        }
+        if (!sourceMap.has(key)) sourceMap.set(key, new Set());
+        sourceMap.get(key).add(source);
+      }
+
+      // Source A: Last.fm similar tracks (always include, filter K-POP)
+      // Even when seed is K-POP, keep non-K-POP results that survive the filter
+      for (const lt of lfmSimilarTracks.slice(0, seedIsKpop ? 100 : 50)) {
+        if (isKpopArtist(lt.artist?.name || '')) continue;
+        addCandidate(lt, 'lfm-similar');
+      }
+
+      // Source C: Last.fm tag-discovered tracks (strict K-POP filter)
+      for (const result of tagTrackResults) {
+        for (const lt of result.tracks.slice(0, 50)) {
+          if (isKpopArtist(lt.artist?.name || '')) continue;
+          addCandidate({ name: lt.name, artist: lt.artist, match: 0.3 }, 'tag-discovery');
+          const key = (lt.artist?.name || '').toLowerCase() + '|||' + (lt.name || '').toLowerCase();
+          if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
+          tagMatchMap.get(key).add(result.tag);
+        }
+      }
+
+      // Build Last.fm validated artist set for Deezer cross-validation
+      const lfmValidatedArtists = new Set();
+      for (const result of tagTrackResults) {
+        for (const lt of result.tracks.slice(0, 50)) {
+          lfmValidatedArtists.add((lt.artist?.name || '').toLowerCase());
+        }
+      }
+
+      // Source D: Deezer tag search (cross-validated against Last.fm)
+      for (const result of deezerResults) {
+        for (const lt of result.tracks) {
+          if (isKpopArtist(lt.artist?.name || '')) continue;
+          // Cross-validate: higher match for artists also found via Last.fm tags
+          const artistLower = (lt.artist?.name || '').toLowerCase();
+          const isValidated = lfmValidatedArtists.has(artistLower) || lfmDeduped.has(artistLower + '|||' + (lt.name || '').toLowerCase());
+          addCandidate({ name: lt.name, artist: lt.artist, match: isValidated ? 0.4 : 0.15 }, 'deezer-tag');
+          const key = artistLower + '|||' + (lt.name || '').toLowerCase();
+          if (!tagMatchMap.has(key)) tagMatchMap.set(key, new Set());
+          tagMatchMap.get(key).add(result.tag);
+        }
+      }
+
+      // Source E: ListenBrainz similar artists → Deezer top tracks
+      // Source F: Deezer related artists → Deezer top tracks
+      const lbzNonKpop = lbzArtists.filter(a => !isKpopArtist(a.name)).slice(0, 10);
+      const deezerRelNonKpop = deezerRelArtists.filter(a => !isKpopArtist(a.name)).slice(0, 8);
+
+      const sourceEFTasks = [
+        ...lbzNonKpop.map(a => () =>
+          deezerFetch('search/artist', { q: a.name, limit: '1' })
+            .then(d => d?.data?.[0]?.id ? getDeezerArtistTopTracks(d.data[0].id) : [])
+            .then(tracks => tracks.map(t => ({ ...t, _source: 'lbz-artist' })))
+            .catch(() => [])
+        ),
+        ...deezerRelNonKpop.map(a => () =>
+          getDeezerArtistTopTracks(a.id)
+            .then(tracks => tracks.map(t => ({ ...t, _source: 'deezer-related' })))
+            .catch(() => [])
+        ),
+      ];
+      const sourceEFResults = await batchAll(sourceEFTasks, 8);
+
+      for (const group of sourceEFResults) {
+        for (const t of (Array.isArray(group) ? group : [])) {
+          if (!t.name || !t.artist?.name || isKpopArtist(t.artist.name)) continue;
+          addCandidate({ name: t.name, artist: t.artist, match: t.match || 0.4 }, t._source);
+        }
+      }
+
+      // Candidate selection: weighted composite pre-score
+      const CANDIDATE_CAP = 80;
+      const lfmCandidateAll = [...lfmDeduped.values()];
+      lfmCandidateAll.sort((a, b) => {
+        const keyA = a.artistName.toLowerCase() + '|||' + a.name.toLowerCase();
+        const keyB = b.artistName.toLowerCase() + '|||' + b.name.toLowerCase();
+        const srcA = sourceMap.get(keyA)?.size || 0;
+        const srcB = sourceMap.get(keyB)?.size || 0;
+        const tagA = tagMatchMap.get(keyA)?.size || 0;
+        const tagB = tagMatchMap.get(keyB)?.size || 0;
+        const preScoreA = srcA * 3 + tagA * 2 + (a.match || 0) * 5;
+        const preScoreB = srcB * 3 + tagB * 2 + (b.match || 0) * 5;
+        return preScoreB - preScoreA;
+      });
+      const lfmCandidateList = lfmCandidateAll.slice(0, CANDIDATE_CAP);
+
+      // ─── Step 2: Last.fm track info (parallel, no Spotify) ───
+      showLoading('Analyzing tracks...');
+
+      const infoTasks = lfmCandidateList.map(lt => () =>
+        lastfmFetch({ method: 'track.getInfo', artist: lt.artistName, track: lt.name, autocorrect: '1' })
+          .then(data => ({
+            key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(),
+            playcount: parseInt(data?.track?.playcount) || 0,
+            listeners: parseInt(data?.track?.listeners) || 0,
+            image: data?.track?.album?.image?.[2]?.['#text'] || '',
+            tags: (data?.track?.toptags?.tag || []).map(tg => tg.name.toLowerCase()),
+          })).catch(() => ({ key: '', playcount: 0, listeners: 0, image: '', tags: [] }))
+      );
+
+      const bpmTasks = lfmCandidateList.map(lt => () =>
+        deezerFetch('search/track', { q: lt.name + ' ' + lt.artistName, limit: '1' })
+          .then(data => {
+            const t = data?.data?.[0];
+            return {
+              key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(),
+              bpm: (t?.bpm && t.bpm > 0) ? t.bpm : null,
+            };
+          })
+          .catch(() => ({ key: lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase(), bpm: null }))
+      );
+
+      const [infoResults, bpmResults] = await Promise.all([
+        batchAll(infoTasks, 20),
+        batchAll(bpmTasks, 15),
+      ]);
+
+      const bpmByKey = {};
+      for (const r of bpmResults) { if (r.key && r.bpm) bpmByKey[r.key] = r.bpm; }
+
+      const lfmInfoByKey = {};
+      for (const r of infoResults) { if (r.key) lfmInfoByKey[r.key] = r; }
+
+      // Build TF-IDF corpus from candidate tags (filtered for musical relevance)
+      const corpusIdf = buildCorpusIDF(lfmInfoByKey, lfmCandidateList, isMusicalTag);
+
+      // Load taste profile for feedback bias
+      const tasteProfile = loadTasteProfile();
+
+      // ─── Step 3: Score (max 100) — vibe-match scoring ───
+      const numSeedTags = crossGenreTags.length || 1;
+      const scored = [];
+
+      for (const lt of lfmCandidateList) {
+        if (lt.artistName.toLowerCase() === seedArtistName.toLowerCase()) continue;
+
+        const candKey = lt.artistName.toLowerCase() + '|||' + lt.name.toLowerCase();
+        const info = lfmInfoByKey[candKey] || {};
+        const sources = sourceMap.get(candKey) || new Set();
+        const matchedTags = tagMatchMap.get(candKey) || new Set();
+
+        // Hard-exclude: skip if K-POP artist or K-POP tagged track
+        if (isKpopArtist(lt.artistName)) continue;
+        const candTagsRaw = info.tags || [];
+        if (candTagsRaw.some(t => kpopFilter.has(t))) continue;
+        // Filter non-musical tags from candidate for cleaner scoring
+        const candTags = candTagsRaw.filter(isMusicalTag);
+
+        // 1. Listener Behavior (12) — Last.fm track similarity
+        const behaviorScore = (lt.match || 0) * 12;
+
+        // 2. Vibe Match (25) — TF-IDF weighted tag similarity (includes expanded genre tags)
+        const vibeScore = computeTfidfVibeScore(crossGenreTags, candTags, corpusIdf, 25);
+
+        // 3. Digging Index (28) — engagement depth + obscurity bonus
+        //    Dampened when vibeScore is low to prevent obscure-but-irrelevant tracks from ranking high
+        let diggingScoreRaw = 0;
+        if (info.listeners > 0) {
+          const engagement = Math.min(10, ((info.playcount / info.listeners) / 3.0) * 10);
+          const obscurity = Math.max(0, Math.min(18, (7 - Math.log10(info.listeners)) * 5));
+          diggingScoreRaw = engagement + obscurity;
+        }
+        const vibeDampen = vibeScore < 5 ? 0.5 : vibeScore < 10 ? 0.75 : 1.0;
+        const diggingScore = diggingScoreRaw * vibeDampen;
+
+        // 4. Multi-Source Confidence (15) — bonus for multiple discovery methods
+        let sourceScore = 0;
+        if (sources.size >= 4) sourceScore = 15;
+        else if (sources.size >= 3) sourceScore = 12;
+        else if (sources.size >= 2) sourceScore = 8;
+
+        // 5. Cross-Platform (10) — bonus for multiple platform coverage
+        const hasLastfm = sources.has('lfm-similar') || sources.has('tag-discovery');
+        const hasDeezer = sources.has('deezer-tag') || sources.has('deezer-related');
+        const hasLBZ = sources.has('lbz-artist');
+        const platformCount = [hasLastfm, hasDeezer, hasLBZ].filter(Boolean).length;
+        const crossPlatformScore = platformCount >= 3 ? 10 : platformCount >= 2 ? 6 : 0;
+
+        // 6. BPM Match (dynamic) — 0 when data missing, redistribute to other scores
+        const candBpm = bpmByKey[candKey] || null;
+        const bpmRaw = bpmMatchScore(seedBpmData.bpm, candBpm);
+        const hasBpmData = bpmRaw !== null;
+        const bpmScore = hasBpmData ? bpmRaw * 10 : 0;
+        // When BPM unavailable, boost vibe and digging proportionally (+5 each split)
+        const bpmCompensation = hasBpmData ? 0 : 5;
+
+        // 7. Feedback Bias (±8) — user taste profile adjustment
+        const feedbackBias = computeFeedbackBias(candTags, lt.artistName, tasteProfile);
+
+        const finalScore = behaviorScore + (vibeScore + bpmCompensation * 0.6) + (diggingScore + bpmCompensation * 0.4) + sourceScore + crossPlatformScore + bpmScore + feedbackBias;
+        scored.push({
+          name: lt.name,
+          artistName: lt.artistName,
+          image: info.image || '',
+          match: Math.round(Math.min(100, Math.max(0, finalScore))),
+          tags: candTags,
+        });
+      }
+
+      return { scored, sourceStats };
+    }
+
+    /* ── Main Flow ── */
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const trackId = parseTrackId($input.value);
+      if (!trackId) {
+        showError('Please enter a valid Spotify track URL.');
+        return false;
+      }
+
+      $btn.disabled = true;
+      $btn.textContent = 'Digging...';
+      $seed.innerHTML = '';
+      $results.innerHTML = '';
+      $playlistBar.innerHTML = '';
+      $player.innerHTML = '';
+      $player.classList.remove('dig-player-show');
+      document.body.classList.remove('dig-player-open');
+      $error.innerHTML = '';
+      recommendedTracks = [];
+      rateLimitHits = 0;
+
+      try {
+        // 1. Get seed track info
+        const track = await proxyFetch('/v1/tracks/' + trackId);
+        currentSeedTrack = track;
+        renderSeedTrack(track);
+
+        // 2. Hybrid Digging Algorithm
+        const { scored, sourceStats } = await discoverAndScore(track);
+
+        if (scored.length === 0) {
+          hideLoading();
+          showError('비슷한 곡을 찾지 못했습니다.');
+          return;
+        }
+
+        // 3. Apply diversity filter (strict 1 per artist)
+        const results = applyDiversityFilter(scored);
+
+        recommendedTracks = results;
+        hideLoading();
+        renderResults(results, sourceStats);
+        renderPlaylistBar();
+        renderAuth();
+
+      } catch (err) {
+        hideLoading();
+        showError(err.message || 'Something went wrong. Please try again.');
+      } finally {
+        $btn.disabled = false;
+        $btn.textContent = 'Dig';
+      }
+      return false;
+    }
+
+    /* ── UI Rendering ── */
+    function renderSeedTrack(track) {
+      const img = track.album.images[1]?.url || track.album.images[0]?.url || '';
+      const tags = [];
+      const durMin = Math.floor(track.duration_ms / 60000);
+      const durSec = Math.floor((track.duration_ms % 60000) / 1000);
+      tags.push(durMin + ':' + String(durSec).padStart(2, '0'));
+      if (track.album?.release_date) tags.push(track.album.release_date.slice(0, 4));
+      if (track.album?.name) tags.push(track.album.name);
+
+      $seed.innerHTML =
+        '<div class="dig-seed" onclick="window.__digPlaySeed()" style="cursor:pointer">' +
+        '<img src="' + escHtml(img) + '" alt="">' +
+        '<div class="dig-seed-info">' +
+        '<div class="dig-seed-title">' + escHtml(track.name) + '</div>' +
+        '<div class="dig-seed-artist">' + escHtml(track.artists.map(a => a.name).join(', ')) + '</div>' +
+        '<div class="dig-feature-tags">' +
+        tags.map(t => '<span class="dig-feature-tag">' + escHtml(t) + '</span>').join('') +
+        '</div>' +
+        '</div>' +
+        '</div>';
+    }
+
+    function renderResults(results, sourceStats) {
+      if (results.length === 0) {
+        $results.innerHTML = '<div class="dig-error">No similar tracks found.</div>';
+        return;
+      }
+
+      // Source reliability indicator
+      let sourceHtml = '';
+      if (sourceStats) {
+        const total = Object.keys(sourceStats).length;
+        const active = Object.values(sourceStats).filter(Boolean).length;
+        const dots = Object.entries(sourceStats).map(([name, ok]) =>
+          '<span title="' + escHtml(name) + '" style="display:inline-block;width:6px;height:6px;border-radius:50;background:' +
+          (ok ? 'var(--accent-sub)' : 'var(--fg-faint)') + ';opacity:' + (ok ? '1' : '0.3') + '"></span>'
+        ).join('');
+        sourceHtml = '<span class="dig-source-stats" style="font-size:11px;color:var(--fg-faint);display:flex;align-items:center;gap:4px">' +
+          dots + ' ' + active + '/' + total + ' sources' +
+          '</span>';
+      }
+
+      let html =
+        '<div class="dig-results-header">' +
+        '<span class="dig-results-count">' + results.length + ' Results</span>' +
+        sourceHtml +
+        '</div>' +
+        '<div class="dig-result-list">';
+
+      results.forEach((r, i) => {
+        const img = r.image || '';
+        html +=
+          '<div class="dig-result-item" data-index="' + i + '" onclick="window.__digPlay(' + i + ')">' +
+          '<input type="checkbox" class="dig-result-check" onclick="event.stopPropagation()">' +
+          (img ? '<img class="dig-result-img" src="' + escHtml(img) + '" alt="">' : '') +
+          '<div class="dig-result-info">' +
+          '<div class="dig-result-title">' + escHtml(r.name) + '</div>' +
+          '<div class="dig-result-artist">' + escHtml(r.artistName) + '</div>' +
+          '</div>' +
+          '<div class="dig-feedback-btns">' +
+          '<button class="dig-fb-btn dig-fb-like" onclick="event.stopPropagation();window.__digFeedback(' + i + ',\'like\')" title="Like">&#9825;</button>' +
+          '<button class="dig-fb-btn dig-fb-dislike" onclick="event.stopPropagation();window.__digFeedback(' + i + ',\'dislike\')" title="Skip">&#10005;</button>' +
+          '</div>' +
+          '</div>';
+      });
+
+      html += '</div>';
+      $results.innerHTML = html;
+    }
+
+    function renderPlaylistBar() {
+      if (recommendedTracks.length === 0) return;
+
+      const loggedIn = isLoggedIn();
+      $playlistBar.innerHTML =
+        '<div class="dig-playlist-bar">' +
+        '<label><input type="checkbox" id="selectAll" onchange="window.__digToggleAll(this.checked)"> Select All</label>' +
+        (loggedIn
+          ? '<button class="dig-auth-section" onclick="window.__digCreatePlaylist()">Create Playlist</button>'
+          : '<a onclick="window.__digConnectSpotify()" style="margin-left:auto;font-size:12px;color:var(--fg-60);cursor:pointer;transition:text-shadow 0.2s" onmouseover="this.style.textShadow=\'0 0 4px #5CC9CA\'" onmouseout="this.style.textShadow=\'none\'">Connect Spotify to Create Playlist</a>') +
+        '</div>';
+    }
+
+    function renderAuth() {
+      const profile = loadTasteProfile();
+      const feedbackCount = profile.feedbackLog.length;
+      const tasteInfo = feedbackCount > 0
+        ? ' <span style="color:var(--fg-faint)">(' + feedbackCount + ' feedbacks)</span>'
+        : '';
+
+      if (isLoggedIn()) {
+        $auth.innerHTML =
+          '<div class="dig-auth-section">Spotify connected. <a onclick="window.__digLogout()">Disconnect</a></div>' +
+          '<div class="dig-auth-section" style="margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">' +
+          '<span style="color:var(--fg-faint)">Taste Profile' + tasteInfo + '</span>' +
+          '<a onclick="window.__digExportProfile()" style="cursor:pointer">Export</a>' +
+          '<a onclick="window.__digImportProfile()" style="cursor:pointer">Import</a>' +
+          (feedbackCount > 0 ? '<a onclick="window.__digResetProfile()" style="cursor:pointer;color:var(--fg-faint)">Reset</a>' : '') +
+          '</div>';
+      } else {
+        $auth.innerHTML =
+          '<div class="dig-auth-section">Connect Spotify to create playlists. <a onclick="window.__digConnectSpotify()">Connect</a></div>' +
+          '<div class="dig-auth-section" style="margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">' +
+          '<span style="color:var(--fg-faint)">Taste Profile' + tasteInfo + '</span>' +
+          '<a onclick="window.__digExportProfile()" style="cursor:pointer">Export</a>' +
+          '<a onclick="window.__digImportProfile()" style="cursor:pointer">Import</a>' +
+          (feedbackCount > 0 ? '<a onclick="window.__digResetProfile()" style="cursor:pointer;color:var(--fg-faint)">Reset</a>' : '') +
+          '</div>';
+      }
+    }
+
+    function renderPlayer(trackId) {
+      $player.innerHTML =
+        '<div class="dig-player-inner">' +
+        '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
+        '<div id="spotifyEmbed"></div>' +
+        '</div>';
+
+      $player.classList.add('dig-player-show');
+      document.body.classList.add('dig-player-open');
+
+      const embedEl = document.getElementById('spotifyEmbed');
+      if (spotifyIFrameAPI) {
+        spotifyIFrameAPI.createController(embedEl, {
+          uri: 'spotify:track:' + trackId,
+          height: 80,
+          theme: 0,
+        }, function (controller) {
+          controller.play();
+        });
+      } else {
+        embedEl.innerHTML =
+          '<iframe src="https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&theme=0" ' +
+          'height="80" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" ' +
+          'loading="lazy"></iframe>';
+      }
+
+      // Highlight playing item
+      document.querySelectorAll('.dig-result-item').forEach(el => {
+        el.classList.toggle('dig-playing', el.dataset.index === String(trackId));
+      });
+    }
+
+    // Preview cache with TTL (Deezer URLs expire after ~1 hour)
+    const deezerPreviewCache = new Map();
+    const PREVIEW_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+    function getCachedPreview(key) {
+      const entry = deezerPreviewCache.get(key);
+      if (!entry) return null;
+      if (Date.now() - entry.ts > PREVIEW_CACHE_TTL) {
+        deezerPreviewCache.delete(key);
+        return null;
+      }
+      return entry.url;
+    }
+
+    function setCachedPreview(key, url) {
+      deezerPreviewCache.set(key, { url, ts: Date.now() });
+    }
+
+    // Race condition guard: track current playback request
+    let currentPlayRequestId = 0;
+
+    // Search Deezer for preview with improved matching
+    async function findDeezerPreview(name, artist) {
+      // Try exact search first, then fallback with normalized name
+      const queries = [
+        name + ' ' + artist,
+        normalizeTitle(name) + ' ' + artist,
+      ];
+
+      for (const q of queries) {
+        const data = await deezerFetch('search/track', { q: q, limit: '5' });
+        if (!data?.data) continue;
+
+        // Find best match: prefer exact title+artist match with preview
+        const artistLower = artist.toLowerCase();
+        const nameLower = normalizeTitle(name);
+
+        for (const t of data.data) {
+          if (!t.preview || t.preview === '') continue;
+          const tArtist = (t.artist?.name || '').toLowerCase();
+          const tTitle = normalizeTitle(t.title || t.title_short || '');
+          if (tArtist === artistLower || tTitle === nameLower) return t.preview;
+        }
+
+        // Fallback: first result with a valid preview
+        for (const t of data.data) {
+          if (t.preview && t.preview !== '') return t.preview;
+        }
+      }
+
+      return null;
+    }
+
+    async function renderPlayerBySearch(name, artist, index) {
+      const requestId = ++currentPlayRequestId;
+
+      $player.innerHTML =
+        '<div class="dig-player-inner">' +
+        '<button class="dig-player-close" onclick="window.__digCloseOverlay()">&times;</button>' +
+        '<div id="spotifyEmbed" style="display:flex;align-items:center;gap:12px;padding:8px 0">' +
+        '<div class="dig-loading" style="font-size:12px">Loading preview...</div>' +
+        '</div>' +
+        '</div>';
+
+      $player.classList.add('dig-player-show');
+      document.body.classList.add('dig-player-open');
+
+      // Highlight playing item
+      document.querySelectorAll('.dig-result-item').forEach(el => {
+        el.classList.toggle('dig-playing', el.dataset.index === String(index));
+      });
+
+      const cacheKey = artist.toLowerCase() + '|||' + name.toLowerCase();
+      let previewUrl = getCachedPreview(cacheKey);
+
+      if (!previewUrl) {
+        previewUrl = await findDeezerPreview(name, artist);
+        if (previewUrl) setCachedPreview(cacheKey, previewUrl);
+      }
+
+      // Race condition: abort if another request was started while we waited
+      if (requestId !== currentPlayRequestId) return;
+
+      const embedEl = document.getElementById('spotifyEmbed');
+      if (!embedEl) return;
+
+      if (previewUrl) {
+        embedEl.innerHTML =
+          '<audio id="digAudio" autoplay style="width:100%;height:32px;filter:invert(1) hue-rotate(180deg)" controls src="' + escHtml(previewUrl) + '"></audio>' +
+          '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;color:var(--fg)">' +
+          '<span style="color:var(--accent)">' + escHtml(name) + '</span> — ' + escHtml(artist) +
+          '</div>';
+
+        // Handle audio load failure (expired URL) — retry once without cache
+        const audio = document.getElementById('digAudio');
+        if (audio) {
+          audio.addEventListener('error', async function onAudioError() {
+            audio.removeEventListener('error', onAudioError);
+            if (requestId !== currentPlayRequestId) return;
+            deezerPreviewCache.delete(cacheKey);
+            const retryUrl = await findDeezerPreview(name, artist);
+            if (requestId !== currentPlayRequestId) return;
+            if (retryUrl) {
+              setCachedPreview(cacheKey, retryUrl);
+              audio.src = retryUrl;
+              audio.play().catch(() => {});
+            } else {
+              const el = document.getElementById('spotifyEmbed');
+              if (el) el.innerHTML = '<div style="font-size:11px;color:var(--fg-faint)">Preview not available</div>';
+            }
+          }, { once: true });
+        }
+      } else {
+        embedEl.innerHTML =
+          '<div style="font-size:11px;color:var(--fg-faint)">Preview not available</div>';
+      }
+    }
+
+    function showLoading(msg) {
+      $loading.innerHTML = '<div class="dig-loading">' + escHtml(msg) + '</div>';
+    }
+
+    function hideLoading() {
+      $loading.innerHTML = '';
+    }
+
+    function showError(msg) {
+      $error.innerHTML = '<div class="dig-error">' + escHtml(msg) + '</div>';
+    }
+
+    function showToast(msg) {
+      $toast.textContent = msg;
+      $toast.classList.add('dig-toast-show');
+      setTimeout(() => $toast.classList.remove('dig-toast-show'), 2500);
+    }
+
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    /* ── Lazy Spotify resolver (1 search per interaction, cached) ── */
+    const spotifyIdCache = new Map();
+
+    async function resolveSpotifyId(name, artist) {
+      const key = artist.toLowerCase() + '|||' + name.toLowerCase();
+      if (spotifyIdCache.has(key)) return spotifyIdCache.get(key);
+      try {
+        const data = await proxyFetch(
+          '/v1/search?q=' + encodeURIComponent(name + ' ' + artist) + '&type=track&limit=1'
+        );
+        const found = data.tracks?.items?.[0];
+        if (found) {
+          spotifyIdCache.set(key, { id: found.id, uri: found.uri });
+          return { id: found.id, uri: found.uri };
+        }
+      } catch { }
+      return null;
+    }
+
+    /* ── Global handlers (accessible from inline onclick) ── */
+    window.__digPlay = async function (index) {
+      const r = recommendedTracks[index];
+      if (!r) return;
+      await renderPlayerBySearch(r.name, r.artistName, index);
+    };
+
+    window.__digFeedback = function(index, action) {
+      const r = recommendedTracks[index];
+      if (!r) return;
+      recordFeedback(r.name, r.artistName, r.tags || [], action);
+      const item = document.querySelector('.dig-result-item[data-index="' + index + '"]');
+      if (item) {
+        item.querySelector('.dig-fb-like')?.classList.toggle('dig-fb-active', action === 'like');
+        item.querySelector('.dig-fb-dislike')?.classList.toggle('dig-fb-active', action === 'dislike');
+      }
+      showToast(action === 'like' ? 'Added to taste profile' : 'Noted');
+    };
+
+    window.__digCloseOverlay = function () {
+      $player.classList.remove('dig-player-show');
+      document.body.classList.remove('dig-player-open');
+      $player.innerHTML = '';
+      document.querySelectorAll('.dig-result-item').forEach(el => {
+        el.classList.remove('dig-playing');
+      });
+    };
+
+    window.__digPlaySeed = function () {
+      if (currentSeedTrack) renderPlayer(currentSeedTrack.id);
+    };
+
+    window.__digToggleAll = function (checked) {
+      document.querySelectorAll('.dig-result-check').forEach(cb => { cb.checked = checked; });
+    };
+
+    window.__digConnectSpotify = async function () {
+      if (!CONFIG.clientId) {
+        showToast('Spotify Client ID not configured');
+        return;
+      }
+      const url = await buildAuthUrl();
+      window.location.href = url;
+    };
+
+    window.__digLogout = function () {
+      logout();
+      renderPlaylistBar();
+    };
+
+    window.__digExportProfile = function () {
+      const profile = loadTasteProfile();
+      if (!profile.feedbackLog.length) {
+        showToast('No taste data to export');
+        return;
+      }
+      const json = JSON.stringify(profile, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'digging-taste-profile.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Profile exported');
+    };
+
+    window.__digImportProfile = function () {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            if (imported.version !== 1 || !Array.isArray(imported.feedbackLog)) {
+              showToast('Invalid profile format');
+              return;
+            }
+            // Merge: append imported feedbackLog, deduplicate by timestamp
+            const current = loadTasteProfile();
+            const existingTs = new Set(current.feedbackLog.map(e => e.ts));
+            const newEntries = imported.feedbackLog.filter(e => !existingTs.has(e.ts));
+            current.feedbackLog.push(...newEntries);
+            current.feedbackLog.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+            rebuildBiases(current);
+            saveTasteProfile(current);
+            renderAuth();
+            showToast('Imported ' + newEntries.length + ' new feedbacks');
+          } catch {
+            showToast('Failed to parse profile file');
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    };
+
+    window.__digResetProfile = function () {
+      if (!confirm('Reset taste profile? This cannot be undone.')) return;
+      localStorage.removeItem('digging_taste_profile');
+      renderAuth();
+      showToast('Taste profile reset');
+    };
+
+    window.__digCreatePlaylist = async function () {
+      const token = await getValidToken();
+      if (!token) {
+        showToast('Please connect Spotify first');
+        return;
+      }
+
+      const selected = [];
+      document.querySelectorAll('.dig-result-item').forEach((el, i) => {
+        const cb = el.querySelector('.dig-result-check');
+        if (cb && cb.checked && recommendedTracks[i]) {
+          selected.push(recommendedTracks[i]);
+        }
+      });
+
+      if (selected.length === 0) {
+        showToast('Select at least one track');
+        return;
+      }
+
+      // Lazy resolve Spotify URIs
+      showToast('Resolving tracks on Spotify...');
+      const resolved = await Promise.all(
+        selected.map(r => resolveSpotifyId(r.name, r.artistName))
+      );
+      const checked = resolved.filter(Boolean).map(r => r.uri);
+
+      if (checked.length === 0) {
+        showToast('Spotify에서 트랙을 찾을 수 없습니다.');
+        return;
+      }
+
+      try {
+        // Get user ID
+        const me = await fetch('https://api.spotify.com/v1/me', {
+          headers: { Authorization: 'Bearer ' + token },
+        }).then(r => r.json());
+
+        const playlistName = 'Digging: ' + (currentSeedTrack?.name || 'Unknown');
+
+        // Create playlist
+        const pl = await fetch('https://api.spotify.com/v1/users/' + me.id + '/playlists', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: playlistName, public: false }),
+        }).then(r => r.json());
+
+        // Add tracks
+        await fetch('https://api.spotify.com/v1/playlists/' + pl.id + '/tracks', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ uris: checked }),
+        });
+
+        showToast('Playlist "' + playlistName + '" created!');
+      } catch (err) {
+        showToast('Failed to create playlist: ' + err.message);
+      }
+    };
+
+    /* ── Expose handleSubmit for form ── */
+    window.handleSubmit = handleSubmit;
+
+    /* ── Paste button ── */
+    document.getElementById('pasteBtn').addEventListener('click', async function () {
+      try {
+        const text = await navigator.clipboard.readText();
+        $input.value = text;
+        $input.focus();
+      } catch {
+        showToast('Clipboard access denied');
+      }
+    });
+
+    /* ── Init: restore pending track & render auth ── */
+    (function init() {
+      renderAuth();
+
+      const pending = localStorage.getItem('pending_track_url');
+      if (pending) {
+        localStorage.removeItem('pending_track_url');
+        $input.value = pending;
+        handleSubmit(new Event('submit'));
+      }
+    })();
+  })();
+</script>
+<script src="https://open.spotify.com/embed/iframe-api/v1"></script>
+    </div>
+  </main>
+
+  <footer class="dig-footer">
+    <a href="/">bhvd</a> / 2026
+  </footer>
+
+</body>
+
+</html>

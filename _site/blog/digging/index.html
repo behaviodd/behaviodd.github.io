@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-POP Digging Club Released. — bhvd</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --fg: #c8c8c8;
+      --fg-bright: #ececf1;
+      --fg-muted: #aaa;
+      --fg-faint: #999;
+      --bg: #0a0a0a;
+      --accent: #B2B9F4;
+      --accent-dim: rgba(178, 185, 244, 0.08);
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-dim: rgba(92, 201, 202, 0.08);
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --border: #444;
+      --surface: rgba(255, 255, 255, 0.03);
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
+    }
+
+    html {
+      font-family: var(--font);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg-bright);
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-prompt {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: text-shadow 0.2s;
+    }
+
+    .site-prompt:hover {
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: var(--accent-sub);
+      border-color: var(--border);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--fg-faint);
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 48px 0;
+    }
+
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(6px, 1.8vw, 11px);
+      line-height: 1.15;
+      color: var(--accent);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 48px;
+      padding: 24px 20px;
+      border: 1px dashed var(--border);
+    }
+
+    .hero h1 {
+      font-size: clamp(22px, 5.5vw, 36px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .hero .term-cmd {
+      font-size: 11px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+    }
+
+    .hero .term-cmd span {
+      color: var(--fg-muted);
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .section-label::before {
+      content: '/* ';
+      color: var(--fg-faint);
+    }
+
+    .section-label::after {
+      content: ' */';
+      color: var(--fg-faint);
+    }
+
+    /* ── Projects ── */
+    .project-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .project {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .project:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .project:hover .project-name {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .project:hover .arrow {
+      color: var(--accent-sub);
+      transform: translateX(2px);
+    }
+
+    .project-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .project-prefix {
+      color: var(--accent-sub);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .project-name {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    .project-desc {
+      font-size: 11px;
+      color: var(--fg-faint);
+      margin-left: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Post list ── */
+    .post-item {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .post-item:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .post-item:hover .post-title {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .post-date {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+    }
+
+    .post-title {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    /* ── Prose (blog content) ── */
+    .prose h2 {
+      font-size: 14px;
+      font-weight: 400;
+      margin: 40px 0 12px;
+      color: var(--accent);
+    }
+
+    .prose h2::before {
+      content: '## ';
+      color: var(--accent-sub);
+    }
+
+    .prose h3 {
+      font-size: 12px;
+      font-weight: 400;
+      margin: 28px 0 10px;
+      color: var(--fg-bright);
+    }
+
+    .prose h3::before {
+      content: '### ';
+      color: var(--accent-sub);
+    }
+
+    .prose p {
+      margin-bottom: 16px;
+    }
+
+    .prose ul,
+    .prose ol {
+      margin: 0 0 16px 20px;
+    }
+
+    .prose li {
+      margin-bottom: 4px;
+    }
+
+    .prose li::marker {
+      color: var(--accent-sub);
+    }
+
+    .prose blockquote {
+      border-left: 2px solid var(--accent-sub);
+      padding: 8px 16px;
+      color: var(--fg-muted);
+      margin: 0 0 16px;
+      background: var(--surface);
+    }
+
+    .prose code {
+      font-family: var(--font);
+      font-size: 11px;
+      background: rgba(92, 201, 202, 0.08);
+      color: var(--accent-sub);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .prose pre {
+      background: #000;
+      border: 1px dashed var(--border);
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .prose pre code {
+      background: none;
+      padding: 0;
+      color: var(--fg);
+    }
+
+    .prose hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 32px 0;
+    }
+
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 16px;
+      border: 1px dashed var(--border);
+    }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .prose a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Profile ── */
+    .profile-section {
+      margin-bottom: 48px;
+    }
+
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+    }
+
+    .profile-row dt {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      min-width: 80px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .profile-row dd {
+      font-size: 11px;
+      color: var(--fg-bright);
+    }
+
+    .profile-row dd a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .profile-row dd a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 24px 0;
+      border-top: 1px dashed var(--border);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-faint);
+      letter-spacing: 0.5px;
+    }
+
+    .footer-inner .status {
+      color: var(--accent-sub);
+      opacity: 0.7;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .project {
+        flex-wrap: wrap;
+      }
+
+      .project-desc {
+        margin-left: 28px;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .hero {
+        padding: 16px 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <nav>
+          <a href="/">home</a>
+          <a href="/blog/">blog</a>
+          <a href="/profile/">profile</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      
+      <a href="javascript:history.back()" class="back-link">&lt; cd ..</a>
+      
+      <article>
+  <div class="hero">
+    <div class="term-cmd">$ <span>cat ~/blog/digging.md</span></div>
+    <h1>K-POP Digging Club Released.</h1>
+    <p style="color:var(--fg-faint);font-size:11px;margin-top:4px;">2026-02-19</p>
+  </div>
+
+  <div class="prose">
+    <p># K-POP Digging Club</p>
+
+<blockquote>
+  <p>좋아하는 K-POP 트랙 하나로, 전 세계 숨겨진 음악을 발굴하는 하이브리드 음악 디스커버리 서비스</p>
+</blockquote>
+
+<p><strong>URL</strong>: <a href="https://behaviodd.github.io/digging/">https://behaviodd.github.io/digging/</a></p>
+
+<p>## 서비스 개요</p>
+
+<p>K-POP Digging Club은 K-POP 청취자가 익숙한 취향의 벽을 넘어 새로운 음악을 발견할 수 있도록 돕는 웹 기반 음악 추천 서비스입니다. Spotify 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, 템포, 청취 패턴)을 분석하여 <strong>K-POP을 제외한</strong> 전 세계 유사 곡을 최대 30곡까지 추천합니다.</p>
+
+<p>### 핵심 가치</p>
+<ul>
+  <li><strong>디깅(Digging)</strong>: 알고리즘이 아닌 탐험으로 음악을 발견하는 경험</li>
+  <li><strong>크로스 장르</strong>: K-POP의 음악적 DNA를 공유하는 비K-POP 곡 발굴</li>
+  <li><strong>숨겨진 보석</strong>: 인기도가 아닌 음악적 깊이를 기준으로 추천</li>
+</ul>
+
+<h2 id="주요-기능">주요 기능</h2>
+
+<h3 id="하이브리드-디스커버리-엔진">하이브리드 디스커버리 엔진</h3>
+
+<p>6개의 독립적인 음악 데이터 소스를 병렬로 탐색하여 단일 플랫폼의 추천 편향을 극복합니다.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>소스</th>
+      <th>플랫폼</th>
+      <th>탐색 방식</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Source A</td>
+      <td>Last.fm</td>
+      <td>청취 패턴 기반 유사 트랙</td>
+    </tr>
+    <tr>
+      <td>Source C</td>
+      <td>Last.fm</td>
+      <td>태그별 인기 트랙 (인접 장르 확장 포함)</td>
+    </tr>
+    <tr>
+      <td>Source D</td>
+      <td>Deezer</td>
+      <td>태그 키워드 검색</td>
+    </tr>
+    <tr>
+      <td>Source E</td>
+      <td>ListenBrainz</td>
+      <td>유사 아티스트 → Deezer 인기곡</td>
+    </tr>
+    <tr>
+      <td>Source F</td>
+      <td>Deezer</td>
+      <td>관련 아티스트 → 인기곡</td>
+    </tr>
+    <tr>
+      <td>BPM Data</td>
+      <td>Deezer</td>
+      <td>템포 매칭용 BPM 수집</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="7요소-스코어링-시스템-100점-만점">7요소 스코어링 시스템 (100점 만점)</h3>
+
+<p>각 후보곡에 대해 복합적인 음악적 유사도를 점수화합니다.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>요소</th>
+      <th>배점</th>
+      <th>설명</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Listener Behavior</td>
+      <td>12</td>
+      <td>Last.fm 청취 패턴 기반 유사도</td>
+    </tr>
+    <tr>
+      <td>Vibe Match</td>
+      <td>25</td>
+      <td>TF-IDF 가중 태그 유사도</td>
+    </tr>
+    <tr>
+      <td>Digging Index</td>
+      <td>28</td>
+      <td>청취 깊이(재생/리스너 비율) + 희소성 보너스</td>
+    </tr>
+    <tr>
+      <td>Multi-Source Confidence</td>
+      <td>15</td>
+      <td>다중 소스 교차 검증 보너스</td>
+    </tr>
+    <tr>
+      <td>Cross-Platform</td>
+      <td>10</td>
+      <td>플랫폼 간 존재 확인</td>
+    </tr>
+    <tr>
+      <td>BPM Match</td>
+      <td>10</td>
+      <td>하모닉 템포 매칭 (half/double tempo 포함)</td>
+    </tr>
+    <tr>
+      <td>Feedback Bias</td>
+      <td>±8</td>
+      <td>사용자 취향 프로필 보정</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="k-pop-3단계-필터링">K-POP 3단계 필터링</h3>
+
+<p>추천 결과에서 K-POP을 정밀하게 제거하여 진정한 크로스 장르 발견을 보장합니다.</p>
+
+<ol>
+  <li><strong>아티스트 블록리스트</strong>: Last.fm의 k-pop, kpop, korean pop 태그 상위 아티스트 ~500명</li>
+  <li><strong>한글 감지</strong>: 아티스트명에 한글(가-힣, ㄱ-ㅎ)이 포함된 경우 자동 제외</li>
+  <li><strong>태그 필터</strong>: 곡 태그에 K-POP 관련 키워드가 포함된 경우 제외</li>
+</ol>
+
+<h3 id="인접-장르-확장">인접 장르 확장</h3>
+
+<p>시드 곡의 태그에서 Last.fm <code class="language-plaintext highlighter-rouge">tag.getSimilar</code> API를 활용하여 인접 장르를 자동 탐색합니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dream pop → shoegaze, ethereal, ambient pop, noise pop ...
+</code></pre></div></div>
+
+<p>기존 태그 + 확장 태그를 합산하여 더 넓은 범위의 음악을 발견합니다.</p>
+
+<h3 id="취향-학습-시스템">취향 학습 시스템</h3>
+
+<ul>
+  <li>좋아요/스킵 피드백으로 태그·아티스트별 선호도를 학습</li>
+  <li><strong>7일 반감기</strong> 시간 감쇠 적용 — 최근 취향을 더 강하게 반영</li>
+  <li>localStorage 기반으로 별도 회원가입 없이 동작</li>
+</ul>
+
+<h3 id="spotify-플레이리스트-생성">Spotify 플레이리스트 생성</h3>
+
+<ul>
+  <li>Spotify PKCE OAuth 연동 (클라이언트 사이드, 서버 미경유)</li>
+  <li>추천 결과에서 원하는 곡을 선택 → 한 번에 플레이리스트 생성</li>
+  <li>제목 자동 생성: <code class="language-plaintext highlighter-rouge">Digging: {시드 곡 이름}</code></li>
+</ul>
+
+<h3 id="소스-신뢰도-표시">소스 신뢰도 표시</h3>
+
+<p>결과 화면에서 6개 데이터 소스의 가용 상태를 실시간으로 표시합니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>●●●○●● 5/6 sources
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="기술-스택">기술 스택</h2>
+
+<h3 id="프론트엔드">프론트엔드</h3>
+
+<ul>
+  <li><strong>Jekyll</strong> (GitHub Pages) 정적 사이트</li>
+  <li>순수 JavaScript (프레임워크 미사용), ~1200줄 인라인 스크립트</li>
+  <li>터미널 스타일 UI (JetBrains Mono, scanline effect)</li>
+  <li>Deezer 30초 프리뷰 재생 + Spotify IFrame Embed API</li>
+</ul>
+
+<h3 id="백엔드-cloudflare-worker">백엔드 (Cloudflare Worker)</h3>
+
+<ul>
+  <li><strong>서버리스 API 프록시</strong> — CORS 해결 + API 키 보호</li>
+  <li>Spotify Client Credentials 토큰 자동 관리</li>
+  <li>엔드포인트별 캐시 전략:</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>API</th>
+      <th>캐시 TTL</th>
+      <th>비고</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Spotify (트랙/검색)</td>
+      <td>5~60분</td>
+      <td>엔드포인트별 차등</td>
+    </tr>
+    <tr>
+      <td>Last.fm</td>
+      <td>24시간</td>
+      <td>태그/유사 트랙 등</td>
+    </tr>
+    <tr>
+      <td>Deezer (검색)</td>
+      <td>30분</td>
+      <td>프리뷰 URL 만료 대비</td>
+    </tr>
+    <tr>
+      <td>Deezer (기타)</td>
+      <td>24시간</td>
+      <td>아티스트 메타데이터 등</td>
+    </tr>
+    <tr>
+      <td>MusicBrainz</td>
+      <td>7일</td>
+      <td>MBID 등 변동 없는 데이터</td>
+    </tr>
+    <tr>
+      <td>ListenBrainz</td>
+      <td>24시간</td>
+      <td>유사 아티스트</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="사용-외부-api">사용 외부 API</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>API</th>
+      <th>용도</th>
+      <th>인증</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Spotify Web API</td>
+      <td>시드 트랙 정보, 검색, 플레이리스트 생성</td>
+      <td>Client Credentials + PKCE</td>
+    </tr>
+    <tr>
+      <td>Last.fm API</td>
+      <td>유사 트랙, 태그, 아티스트 정보, 태그 유사도</td>
+      <td>API Key</td>
+    </tr>
+    <tr>
+      <td>Deezer API</td>
+      <td>태그 검색, 관련 아티스트, BPM, 프리뷰</td>
+      <td>공개</td>
+    </tr>
+    <tr>
+      <td>MusicBrainz API</td>
+      <td>아티스트/녹음 MBID 확인</td>
+      <td>User-Agent</td>
+    </tr>
+    <tr>
+      <td>ListenBrainz Labs API</td>
+      <td>세션 기반 유사 아티스트</td>
+      <td>공개</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="아키텍처">아키텍처</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│   Browser    │────▶│  Cloudflare Worker    │────▶│  Spotify API    │
+│              │     │  (kpop-digging-proxy) │────▶│  Last.fm API    │
+│  digging.html│     │                      │────▶│  Deezer API     │
+│  ~1200 lines │     │  - Token management  │────▶│  MusicBrainz    │
+│  inline JS   │     │  - CORS proxy        │────▶│  ListenBrainz   │
+│              │     │  - Response caching   │     └─────────────────┘
+└─────────────┘     └──────────────────────┘
+       │
+       │ PKCE OAuth (direct)
+       ▼
+┌─────────────┐
+│  Spotify     │
+│  Auth + API  │
+│  (Playlist)  │
+└─────────────┘
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="알고리즘-상세-흐름">알고리즘 상세 흐름</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Spotify Track URL
+       │
+       ▼
+[Step 1] Seed 분석
+  ├── Spotify: 트랙 메타데이터
+  ├── Last.fm: 트랙 태그 + 아티스트 태그
+  ├── Last.fm: 유사 트랙 목록
+  └── MusicBrainz: 아티스트 MBID 확인
+       │
+       ▼
+[Step 1.5] 태그 확장
+  ├── 비음악적 태그 필터링 (~40개 블랙리스트)
+  └── tag.getSimilar로 인접 장르 태그 확장 (최대 +6개)
+       │
+       ▼
+[Step 1.6] 병렬 후보 수집
+  ├── K-POP 아티스트 블록리스트 구축 (~500명)
+  ├── Source A: Last.fm 유사 트랙 (K-POP 필터 적용)
+  ├── Source C: Last.fm 태그별 인기 트랙 (확장 태그 포함, 최대 12태그)
+  ├── Source D: Deezer 태그 검색 (확장 태그 포함, 최대 8태그)
+  ├── Source E: ListenBrainz 유사 아티스트 → Deezer 인기곡
+  ├── Source F: Deezer 관련 아티스트 → 인기곡
+  └── BPM 수집 (Deezer)
+       │
+       ▼
+[Step 2] 후보 분석 (상위 80곡)
+  ├── 가중 복합 사전 스코어링으로 상위 80곡 선별
+  ├── Last.fm: 각 후보의 재생수, 리스너수, 태그
+  └── Deezer: 각 후보의 BPM
+       │
+       ▼
+[Step 3] 7요소 스코어링 (max 100)
+  ├── TF-IDF 코퍼스 구축 (비음악적 태그 제외)
+  ├── Digging Index에 Vibe 감쇠 적용
+  ├── BPM 데이터 없을 시 동적 배점 재분배
+  └── 취향 프로필 바이어스 (시간 감쇠 포함)
+       │
+       ▼
+[Step 4] 다양성 필터
+  ├── 아티스트당 1곡 제한
+  ├── 제목 정규화 중복 제거
+  └── 최대 30곡 출력
+       │
+       ▼
+[Result] 추천 결과 + 소스 신뢰도 표시
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="제한사항">제한사항</h2>
+
+<ul>
+  <li>Deezer 프리뷰는 30초로 제한됩니다</li>
+  <li>일부 국가에서 Deezer 프리뷰가 제공되지 않을 수 있습니다</li>
+  <li>Last.fm 태그 데이터는 사용자 입력 기반이므로 노이즈가 포함될 수 있습니다</li>
+  <li>Spotify 플레이리스트 생성에는 Spotify 계정 연동이 필요합니다</li>
+  <li>취향 프로필은 브라우저 localStorage에 저장되어 기기 간 동기화되지 않습니다</li>
+</ul>
+
+  </div>
+</article>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span>&copy; 2026 bhvd</span>
+        <span class="status">all systems operational</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
