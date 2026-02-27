@@ -10,6 +10,13 @@ layout: post
 
 **URL**: [https://luckydraw-maker.vercel.app](https://luckydraw-maker.vercel.app)
 
+<div style="display:flex;gap:8px;overflow-x:auto;padding:8px 0;">
+  <img src="/assets/images/luckydraw-maker/landing.png" alt="랜딩 페이지" style="height:360px;border:2px solid #333;">
+  <img src="/assets/images/luckydraw-maker/play.png" alt="뽑기 대기 화면" style="height:360px;border:2px solid #333;">
+  <img src="/assets/images/luckydraw-maker/drawing.png" alt="셔플 애니메이션" style="height:360px;border:2px solid #333;">
+  <img src="/assets/images/luckydraw-maker/result.png" alt="당첨 결과" style="height:360px;border:2px solid #333;">
+</div>
+
 ## 서비스 개요
 
 럭드메이커는 아이돌 이벤트 카페에서 사용하는 럭키드로우를 웹으로 만들고, URL 하나로 공유해서 누구나 뽑기를 할 수 있게 해주는 서비스입니다.
