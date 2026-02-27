@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>럭드메이커 구축기 — bhvd</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --fg: #c8c8c8;
+      --fg-bright: #ececf1;
+      --fg-muted: #aaa;
+      --fg-faint: #999;
+      --bg: #0a0a0a;
+      --accent: #B2B9F4;
+      --accent-dim: rgba(178, 185, 244, 0.08);
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-dim: rgba(92, 201, 202, 0.08);
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --border: #444;
+      --surface: rgba(255, 255, 255, 0.03);
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
+    }
+
+    html {
+      font-family: var(--font);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg-bright);
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-prompt {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: text-shadow 0.2s;
+    }
+
+    .site-prompt:hover {
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: var(--accent-sub);
+      border-color: var(--border);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--fg-faint);
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 48px 0;
+    }
+
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(6px, 1.8vw, 11px);
+      line-height: 1.15;
+      color: var(--accent);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 48px;
+      padding: 24px 20px;
+      border: 1px dashed var(--border);
+    }
+
+    .hero h1 {
+      font-size: clamp(22px, 5.5vw, 36px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .hero .term-cmd {
+      font-size: 11px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+    }
+
+    .hero .term-cmd span {
+      color: var(--fg-muted);
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .section-label::before {
+      content: '/* ';
+      color: var(--fg-faint);
+    }
+
+    .section-label::after {
+      content: ' */';
+      color: var(--fg-faint);
+    }
+
+    /* ── Projects ── */
+    .project-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .project {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .project:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .project:hover .project-name {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .project:hover .arrow {
+      color: var(--accent-sub);
+      transform: translateX(2px);
+    }
+
+    .project-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .project-prefix {
+      color: var(--accent-sub);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .project-name {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    .project-desc {
+      font-size: 11px;
+      color: var(--fg-faint);
+      margin-left: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Post list ── */
+    .post-item {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .post-item:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .post-item:hover .post-title {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .post-date {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+    }
+
+    .post-title {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    /* ── Prose (blog content) ── */
+    .prose {
+      overflow-x: auto;
+    }
+
+    .prose h1 {
+      font-size: 16px;
+      font-weight: 400;
+      margin: 0 0 16px;
+      color: var(--accent);
+    }
+
+    .prose h1::before {
+      content: '# ';
+      color: var(--accent-sub);
+    }
+
+    .prose h2 {
+      font-size: 14px;
+      font-weight: 400;
+      margin: 40px 0 12px;
+      color: var(--accent);
+    }
+
+    .prose h2::before {
+      content: '## ';
+      color: var(--accent-sub);
+    }
+
+    .prose h3 {
+      font-size: 12px;
+      font-weight: 400;
+      margin: 28px 0 10px;
+      color: var(--fg-bright);
+    }
+
+    .prose h3::before {
+      content: '### ';
+      color: var(--accent-sub);
+    }
+
+    .prose p {
+      margin-bottom: 16px;
+    }
+
+    .prose ul,
+    .prose ol {
+      margin: 0 0 16px 20px;
+    }
+
+    .prose li {
+      margin-bottom: 4px;
+    }
+
+    .prose li::marker {
+      color: var(--accent-sub);
+    }
+
+    .prose blockquote {
+      border-left: 2px solid var(--accent-sub);
+      padding: 8px 16px;
+      color: var(--fg-muted);
+      margin: 0 0 16px;
+      background: var(--surface);
+    }
+
+    .prose code {
+      font-family: var(--font);
+      font-size: 11px;
+      background: rgba(92, 201, 202, 0.08);
+      color: var(--accent-sub);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .prose pre {
+      background: #000;
+      border: 1px dashed var(--border);
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .prose pre code {
+      background: none;
+      padding: 0;
+      color: var(--fg);
+    }
+
+    .prose hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 32px 0;
+    }
+
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 16px;
+      border: 1px dashed var(--border);
+    }
+
+    .prose h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin: 24px 0 8px;
+      color: var(--fg-bright);
+    }
+
+    .prose h4::before {
+      content: '#### ';
+      color: var(--accent-sub);
+      font-weight: 400;
+    }
+
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .prose th {
+      text-align: left;
+      padding: 6px 10px;
+      color: var(--accent-sub);
+      border-bottom: 1px solid var(--accent-sub);
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .prose td {
+      padding: 5px 10px;
+      border-bottom: 1px dashed var(--border);
+      color: var(--fg);
+      vertical-align: top;
+    }
+
+    .prose tbody tr:hover {
+      background: var(--accent-dim);
+    }
+
+    .prose td code {
+      font-size: 10px;
+    }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .prose a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Profile ── */
+    .profile-section {
+      margin-bottom: 48px;
+    }
+
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+    }
+
+    .profile-row dt {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      min-width: 80px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .profile-row dd {
+      font-size: 11px;
+      color: var(--fg-bright);
+    }
+
+    .profile-row dd a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .profile-row dd a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 24px 0;
+      border-top: 1px dashed var(--border);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-faint);
+      letter-spacing: 0.5px;
+    }
+
+    .footer-inner .status {
+      color: var(--accent-sub);
+      opacity: 0.7;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .project {
+        flex-wrap: wrap;
+      }
+
+      .project-desc {
+        margin-left: 28px;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .hero {
+        padding: 16px 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <nav>
+          <a href="/">home</a>
+          <a href="/blog/">blog</a>
+          <a href="/profile/">profile</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      
+      <a href="javascript:history.back()" class="back-link">&lt; cd ..</a>
+      
+      <article>
+  <div class="hero">
+    <div class="term-cmd">$ <span>cat ~/blog/luckydraw-maker.md</span></div>
+    <h1>럭드메이커 구축기</h1>
+    <p style="color:var(--fg-faint);font-size:11px;margin-top:4px;">2026-02-27</p>
+  </div>
+
+  <div class="prose">
+    <h1 id="럭드메이커">럭드메이커</h1>
+
+<blockquote>
+  <p>아이돌 이벤트 카페를 위한 감성 럭키드로우 메이커</p>
+</blockquote>
+
+<p><strong>URL</strong>: <a href="https://luckydraw-maker.vercel.app">https://luckydraw-maker.vercel.app</a></p>
+
+<h2 id="서비스-개요">서비스 개요</h2>
+
+<p>럭드메이커는 아이돌 이벤트 카페에서 사용하는 럭키드로우를 웹으로 만들고, URL 하나로 공유해서 누구나 뽑기를 할 수 있게 해주는 서비스입니다.</p>
+
+<p>오프라인 카페 이벤트에서 흔히 볼 수 있는 럭키드로우 — 포카, 굿즈, 특전 등을 넣고 랜덤으로 뽑는 방식을 디지털로 옮겼습니다. 물리적인 뽑기 박스 없이도 카페 현장에서 QR코드 하나로 뽑기를 진행할 수 있습니다.</p>
+
+<hr />
+
+<h2 id="핵심-기능">핵심 기능</h2>
+
+<h3 id="럭키드로우-crud">럭키드로우 CRUD</h3>
+
+<p>Google 로그인 후 럭키드로우를 생성/편집/삭제할 수 있습니다. 각 드로우에는 이름, 뽑기 버튼 텍스트, 확률 모드, 아이템 목록을 설정합니다.</p>
+
+<p>아이템에는 이름, 수량, 이미지를 등록합니다. 이미지는 2MB 초과 시 WebP로 자동 압축하여 Supabase Storage에 업로드합니다.</p>
+
+<h3 id="2가지-확률-모드">2가지 확률 모드</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>모드</th>
+      <th>동작</th>
+      <th>사용 예시</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>균등확률</td>
+      <td>모든 아이템 동일 확률 (1/N)</td>
+      <td>어떤 것이든 공평하게 뽑기</td>
+    </tr>
+    <tr>
+      <td>차등확률</td>
+      <td>수량 비례 확률 (quantity/total)</td>
+      <td>희귀 아이템에 낮은 확률 부여</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>차등확률 모드에서는 에디터에 실시간 확률 프리뷰가 표시되어, 아이템별 당첨 확률을 바로 확인할 수 있습니다.</p>
+
+<h3 id="뽑기-화면">뽑기 화면</h3>
+
+<p>슬롯머신 스타일 셔플 애니메이션(2.5초) 후 결과가 공개됩니다. 당첨 시 컨페티 파티클이 터지고, 결과 카드가 스프링 애니메이션으로 등장합니다. “다시 뽑기” 버튼으로 반복 가능합니다.</p>
+
+<h3 id="url-공유">URL 공유</h3>
+
+<p>생성한 럭키드로우를 <code class="language-plaintext highlighter-rouge">/play/{id}</code> URL로 공유하면, 로그인 없이 누구나 해당 드로우 페이지에 접속해 뽑기를 할 수 있습니다. 공유 버튼 클릭 시 클립보드에 URL이 복사됩니다.</p>
+
+<hr />
+
+<h2 id="기술-스택">기술 스택</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>선택</th>
+      <th>이유</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>프레임워크</td>
+      <td>Next.js 16 (App Router)</td>
+      <td>파일 기반 라우팅, SSR/CSR 유연한 전환</td>
+    </tr>
+    <tr>
+      <td>언어</td>
+      <td>TypeScript (strict)</td>
+      <td>타입 안전한 Supabase 쿼리, Props 검증</td>
+    </tr>
+    <tr>
+      <td>스타일링</td>
+      <td>Tailwind CSS 4</td>
+      <td>유틸리티 기반 + CSS 변수로 커스텀 테마</td>
+    </tr>
+    <tr>
+      <td>상태관리</td>
+      <td>Zustand</td>
+      <td>드로우 상태(isDrawing, lastResult), 토스트 관리</td>
+    </tr>
+    <tr>
+      <td>폼</td>
+      <td>React Hook Form + Zod</td>
+      <td>아이템 배열 동적 관리(useFieldArray), 스키마 검증</td>
+    </tr>
+    <tr>
+      <td>애니메이션</td>
+      <td>Framer Motion</td>
+      <td>셔플, 컨페티, 결과 스프링 등 복합 애니메이션</td>
+    </tr>
+    <tr>
+      <td>인증</td>
+      <td>Supabase Auth (Google OAuth)</td>
+      <td>소셜 로그인, RLS 연동</td>
+    </tr>
+    <tr>
+      <td>DB</td>
+      <td>Supabase (PostgreSQL)</td>
+      <td>RLS 정책으로 접근 제어, 실시간 쿼리</td>
+    </tr>
+    <tr>
+      <td>스토리지</td>
+      <td>Supabase Storage</td>
+      <td>아이템 이미지 업로드, Public 버킷</td>
+    </tr>
+    <tr>
+      <td>이미지 압축</td>
+      <td>browser-image-compression</td>
+      <td>클라이언트 사이드 WebP 압축</td>
+    </tr>
+    <tr>
+      <td>아이콘</td>
+      <td>Lucide React</td>
+      <td>트리셰이킹 가능한 SVG 아이콘</td>
+    </tr>
+    <tr>
+      <td>배포</td>
+      <td>Vercel</td>
+      <td>Next.js 네이티브 지원, 자동 빌드</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="디자인--neobrutalism">디자인 — Neobrutalism</h2>
+
+<p>네오브루탈리즘 스타일을 채택했습니다. 두꺼운 보더, 솔리드 그림자, 선명한 컬러 팔레트가 특징입니다.</p>
+
+<h3 id="컬러-팔레트">컬러 팔레트</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Primary   #eb6b34  ████  (오렌지 — 포인트 컬러)
+Yellow    #FFC900  ████
+Green     #23D18C  ████
+Blue      #90B8F8  ████
+Purple    #C9B1FF  ████
+Coral     #FF6B6B  ████
+Orange    #FFAB76  ████
+</code></pre></div></div>
+
+<h3 id="brutal-shadow-시스템">Brutal Shadow 시스템</h3>
+
+<div class="language-css highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">--shadow-brutal</span><span class="o">:</span>    <span class="err">4</span><span class="nt">px</span> <span class="err">4</span><span class="nt">px</span> <span class="err">0</span><span class="nt">px</span> <span class="err">#1</span><span class="nt">C1C1C</span><span class="o">;</span>   <span class="c">/* 기본 */</span>
+<span class="nt">--shadow-brutal-lg</span><span class="o">:</span> <span class="err">6</span><span class="nt">px</span> <span class="err">6</span><span class="nt">px</span> <span class="err">0</span><span class="nt">px</span> <span class="err">#1</span><span class="nt">C1C1C</span><span class="o">;</span>   <span class="c">/* 카드 호버 */</span>
+<span class="nt">--shadow-brutal-sm</span><span class="o">:</span> <span class="err">2</span><span class="nt">px</span> <span class="err">2</span><span class="nt">px</span> <span class="err">0</span><span class="nt">px</span> <span class="err">#1</span><span class="nt">C1C1C</span><span class="o">;</span>   <span class="c">/* 인풋, 뱃지 */</span>
+<span class="nt">--shadow-brutal-pink</span><span class="o">:</span>   <span class="err">4</span><span class="nt">px</span> <span class="err">4</span><span class="nt">px</span> <span class="err">0</span><span class="nt">px</span> <span class="nf">#eb6b34</span><span class="o">;</span>  <span class="c">/* 포커스, 선택 */</span>
+<span class="nt">--shadow-brutal-yellow</span><span class="o">:</span> <span class="err">4</span><span class="nt">px</span> <span class="err">4</span><span class="nt">px</span> <span class="err">0</span><span class="nt">px</span> <span class="nf">#FFC900</span><span class="o">;</span>  <span class="c">/* 균등확률 선택 */</span>
+</code></pre></div></div>
+
+<p>인풋 포커스 시 그림자가 블랙에서 핑크로 전환되며 <code class="language-plaintext highlighter-rouge">-1px, -1px</code> 이동하는 것으로 눌림 효과를 만들었습니다.</p>
+
+<h3 id="타이포그래피">타이포그래피</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>용도</th>
+      <th>폰트</th>
+      <th>특징</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>디스플레이</td>
+      <td>Bagel Fat One</td>
+      <td>둥글고 볼드한 한글 디스플레이</td>
+    </tr>
+    <tr>
+      <td>본문</td>
+      <td>Chiron GoRound TC</td>
+      <td>부드러운 라운드 고딕</td>
+    </tr>
+    <tr>
+      <td>숫자/코드</td>
+      <td>DM Mono</td>
+      <td>날짜, 뱃지 텍스트</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="아키텍처">아키텍처</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Landing Page]
+  └── Google OAuth → Supabase Auth
+       └── /auth/callback → /vault
+            │
+            ▼
+[Vault — 럭드 목록]
+  ├── 새 럭드 만들기 → /create
+  │     └── LuckyDrawEditor
+  │           ├── React Hook Form + Zod 검증
+  │           ├── useFieldArray (아이템 동적 관리)
+  │           └── compressAndUpload (이미지 처리)
+  │                 └── Supabase Storage
+  │
+  ├── 수정 → /edit/[id]
+  │     └── LuckyDrawEditor (existingDraw)
+  │
+  ├── 시작 → /draw/[id]
+  │     └── DrawScreen
+  │           ├── drawItem() — 확률 엔진
+  │           ├── ShuffleAnimation (2.5초)
+  │           └── ConfettiPieces + Result Card
+  │
+  └── 공유 → /play/[id] (공개)
+        └── DrawScreen (인증 불필요)
+             └── Supabase RLS public read
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="데이터-모델">데이터 모델</h2>
+
+<h3 id="테이블-구조">테이블 구조</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>profiles
+├── id           UUID (PK, FK → auth.users)
+├── display_name TEXT
+├── avatar_url   TEXT
+└── created_at   TIMESTAMPTZ
+
+lucky_draws
+├── id                UUID (PK, auto)
+├── user_id           UUID (FK → profiles)
+├── name              TEXT
+├── draw_button_label TEXT (default: '두근두근 뽑기!')
+├── probability_mode  TEXT ('equal' | 'weighted')
+├── is_active         BOOLEAN
+├── created_at        TIMESTAMPTZ
+└── updated_at        TIMESTAMPTZ
+
+draw_items
+├── id         UUID (PK, auto)
+├── draw_id    UUID (FK → lucky_draws, CASCADE)
+├── name       TEXT
+├── quantity   INTEGER (≥ 1)
+├── image_url  TEXT (nullable)
+├── sort_order INTEGER
+└── created_at TIMESTAMPTZ
+</code></pre></div></div>
+
+<h3 id="rls-정책">RLS 정책</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>테이블</th>
+      <th>정책</th>
+      <th>규칙</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>profiles</td>
+      <td><code class="language-plaintext highlighter-rouge">profiles_self</code></td>
+      <td>본인만 ALL</td>
+    </tr>
+    <tr>
+      <td>lucky_draws</td>
+      <td><code class="language-plaintext highlighter-rouge">draws_owner</code></td>
+      <td>본인만 ALL</td>
+    </tr>
+    <tr>
+      <td>lucky_draws</td>
+      <td><code class="language-plaintext highlighter-rouge">draws_public_read</code></td>
+      <td>누구나 SELECT</td>
+    </tr>
+    <tr>
+      <td>draw_items</td>
+      <td><code class="language-plaintext highlighter-rouge">items_owner</code></td>
+      <td>소유자만 ALL</td>
+    </tr>
+    <tr>
+      <td>draw_items</td>
+      <td><code class="language-plaintext highlighter-rouge">items_public_read</code></td>
+      <td>누구나 SELECT</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>소유자 CRUD 정책과 공개 읽기 정책이 공존합니다. PostgreSQL RLS에서 동일 작업(SELECT)에 여러 정책이 있으면 OR로 합쳐지므로, 소유자는 전체 CRUD를, 비인증 사용자는 읽기만 할 수 있습니다.</p>
+
+<hr />
+
+<h2 id="작업-과정">작업 과정</h2>
+
+<h3 id="step-1--데이터-모델--supabase-셋업">Step 1 — 데이터 모델 + Supabase 셋업</h3>
+
+<p>Supabase 프로젝트를 생성하고 스키마를 설계했습니다. <code class="language-plaintext highlighter-rouge">lucky_draws</code>와 <code class="language-plaintext highlighter-rouge">draw_items</code>를 1:N 관계로 연결하고, <code class="language-plaintext highlighter-rouge">ON DELETE CASCADE</code>로 드로우 삭제 시 아이템이 함께 정리되도록 했습니다.</p>
+
+<p>RLS를 먼저 설정하고, <code class="language-plaintext highlighter-rouge">profiles</code> 테이블을 <code class="language-plaintext highlighter-rouge">auth.users</code>와 연결하여 Google 로그인 시 프로필이 자동으로 생성되도록 했습니다. 에디터에서 저장 시 <code class="language-plaintext highlighter-rouge">profiles.upsert()</code>를 먼저 호출하여 FK 제약 위반을 방지합니다.</p>
+
+<h3 id="step-2--인증--미들웨어">Step 2 — 인증 + 미들웨어</h3>
+
+<p>Next.js 미들웨어에서 <code class="language-plaintext highlighter-rouge">/vault</code>, <code class="language-plaintext highlighter-rouge">/draw</code>, <code class="language-plaintext highlighter-rouge">/create</code>, <code class="language-plaintext highlighter-rouge">/edit</code> 경로를 보호합니다. Supabase SSR 클라이언트로 쿠키 기반 세션을 확인하고, 미인증 시 랜딩 페이지로 리다이렉트합니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>protectedPaths = ['/vault', '/draw', '/create', '/edit']
+
+matcher = ['/vault/:path*', '/draw/:path*', '/create/:path*', '/edit/:path*']
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">/play</code> 경로는 의도적으로 보호 대상에서 제외하여 공유 URL로 사용합니다.</p>
+
+<h3 id="step-3--럭드-에디터">Step 3 — 럭드 에디터</h3>
+
+<p>React Hook Form의 <code class="language-plaintext highlighter-rouge">useFieldArray</code>로 아이템 목록을 동적으로 관리합니다. Zod 스키마로 이름 1~30자, 수량 1~9999, 아이템 최소 2개 등의 검증을 수행합니다.</p>
+
+<p>차등확률 모드에서는 각 아이템의 <code class="language-plaintext highlighter-rouge">quantity / totalQuantity * 100</code>을 실시간으로 계산하여 확률 바와 퍼센트 뱃지로 표시합니다.</p>
+
+<p>이미지 업로드는 <code class="language-plaintext highlighter-rouge">browser-image-compression</code>으로 클라이언트에서 처리합니다. 2MB 초과 시 800px 리사이즈 + WebP 변환 후 Supabase Storage에 업로드합니다. 개별 이미지 실패는 무시하고 나머지를 저장하며, 버킷 미존재 시에만 전체를 중단하고 안내 메시지를 표시합니다.</p>
+
+<h3 id="step-4--뽑기-엔진">Step 4 — 뽑기 엔진</h3>
+
+<p>확률 계산은 <code class="language-plaintext highlighter-rouge">lib/lottery.ts</code>에서 처리합니다.</p>
+
+<p><strong>균등확률</strong>: <code class="language-plaintext highlighter-rouge">Math.random() * items.length</code>로 인덱스를 선택합니다.</p>
+
+<p><strong>차등확률</strong>: 누적 분포 함수(CDF) 방식입니다. 총 수량 합계에 대한 랜덤 값을 생성하고, 아이템을 순회하며 수량을 차감합니다. 0 이하가 되는 시점의 아이템이 당첨입니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>items:  [A:3, B:1, C:1]  → total: 5
+random: 2.7
+  A: 2.7 - 3 = -0.3 ≤ 0 → A 당첨 (60% 확률)
+</code></pre></div></div>
+
+<h3 id="step-5--애니메이션">Step 5 — 애니메이션</h3>
+
+<p>Framer Motion으로 뽑기 경험을 구현했습니다.</p>
+
+<ul>
+  <li><strong>셔플</strong>: 3열 슬롯머신 — 이모지 배열을 무한 루프로 스크롤, 열마다 0.12초 딜레이</li>
+  <li><strong>컨페티</strong>: 30개 파티클 — 랜덤 위치/크기/색상, <code class="language-plaintext highlighter-rouge">window.innerHeight</code>까지 낙하 + 회전</li>
+  <li><strong>결과 카드</strong>: <code class="language-plaintext highlighter-rouge">spring</code> 타입(stiffness: 200, damping: 14) — scale 0 → 1 + rotate -10° → 0°</li>
+  <li><strong>AnimatePresence</strong>: idle → drawing → result 3상태를 <code class="language-plaintext highlighter-rouge">mode="wait"</code>로 전환</li>
+</ul>
+
+<h3 id="step-6--url-공유">Step 6 — URL 공유</h3>
+
+<p>공유 기능의 핵심은 인증 없이 드로우 데이터에 접근할 수 있게 하는 것입니다. 두 가지를 동시에 해결해야 했습니다:</p>
+
+<p><strong>1. 라우팅</strong>: <code class="language-plaintext highlighter-rouge">/play/[id]</code> 공개 경로를 생성하고 미들웨어 보호 대상에서 제외했습니다. 기존 <code class="language-plaintext highlighter-rouge">/draw/[id]</code>와 동일한 <code class="language-plaintext highlighter-rouge">DrawScreen</code> 컴포넌트를 렌더링합니다.</p>
+
+<p><strong>2. RLS 정책</strong>: 기존 <code class="language-plaintext highlighter-rouge">draws_owner</code>(본인만 ALL) 정책에 <code class="language-plaintext highlighter-rouge">draws_public_read</code>(누구나 SELECT)를 추가했습니다. UUID가 URL의 유일한 접근 키이므로, 드로우 ID를 모르면 접근할 수 없습니다.</p>
+
+<p>공유 버튼은 3곳에 배치했습니다 — 럭드 카드(목록), 드로우 화면(상단 바), 드로우 정보 페이지. <code class="language-plaintext highlighter-rouge">navigator.clipboard.writeText()</code>로 URL을 복사하고 토스트로 피드백합니다.</p>
+
+<hr />
+
+<h2 id="프로젝트-구조">프로젝트 구조</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>luckydraw-maker/
+├── src/
+│   ├── app/
+│   │   ├── page.tsx              # 랜딩 (Google 로그인)
+│   │   ├── layout.tsx            # 루트 레이아웃 (폰트, 토스트)
+│   │   ├── globals.css           # Tailwind + Neobrutalism 테마
+│   │   ├── auth/callback/        # OAuth 콜백
+│   │   ├── vault/                # 럭드 목록 (보호)
+│   │   ├── create/               # 새 럭드 만들기 (보호)
+│   │   ├── edit/[id]/            # 럭드 수정 (보호)
+│   │   ├── draw/[id]/            # 드로우 실행 (보호)
+│   │   │   └── info/             # 드로우 정보
+│   │   └── play/[id]/            # 드로우 실행 (공개, 공유용)
+│   ├── components/
+│   │   ├── domain/
+│   │   │   ├── DrawScreen.tsx    # 뽑기 화면 (셔플 + 컨페티 + 결과)
+│   │   │   ├── LuckyDrawCard.tsx # 럭드 카드 (목록 아이템)
+│   │   │   ├── LuckyDrawEditor.tsx  # 럭드 에디터 (생성/수정)
+│   │   │   └── DrawItemCard.tsx  # 아이템 카드 (에디터 내부)
+│   │   ├── layout/
+│   │   │   └── Header.tsx        # 헤더 (로그아웃)
+│   │   └── ui/                   # 공통 UI 컴포넌트
+│   │       ├── Button.tsx
+│   │       ├── GlassCard.tsx
+│   │       ├── Badge.tsx
+│   │       ├── Toast.tsx
+│   │       ├── ImageUpload.tsx
+│   │       ├── LoadingSpinner.tsx
+│   │       └── StarField.tsx
+│   ├── hooks/
+│   │   ├── useAuth.ts            # 인증 상태 + Google 로그인
+│   │   └── useLuckyDraws.ts     # 드로우 CRUD 훅
+│   ├── lib/
+│   │   ├── supabase/client.ts    # 브라우저 Supabase 클라이언트
+│   │   ├── supabase/server.ts    # 서버 Supabase 클라이언트
+│   │   ├── lottery.ts            # 확률 엔진
+│   │   ├── imageUtils.ts         # 이미지 압축 + 업로드
+│   │   └── utils.ts              # cn() 유틸리티
+│   ├── stores/
+│   │   ├── drawStore.ts          # 뽑기 상태 (isDrawing, lastResult)
+│   │   └── uiStore.ts            # 토스트 상태
+│   ├── types/index.ts            # 타입 정의
+│   └── middleware.ts             # 인증 미들웨어
+└── supabase/schema.sql           # DB 스키마 + RLS
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="회고">회고</h2>
+
+<h3 id="잘된-점">잘된 점</h3>
+
+<ul>
+  <li><strong>RLS 이중 정책</strong> — 소유자 CRUD + 공개 읽기를 분리하여, 기존 보안을 유지하면서 공유 기능을 추가했습니다. UUID 기반 접근이므로 열거 공격이 사실상 불가능합니다.</li>
+  <li><strong>공유 경로 분리</strong> — <code class="language-plaintext highlighter-rouge">/draw</code>(보호)와 <code class="language-plaintext highlighter-rouge">/play</code>(공개)를 분리하여 미들웨어 수정 없이 공유를 구현했습니다. 같은 <code class="language-plaintext highlighter-rouge">DrawScreen</code> 컴포넌트를 재사용하므로 코드 중복도 없습니다.</li>
+  <li><strong>이미지 에러 격리</strong> — 개별 이미지 업로드 실패를 전체 저장 실패로 전파하지 않고, null로 대체 후 계속 진행합니다. 버킷 미존재처럼 복구 불가능한 에러만 전체를 중단합니다.</li>
+  <li><strong>Neobrutalism 테마</strong> — CSS 변수 기반으로 그림자 시스템을 구축하여, 컴포넌트마다 일관된 시각적 언어를 유지합니다.</li>
+</ul>
+
+<h3 id="개선할-점">개선할 점</h3>
+
+<ul>
+  <li>드로우 결과 기록 (히스토리) 미구현 — 누가 무엇을 뽑았는지 추적할 수 없음</li>
+  <li>아이템 소진 로직 미구현 — 현재는 같은 아이템이 무한으로 당첨 가능</li>
+  <li>뽑기 화면에서 아이템 이미지 미리보기가 작아서 모바일에서 식별이 어려움</li>
+  <li>OG 메타태그 미설정 — 공유 URL의 미리보기가 기본값으로 표시됨</li>
+</ul>
+
+  </div>
+</article>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span>&copy; 2026 bhvd</span>
+        <span class="status">all systems operational</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
