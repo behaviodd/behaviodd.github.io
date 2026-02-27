@@ -335,6 +335,22 @@
     }
 
     /* ── Prose (blog content) ── */
+    .prose {
+      overflow-x: auto;
+    }
+
+    .prose h1 {
+      font-size: 16px;
+      font-weight: 400;
+      margin: 0 0 16px;
+      color: var(--accent);
+    }
+
+    .prose h1::before {
+      content: '# ';
+      color: var(--accent-sub);
+    }
+
     .prose h2 {
       font-size: 14px;
       font-weight: 400;
@@ -418,6 +434,51 @@
       height: auto;
       margin-bottom: 16px;
       border: 1px dashed var(--border);
+    }
+
+    .prose h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin: 24px 0 8px;
+      color: var(--fg-bright);
+    }
+
+    .prose h4::before {
+      content: '#### ';
+      color: var(--accent-sub);
+      font-weight: 400;
+    }
+
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .prose th {
+      text-align: left;
+      padding: 6px 10px;
+      color: var(--accent-sub);
+      border-bottom: 1px solid var(--accent-sub);
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .prose td {
+      padding: 5px 10px;
+      border-bottom: 1px dashed var(--border);
+      color: var(--fg);
+      vertical-align: top;
+    }
+
+    .prose tbody tr:hover {
+      background: var(--accent-dim);
+    }
+
+    .prose td code {
+      font-size: 10px;
     }
 
     .prose a {

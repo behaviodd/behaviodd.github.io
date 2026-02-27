@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design System 구축기 — bhvd</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --fg: #c8c8c8;
+      --fg-bright: #ececf1;
+      --fg-muted: #aaa;
+      --fg-faint: #999;
+      --bg: #0a0a0a;
+      --accent: #B2B9F4;
+      --accent-dim: rgba(178, 185, 244, 0.08);
+      --accent-glow: rgba(178, 185, 244, 0.3);
+      --accent-sub: #5CC9CA;
+      --accent-sub-dim: rgba(92, 201, 202, 0.08);
+      --accent-sub-glow: rgba(92, 201, 202, 0.3);
+      --border: #444;
+      --surface: rgba(255, 255, 255, 0.03);
+      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
+    }
+
+    html {
+      font-family: var(--font);
+      font-size: 11px;
+      line-height: 1.7;
+      color: var(--fg);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Scanline Effect ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.04) 2px,
+        rgba(0, 0, 0, 0.04) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(92, 201, 202, 0.2);
+      border-radius: 999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(92, 201, 202, 0.4);
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
+      width: 100%;
+    }
+
+    /* ── Selection ── */
+    ::selection {
+      background: rgba(92, 201, 202, 0.25);
+      color: var(--fg-bright);
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 20px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-prompt {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: text-shadow 0.2s;
+    }
+
+    .site-prompt:hover {
+      text-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    nav a {
+      color: var(--fg-muted);
+      text-decoration: none;
+      font-size: 11px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    nav a:hover,
+    nav a.active {
+      color: var(--accent-sub);
+      border-color: var(--border);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Back Link ── */
+    .back-link {
+      display: inline-block;
+      font-size: 11px;
+      color: var(--fg-faint);
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.2s;
+    }
+
+    .back-link:hover {
+      color: var(--accent-sub);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 48px 0;
+    }
+
+    /* ── ASCII Art ── */
+    .ascii-art {
+      font-family: var(--font);
+      font-size: clamp(6px, 1.8vw, 11px);
+      line-height: 1.15;
+      color: var(--accent);
+      margin-bottom: 20px;
+      overflow-x: auto;
+      white-space: pre;
+      user-select: none;
+      opacity: 0.75;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      margin-bottom: 48px;
+      padding: 24px 20px;
+      border: 1px dashed var(--border);
+    }
+
+    .hero h1 {
+      font-size: clamp(22px, 5.5vw, 36px);
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .hero p {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .hero .term-cmd {
+      font-size: 11px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+    }
+
+    .hero .term-cmd span {
+      color: var(--fg-muted);
+    }
+
+    /* ── Section Label ── */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--accent-sub);
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .section-label::before {
+      content: '/* ';
+      color: var(--fg-faint);
+    }
+
+    .section-label::after {
+      content: ' */';
+      color: var(--fg-faint);
+    }
+
+    /* ── Projects ── */
+    .project-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .project {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .project:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .project:hover .project-name {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .project:hover .arrow {
+      color: var(--accent-sub);
+      transform: translateX(2px);
+    }
+
+    .project-left {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .project-prefix {
+      color: var(--accent-sub);
+      font-size: 11px;
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .project-name {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    .project-desc {
+      font-size: 11px;
+      color: var(--fg-faint);
+      margin-left: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── Post list ── */
+    .post-item {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.15s;
+    }
+
+    .post-item:hover {
+      background: var(--accent-sub-dim);
+    }
+
+    .post-item:hover .post-title {
+      color: var(--accent);
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    .post-date {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.7;
+    }
+
+    .post-title {
+      font-size: 11px;
+      color: var(--fg-bright);
+      transition: all 0.15s;
+    }
+
+    /* ── Prose (blog content) ── */
+    .prose {
+      overflow-x: auto;
+    }
+
+    .prose h1 {
+      font-size: 16px;
+      font-weight: 400;
+      margin: 0 0 16px;
+      color: var(--accent);
+    }
+
+    .prose h1::before {
+      content: '# ';
+      color: var(--accent-sub);
+    }
+
+    .prose h2 {
+      font-size: 14px;
+      font-weight: 400;
+      margin: 40px 0 12px;
+      color: var(--accent);
+    }
+
+    .prose h2::before {
+      content: '## ';
+      color: var(--accent-sub);
+    }
+
+    .prose h3 {
+      font-size: 12px;
+      font-weight: 400;
+      margin: 28px 0 10px;
+      color: var(--fg-bright);
+    }
+
+    .prose h3::before {
+      content: '### ';
+      color: var(--accent-sub);
+    }
+
+    .prose p {
+      margin-bottom: 16px;
+    }
+
+    .prose ul,
+    .prose ol {
+      margin: 0 0 16px 20px;
+    }
+
+    .prose li {
+      margin-bottom: 4px;
+    }
+
+    .prose li::marker {
+      color: var(--accent-sub);
+    }
+
+    .prose blockquote {
+      border-left: 2px solid var(--accent-sub);
+      padding: 8px 16px;
+      color: var(--fg-muted);
+      margin: 0 0 16px;
+      background: var(--surface);
+    }
+
+    .prose code {
+      font-family: var(--font);
+      font-size: 11px;
+      background: rgba(92, 201, 202, 0.08);
+      color: var(--accent-sub);
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+
+    .prose pre {
+      background: #000;
+      border: 1px dashed var(--border);
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+    }
+
+    .prose pre code {
+      background: none;
+      padding: 0;
+      color: var(--fg);
+    }
+
+    .prose hr {
+      border: none;
+      border-top: 1px dashed var(--border);
+      margin: 32px 0;
+    }
+
+    .prose img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 16px;
+      border: 1px dashed var(--border);
+    }
+
+    .prose h4 {
+      font-size: 11px;
+      font-weight: 600;
+      margin: 24px 0 8px;
+      color: var(--fg-bright);
+    }
+
+    .prose h4::before {
+      content: '#### ';
+      color: var(--accent-sub);
+      font-weight: 400;
+    }
+
+    .prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .prose th {
+      text-align: left;
+      padding: 6px 10px;
+      color: var(--accent-sub);
+      border-bottom: 1px solid var(--accent-sub);
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .prose td {
+      padding: 5px 10px;
+      border-bottom: 1px dashed var(--border);
+      color: var(--fg);
+      vertical-align: top;
+    }
+
+    .prose tbody tr:hover {
+      background: var(--accent-dim);
+    }
+
+    .prose td code {
+      font-size: 10px;
+    }
+
+    .prose a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .prose a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Profile ── */
+    .profile-section {
+      margin-bottom: 48px;
+    }
+
+    .profile-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .profile-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 10px 8px;
+    }
+
+    .profile-row dt {
+      font-size: 11px;
+      color: var(--accent-sub);
+      flex-shrink: 0;
+      min-width: 80px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .profile-row dd {
+      font-size: 11px;
+      color: var(--fg-bright);
+    }
+
+    .profile-row dd a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .profile-row dd a:hover {
+      text-decoration: underline;
+      text-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 24px 0;
+      border-top: 1px dashed var(--border);
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-faint);
+      letter-spacing: 0.5px;
+    }
+
+    .footer-inner .status {
+      color: var(--accent-sub);
+      opacity: 0.7;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .project {
+        flex-wrap: wrap;
+      }
+
+      .project-desc {
+        margin-left: 28px;
+      }
+
+      .header-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .hero {
+        padding: 16px 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <nav>
+          <a href="/">home</a>
+          <a href="/blog/">blog</a>
+          <a href="/profile/">profile</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      
+      <a href="javascript:history.back()" class="back-link">&lt; cd ..</a>
+      
+      <article>
+  <div class="hero">
+    <div class="term-cmd">$ <span>cat ~/blog/design-system.md</span></div>
+    <h1>Design System 구축기</h1>
+    <p style="color:var(--fg-faint);font-size:11px;margin-top:4px;">2026-02-20</p>
+  </div>
+
+  <div class="prose">
+    <h1 id="makestardesign-system-구축기">@makestar/design-system 구축기</h1>
+
+<p>React + TypeScript + Tailwind CSS 기반의 사내 디자인 시스템을 구축한 과정을 기록합니다.</p>
+
+<hr />
+
+<h2 id="기술-스택-선정">기술 스택 선정</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>항목</th>
+      <th>선택</th>
+      <th>이유</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>UI 라이브러리</td>
+      <td>React 19</td>
+      <td>팀 내 주력 프레임워크, 최신 버전 채택</td>
+    </tr>
+    <tr>
+      <td>언어</td>
+      <td>TypeScript (strict)</td>
+      <td>컴포넌트 Props 타입 안전성 확보</td>
+    </tr>
+    <tr>
+      <td>빌드 도구</td>
+      <td>Vite 7</td>
+      <td>빠른 HMR, 라이브러리 모드 지원</td>
+    </tr>
+    <tr>
+      <td>스타일링</td>
+      <td>Tailwind CSS 4</td>
+      <td>유틸리티 기반 + CSS 변수 조합으로 테마 대응</td>
+    </tr>
+    <tr>
+      <td>출력 포맷</td>
+      <td>ES Module + CommonJS</td>
+      <td>다양한 소비 환경 호환</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr />
+
+<h2 id="phase-1--프로젝트-셋업">Phase 1 — 프로젝트 셋업</h2>
+
+<p>Vite의 React + TypeScript 템플릿으로 프로젝트를 생성하고, <strong>듀얼 빌드 모드</strong>를 구성했습니다.</p>
+
+<p>하나의 <code class="language-plaintext highlighter-rouge">vite.config.ts</code>에서 환경 변수로 빌드 대상을 분기합니다:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">BUILD_LIB=true</code> → 라이브러리 빌드 (<code class="language-plaintext highlighter-rouge">dist/</code>에 <code class="language-plaintext highlighter-rouge">.mjs</code> + <code class="language-plaintext highlighter-rouge">.cjs</code> 출력)</li>
+  <li>기본 → 데모 앱 빌드 (<code class="language-plaintext highlighter-rouge">dist-demo/</code>)</li>
+</ul>
+
+<p>TypeScript 설정은 용도별로 분리했습니다:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">tsconfig.app.json</code> — 데모 앱용 (React JSX, ES2022)</li>
+  <li><code class="language-plaintext highlighter-rouge">tsconfig.lib.json</code> — 라이브러리용 (선언 파일 생성, 데모 코드 제외)</li>
+  <li><code class="language-plaintext highlighter-rouge">tsconfig.node.json</code> — Vite 등 빌드 도구용</li>
+</ul>
+
+<p><code class="language-plaintext highlighter-rouge">package.json</code>의 엔트리 포인트를 설정하여 소비자가 어떤 환경에서든 import할 수 있도록 했습니다:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"main"</span><span class="p">:</span><span class="w"> </span><span class="s2">"./dist/index.cjs"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"module"</span><span class="p">:</span><span class="w"> </span><span class="s2">"./dist/index.mjs"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"types"</span><span class="p">:</span><span class="w"> </span><span class="s2">"./dist/index.d.ts"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<hr />
+
+<h2 id="phase-2--디자인-토큰-시스템">Phase 2 — 디자인 토큰 시스템</h2>
+
+<p>디자인 시스템의 근간이 되는 토큰을 <strong>Figma → JSON → TypeScript → CSS 변수</strong> 파이프라인으로 구축했습니다.</p>
+
+<h3 id="figma-토큰-추출">Figma 토큰 추출</h3>
+
+<p>Figma에서 3개의 시맨틱 토큰 JSON 파일을 추출했습니다:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Palette.tokens.json</code> — 12개 색상군의 기본 팔레트 (RGB + Hex 값)</li>
+  <li><code class="language-plaintext highlighter-rouge">Light.tokens.json</code> — 라이트 테마 시맨틱 매핑</li>
+  <li><code class="language-plaintext highlighter-rouge">Dark.tokens.json</code> — 다크 테마 시맨틱 매핑</li>
+</ul>
+
+<h3 id="색상-토큰">색상 토큰</h3>
+
+<p><code class="language-plaintext highlighter-rouge">src/tokens/colors.ts</code>에 12개 색상군을 정의했습니다. 각 색상군은 10~11단계(001~099)의 스케일을 가집니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Gray · Red · Orange · Yellow · Lime · Green
+Blue · Indigo · Purple · Pink + Brand1 · Brand2
+</code></pre></div></div>
+
+<p>추가로 <code class="language-plaintext highlighter-rouge">staticColors</code>(Black/White)와 <code class="language-plaintext highlighter-rouge">overlayColors</code>(알파값 포함)를 분리하고, <code class="language-plaintext highlighter-rouge">ColorName</code>, <code class="language-plaintext highlighter-rouge">ColorStep</code> 타입을 export하여 타입 안전한 색상 접근을 보장했습니다.</p>
+
+<h3 id="타이포그래피-토큰">타이포그래피 토큰</h3>
+
+<p><code class="language-plaintext highlighter-rouge">src/tokens/typography.ts</code>에 4개 카테고리를 정의했습니다:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>카테고리</th>
+      <th>용도</th>
+      <th>크기 범위</th>
+      <th>Weight</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>headline</td>
+      <td>대형 표시 텍스트</td>
+      <td>60px ~ 20px</td>
+      <td>Bold (700)</td>
+    </tr>
+    <tr>
+      <td>title</td>
+      <td>섹션 제목</td>
+      <td>18px ~ 12px</td>
+      <td>Bold (700)</td>
+    </tr>
+    <tr>
+      <td>bold</td>
+      <td>강조 본문</td>
+      <td>18px ~ 12px</td>
+      <td>Semibold (600)</td>
+    </tr>
+    <tr>
+      <td>body</td>
+      <td>일반 본문</td>
+      <td>16px ~ 12px</td>
+      <td>Regular (400)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><code class="language-plaintext highlighter-rouge">getTypographyStyle(variant)</code> 헬퍼 함수로 variant 문자열 하나로 스타일 객체를 꺼낼 수 있게 했습니다.</p>
+
+<h3 id="css-커스텀-프로퍼티">CSS 커스텀 프로퍼티</h3>
+
+<p><code class="language-plaintext highlighter-rouge">src/index.css</code>에서 시맨틱 CSS 변수를 테마별로 정의했습니다:</p>
+
+<div class="language-css highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nd">:root</span> <span class="p">{</span>
+  <span class="py">--sem-fg-default</span><span class="p">:</span> <span class="p">...;</span>
+  <span class="py">--sem-surface-default</span><span class="p">:</span> <span class="p">...;</span>
+  <span class="py">--sem-edge-default</span><span class="p">:</span> <span class="p">...;</span>
+<span class="p">}</span>
+
+<span class="o">[</span><span class="nt">data-theme</span><span class="o">=</span><span class="s1">"dark"</span><span class="o">]</span> <span class="p">{</span>
+  <span class="py">--sem-fg-default</span><span class="p">:</span> <span class="p">...;</span>
+  <span class="py">--sem-surface-default</span><span class="p">:</span> <span class="p">...;</span>
+  <span class="py">--sem-edge-default</span><span class="p">:</span> <span class="p">...;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>변수 네이밍 체계는 <code class="language-plaintext highlighter-rouge">--sem-{카테고리}-{의미}</code> 패턴을 따릅니다:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--sem-fg-*</code> — 전경/텍스트 (default, subtle, subtlest, selected, disabled, danger 등)</li>
+  <li><code class="language-plaintext highlighter-rouge">--sem-surface-*</code> — 배경/표면</li>
+  <li><code class="language-plaintext highlighter-rouge">--sem-edge-*</code> — 테두리/스트로크</li>
+  <li><code class="language-plaintext highlighter-rouge">--sem-interaction-*</code> — 인터랙션 상태 (hovered, pressed, focused, disabled)</li>
+  <li><code class="language-plaintext highlighter-rouge">--sem-*-accent-*</code> — 색상별 액센트</li>
+</ul>
+
+<hr />
+
+<h2 id="phase-3--테마-시스템">Phase 3 — 테마 시스템</h2>
+
+<p>Light/Dark 테마를 런타임에 전환할 수 있는 Context 기반 테마 시스템을 구현했습니다.</p>
+
+<p><code class="language-plaintext highlighter-rouge">ThemeProvider</code>가 제공하는 기능:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">useTheme()</code> — 현재 테마 읽기</li>
+  <li><code class="language-plaintext highlighter-rouge">setTheme(theme)</code> — 테마 변경</li>
+  <li><code class="language-plaintext highlighter-rouge">toggleTheme()</code> — Light ↔ Dark 토글</li>
+  <li><code class="language-plaintext highlighter-rouge">localStorage</code>(<code class="language-plaintext highlighter-rouge">mds-theme</code> 키)로 사용자 선택 영속화</li>
+  <li>SSR-safe 처리 (<code class="language-plaintext highlighter-rouge">window</code> 존재 여부 확인)</li>
+  <li><code class="language-plaintext highlighter-rouge">&lt;html&gt;</code> 태그에 <code class="language-plaintext highlighter-rouge">data-theme</code> 속성 자동 적용</li>
+</ul>
+
+<p>CSS 변수가 <code class="language-plaintext highlighter-rouge">data-theme</code> 셀렉터에 따라 전환되므로, 모든 컴포넌트가 별도 작업 없이 테마를 반영합니다.</p>
+
+<hr />
+
+<h2 id="phase-4--컴포넌트-개발">Phase 4 — 컴포넌트 개발</h2>
+
+<p>총 12개 컴포넌트를 구현했습니다. 모든 컴포넌트에 공통으로 적용한 패턴은 다음과 같습니다:</p>
+
+<ul>
+  <li><strong>forwardRef</strong> — ref 전달 지원</li>
+  <li><strong>HTML 속성 확장</strong> — 네이티브 속성을 그대로 사용 가능</li>
+  <li><strong>Record 기반 Tailwind 클래스 매핑</strong> — variant/size별 클래스를 Record로 관리</li>
+  <li><strong>시맨틱 토큰 활용</strong> — 하드코딩된 색상 대신 CSS 변수 사용</li>
+  <li><strong>접근성</strong> — ARIA 속성, focus-visible 상태, label 연결</li>
+</ul>
+
+<h3 id="컴포넌트-목록">컴포넌트 목록</h3>
+
+<p><strong>Button</strong> — 6가지 타입(default, brand1, brand2, inverse, red, orange), 5가지 크기(sm~xxl), outline 변형, loading 상태, 좌/우 아이콘 지원</p>
+
+<p><strong>Input</strong> — 텍스트 입력 필드. 라벨, 헬퍼 텍스트(info/success/danger), 글자수 카운터, 클리어 버튼, 상태별 스타일링(success, danger, readonly)</p>
+
+<p><strong>Select</strong> — 드롭다운 선택기. 트리거 타입(dropdown, chip, button, badge), 옵션 배열 기반, 키보드/클릭 인터랙션</p>
+
+<p><strong>Chips</strong> — 태그/칩 컴포넌트. 선택 가능, 해제 가능 변형</p>
+
+<p><strong>Badge</strong> — 배지/라벨. 2가지 shape(square, round), 18가지 색상, 좌/우 아이콘</p>
+
+<p><strong>Avatar</strong> — 프로필 아바타. 이미지, 이니셜 텍스트, 기본 아이콘 3가지 상태. 4가지 크기(16/24/32/48px)</p>
+
+<p><strong>Typography</strong> — 시맨틱 텍스트 렌더링. 카테고리+variant 조합으로 적절한 HTML 요소(h1~h6, p, span)를 자동 선택</p>
+
+<p><strong>Icon</strong> — SVG 아이콘 시스템. <code class="language-plaintext highlighter-rouge">iconPaths.ts</code>에 경로 매핑, 4가지 크기(16/20/24/32), 동적 색상</p>
+
+<p><strong>Infobox</strong> — 정보 박스/알림 컴포넌트. 아이콘 지원, 해제 가능</p>
+
+<p><strong>List / ListItem</strong> — 리스트 컴포넌트. 3가지 크기, 선택 상태 지원</p>
+
+<p><strong>DataTable</strong> — 복합 컴포넌트 패턴(DataTable, DataTableHead, DataTableRow, DataTableCell). 셀 타입(text, number, badge, action), 고정 열(sticky) 지원</p>
+
+<p><strong>Control</strong> — 폼 컨트롤 3종 세트:</p>
+<ul>
+  <li>Checkbox — 체크, 미체크, indeterminate 3가지 상태</li>
+  <li>Radio — 라디오 버튼</li>
+  <li>Switch — 토글 스위치</li>
+</ul>
+
+<hr />
+
+<h2 id="phase-5--데모-앱">Phase 5 — 데모 앱</h2>
+
+<p>컴포넌트를 시각적으로 확인하고 문서화하기 위한 데모 앱을 만들었습니다.</p>
+
+<p>멀티 페이지 구조로 컴포넌트별 14개 페이지를 구성했습니다:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Avatar · Badge · Button · Chips · Colors · Control
+DataTable · Icon · Infobox · Input · List · Select · Typography
+</code></pre></div></div>
+
+<p>각 페이지에서 Props 테이블, 코드 블록, 다양한 variant 쇼케이스를 제공합니다.</p>
+
+<p>데모 전용 유틸리티 컴포넌트(<code class="language-plaintext highlighter-rouge">CodeBlock</code>, <code class="language-plaintext highlighter-rouge">PropsTable</code>, <code class="language-plaintext highlighter-rouge">Section</code>, <code class="language-plaintext highlighter-rouge">ShowcaseRow</code>, <code class="language-plaintext highlighter-rouge">Toast</code>)도 함께 구현했습니다.</p>
+
+<hr />
+
+<h2 id="phase-6--빌드--배포">Phase 6 — 빌드 &amp; 배포</h2>
+
+<h3 id="빌드">빌드</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>npm run build        <span class="c"># 라이브러리 → dist/ (ES + CJS + d.ts)</span>
+npm run build:demo   <span class="c"># 데모 앱 → dist-demo/</span>
+</code></pre></div></div>
+
+<p>라이브러리 빌드는 <code class="language-plaintext highlighter-rouge">react</code>, <code class="language-plaintext highlighter-rouge">react-dom</code>을 external로 처리하여 번들 크기를 최소화했습니다. 트리셰이킹이 가능한 ES Module 포맷을 기본으로 제공합니다.</p>
+
+<h3 id="배포">배포</h3>
+
+<ul>
+  <li><strong>데모 앱</strong> — Vercel에 자동 배포 (<code class="language-plaintext highlighter-rouge">vercel.json</code> 설정)</li>
+  <li><strong>라이브러리</strong> — npm 패키지로 배포 (peer dependency: React 18 또는 19)</li>
+</ul>
+
+<hr />
+
+<h2 id="프로젝트-구조">프로젝트 구조</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>design-system/
+├── semantic/                    # Figma 토큰 JSON
+│   ├── Palette.tokens.json
+│   ├── Light.tokens.json
+│   └── Dark.tokens.json
+├── src/
+│   ├── index.ts                 # 메인 엔트리
+│   ├── index.css                # 글로벌 스타일 + CSS 변수
+│   ├── tokens/
+│   │   ├── colors.ts            # 색상 토큰
+│   │   └── typography.ts        # 타이포그래피 토큰
+│   ├── theme/
+│   │   └── ThemeProvider.tsx     # 테마 컨텍스트
+│   ├── components/
+│   │   ├── Avatar/
+│   │   ├── Badge/
+│   │   ├── Button/
+│   │   ├── Chips/
+│   │   ├── Control/             # Checkbox, Radio, Switch
+│   │   ├── DataTable/
+│   │   ├── Icon/
+│   │   ├── Infobox/
+│   │   ├── Input/
+│   │   ├── List/
+│   │   ├── Select/
+│   │   └── Typography/
+│   └── demo/                    # 데모 앱
+│       ├── App.tsx
+│       ├── components/
+│       ├── data/
+│       └── pages/               # 14개 컴포넌트 데모 페이지
+├── dist/                        # 라이브러리 빌드
+├── dist-demo/                   # 데모 앱 빌드
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
+</code></pre></div></div>
+
+<hr />
+
+<h2 id="회고">회고</h2>
+
+<h3 id="잘된-점">잘된 점</h3>
+
+<ul>
+  <li><strong>Figma → 코드 파이프라인</strong> — 디자이너가 Figma에서 토큰을 변경하면 JSON 추출 후 코드에 바로 반영할 수 있는 구조를 만들었습니다.</li>
+  <li><strong>시맨틱 토큰 3단계 구조</strong> — Palette → Semantic → CSS 변수로 관심사를 분리하여, 테마 추가 시 시맨틱 레이어만 매핑하면 됩니다.</li>
+  <li><strong>듀얼 빌드</strong> — 하나의 설정으로 라이브러리와 데모를 모두 빌드할 수 있어 관리 포인트가 줄었습니다.</li>
+</ul>
+
+<h3 id="개선할-점">개선할 점</h3>
+
+<ul>
+  <li>토큰 변환 자동화 스크립트 보강 필요</li>
+  <li>Storybook 도입 검토 (현재 자체 데모 앱으로 대체 중)</li>
+  <li>컴포넌트 단위 테스트 추가</li>
+  <li>접근성 자동 테스트(axe 등) 도입</li>
+</ul>
+
+  </div>
+</article>
+
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-inner">
+        <span>&copy; 2026 bhvd</span>
+        <span class="status">all systems operational</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
