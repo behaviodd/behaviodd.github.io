@@ -605,7 +605,11 @@
   <div class="prose">
     <h1 id="makestardesign-system-구축기">@makestar/design-system 구축기</h1>
 
-<p>React + TypeScript + Tailwind CSS 기반의 사내 디자인 시스템을 구축한 과정을 기록합니다.</p>
+<blockquote>
+  <p>Figma 토큰에서 React 컴포넌트까지 — 사내 디자인 시스템을 처음부터 설계하고 구축한 과정을 기록합니다.</p>
+</blockquote>
+
+<p>React + TypeScript + Tailwind CSS 기반의 사내 디자인 시스템을 구축했습니다. 디자이너와 개발자가 동일한 토큰을 공유하고, Light/Dark 테마 전환이 가능한 12개 컴포넌트 라이브러리입니다.</p>
 
 <hr />
 
@@ -650,6 +654,48 @@
 
 <hr />
 
+<h2 id="아키텍처">아키텍처</h2>
+
+<p>디자인 토큰이 Figma에서 최종 컴포넌트까지 흐르는 전체 파이프라인입니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Figma]
+  │
+  ▼
+[Token 추출] ── 3개 JSON 파일
+  ├── Palette.tokens.json     (12색상군 × 10~11단계)
+  ├── Light.tokens.json       (라이트 시맨틱 매핑)
+  └── Dark.tokens.json        (다크 시맨틱 매핑)
+  │
+  ▼
+[TypeScript 토큰] ── 타입 안전한 코드 토큰
+  ├── tokens/colors.ts        ColorName, ColorStep 타입
+  └── tokens/typography.ts    4 카테고리 × variant
+  │
+  ▼
+[CSS 변수] ── index.css
+  ├── :root { --sem-fg-default: ... }
+  └── [data-theme="dark"] { --sem-fg-default: ... }
+  │
+  ▼
+[ThemeProvider] ── React Context
+  ├── useTheme() / setTheme() / toggleTheme()
+  └── data-theme 속성 자동 적용
+  │
+  ▼
+[컴포넌트 라이브러리] ── 12개 컴포넌트
+  ├── Button, Input, Select, Chips, Badge, Avatar
+  ├── Typography, Icon, Infobox, List, DataTable
+  └── Control (Checkbox, Radio, Switch)
+  │
+  ▼
+[소비] ── npm 패키지 + 데모 앱
+  ├── ES Module (.mjs) ── 트리셰이킹 가능
+  ├── CommonJS (.cjs) ── 레거시 호환
+  └── 데모 앱 (Vercel) ── 14개 쇼케이스 페이지
+</code></pre></div></div>
+
+<hr />
+
 <h2 id="phase-1--프로젝트-셋업">Phase 1 — 프로젝트 셋업</h2>
 
 <p>Vite의 React + TypeScript 템플릿으로 프로젝트를 생성하고, <strong>듀얼 빌드 모드</strong>를 구성했습니다.</p>
@@ -663,11 +709,32 @@
 
 <p>TypeScript 설정은 용도별로 분리했습니다:</p>
 
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">tsconfig.app.json</code> — 데모 앱용 (React JSX, ES2022)</li>
-  <li><code class="language-plaintext highlighter-rouge">tsconfig.lib.json</code> — 라이브러리용 (선언 파일 생성, 데모 코드 제외)</li>
-  <li><code class="language-plaintext highlighter-rouge">tsconfig.node.json</code> — Vite 등 빌드 도구용</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>설정 파일</th>
+      <th>용도</th>
+      <th>주요 옵션</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">tsconfig.app.json</code></td>
+      <td>데모 앱</td>
+      <td>React JSX, ES2022</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">tsconfig.lib.json</code></td>
+      <td>라이브러리</td>
+      <td>선언 파일 생성, 데모 코드 제외</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">tsconfig.node.json</code></td>
+      <td>빌드 도구</td>
+      <td>Vite 등 Node.js 환경</td>
+    </tr>
+  </tbody>
+</table>
 
 <p><code class="language-plaintext highlighter-rouge">package.json</code>의 엔트리 포인트를 설정하여 소비자가 어떤 환경에서든 import할 수 있도록 했습니다:</p>
 
@@ -677,6 +744,8 @@
   </span><span class="nl">"types"</span><span class="p">:</span><span class="w"> </span><span class="s2">"./dist/index.d.ts"</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></code></pre></div></div>
+
+<p>듀얼 빌드의 핵심은 <strong>하나의 설정 파일로 두 가지 산출물</strong>을 만드는 것입니다. <code class="language-plaintext highlighter-rouge">vite.config.ts</code>에서 <code class="language-plaintext highlighter-rouge">BUILD_LIB</code> 환경 변수를 확인해 라이브러리 모드(<code class="language-plaintext highlighter-rouge">lib</code> 엔트리)와 데모 모드(일반 SPA)를 분기합니다. 이렇게 하면 설정 파일이 하나뿐이므로 관리 포인트가 줄고, CI에서도 빌드 명령어 하나로 전환됩니다.</p>
 
 <hr />
 
@@ -688,11 +757,34 @@
 
 <p>Figma에서 3개의 시맨틱 토큰 JSON 파일을 추출했습니다:</p>
 
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">Palette.tokens.json</code> — 12개 색상군의 기본 팔레트 (RGB + Hex 값)</li>
-  <li><code class="language-plaintext highlighter-rouge">Light.tokens.json</code> — 라이트 테마 시맨틱 매핑</li>
-  <li><code class="language-plaintext highlighter-rouge">Dark.tokens.json</code> — 다크 테마 시맨틱 매핑</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>파일</th>
+      <th>내용</th>
+      <th>역할</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Palette.tokens.json</code></td>
+      <td>12개 색상군의 기본 팔레트</td>
+      <td>RGB + Hex 원시 값</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Light.tokens.json</code></td>
+      <td>라이트 테마 시맨틱 매핑</td>
+      <td>팔레트 → 의미 연결</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Dark.tokens.json</code></td>
+      <td>다크 테마 시맨틱 매핑</td>
+      <td>팔레트 → 의미 연결</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>이 3단계 구조(Palette → Semantic → CSS)의 장점은 <strong>새 테마 추가 시 시맨틱 레이어만 매핑하면 된다</strong>는 것입니다. 예를 들어 <code class="language-plaintext highlighter-rouge">High Contrast</code> 테마를 추가하려면 새 시맨틱 JSON 파일 하나만 만들면 됩니다.</p>
 
 <h3 id="색상-토큰">색상 토큰</h3>
 
@@ -703,6 +795,11 @@ Blue · Indigo · Purple · Pink + Brand1 · Brand2
 </code></pre></div></div>
 
 <p>추가로 <code class="language-plaintext highlighter-rouge">staticColors</code>(Black/White)와 <code class="language-plaintext highlighter-rouge">overlayColors</code>(알파값 포함)를 분리하고, <code class="language-plaintext highlighter-rouge">ColorName</code>, <code class="language-plaintext highlighter-rouge">ColorStep</code> 타입을 export하여 타입 안전한 색상 접근을 보장했습니다.</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// 사용 예시</span>
+<span class="k">import</span> <span class="p">{</span> <span class="nx">colors</span><span class="p">,</span> <span class="kd">type</span> <span class="nx">ColorName</span><span class="p">,</span> <span class="kd">type</span> <span class="nx">ColorStep</span> <span class="p">}</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">@makestar/design-system</span><span class="dl">'</span><span class="p">;</span>
+<span class="kd">const</span> <span class="nx">primary</span> <span class="o">=</span> <span class="nx">colors</span><span class="p">.</span><span class="nx">Brand1</span><span class="p">[</span><span class="dl">'</span><span class="s1">050</span><span class="dl">'</span><span class="p">];</span>  <span class="c1">// 타입 안전</span>
+</code></pre></div></div>
 
 <h3 id="타이포그래피-토큰">타이포그래피 토큰</h3>
 
@@ -766,13 +863,42 @@ Blue · Indigo · Purple · Pink + Brand1 · Brand2
 
 <p>변수 네이밍 체계는 <code class="language-plaintext highlighter-rouge">--sem-{카테고리}-{의미}</code> 패턴을 따릅니다:</p>
 
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">--sem-fg-*</code> — 전경/텍스트 (default, subtle, subtlest, selected, disabled, danger 등)</li>
-  <li><code class="language-plaintext highlighter-rouge">--sem-surface-*</code> — 배경/표면</li>
-  <li><code class="language-plaintext highlighter-rouge">--sem-edge-*</code> — 테두리/스트로크</li>
-  <li><code class="language-plaintext highlighter-rouge">--sem-interaction-*</code> — 인터랙션 상태 (hovered, pressed, focused, disabled)</li>
-  <li><code class="language-plaintext highlighter-rouge">--sem-*-accent-*</code> — 색상별 액센트</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>접두사</th>
+      <th>역할</th>
+      <th>예시</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--sem-fg-*</code></td>
+      <td>전경/텍스트</td>
+      <td>default, subtle, subtlest, selected, disabled, danger</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--sem-surface-*</code></td>
+      <td>배경/표면</td>
+      <td>default, raised, sunken, overlay</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--sem-edge-*</code></td>
+      <td>테두리/스트로크</td>
+      <td>default, subtle, bold</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--sem-interaction-*</code></td>
+      <td>인터랙션 상태</td>
+      <td>hovered, pressed, focused, disabled</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--sem-*-accent-*</code></td>
+      <td>색상별 액센트</td>
+      <td>brand1, brand2, red, blue</td>
+    </tr>
+  </tbody>
+</table>
 
 <hr />
 
@@ -782,16 +908,42 @@ Blue · Indigo · Purple · Pink + Brand1 · Brand2
 
 <p><code class="language-plaintext highlighter-rouge">ThemeProvider</code>가 제공하는 기능:</p>
 
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">useTheme()</code> — 현재 테마 읽기</li>
-  <li><code class="language-plaintext highlighter-rouge">setTheme(theme)</code> — 테마 변경</li>
-  <li><code class="language-plaintext highlighter-rouge">toggleTheme()</code> — Light ↔ Dark 토글</li>
-  <li><code class="language-plaintext highlighter-rouge">localStorage</code>(<code class="language-plaintext highlighter-rouge">mds-theme</code> 키)로 사용자 선택 영속화</li>
-  <li>SSR-safe 처리 (<code class="language-plaintext highlighter-rouge">window</code> 존재 여부 확인)</li>
-  <li><code class="language-plaintext highlighter-rouge">&lt;html&gt;</code> 태그에 <code class="language-plaintext highlighter-rouge">data-theme</code> 속성 자동 적용</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>API</th>
+      <th>설명</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">useTheme()</code></td>
+      <td>현재 테마 읽기</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">setTheme(theme)</code></td>
+      <td>테마 변경</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">toggleTheme()</code></td>
+      <td>Light ↔ Dark 토글</td>
+    </tr>
+    <tr>
+      <td>localStorage(<code class="language-plaintext highlighter-rouge">mds-theme</code>)</td>
+      <td>사용자 선택 영속화</td>
+    </tr>
+    <tr>
+      <td>SSR-safe</td>
+      <td><code class="language-plaintext highlighter-rouge">window</code> 존재 여부 확인</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">data-theme</code> 속성</td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;html&gt;</code> 태그에 자동 적용</td>
+    </tr>
+  </tbody>
+</table>
 
-<p>CSS 변수가 <code class="language-plaintext highlighter-rouge">data-theme</code> 셀렉터에 따라 전환되므로, 모든 컴포넌트가 별도 작업 없이 테마를 반영합니다.</p>
+<p>CSS 변수가 <code class="language-plaintext highlighter-rouge">data-theme</code> 셀렉터에 따라 전환되므로, 모든 컴포넌트가 별도 작업 없이 테마를 반영합니다. 컴포넌트에서 색상을 하드코딩하지 않고 시맨틱 변수만 참조하기 때문에, 테마 전환 시 전체 UI가 자동으로 업데이트됩니다.</p>
 
 <hr />
 
@@ -809,34 +961,140 @@ Blue · Indigo · Purple · Pink + Brand1 · Brand2
 
 <h3 id="컴포넌트-목록">컴포넌트 목록</h3>
 
-<p><strong>Button</strong> — 6가지 타입(default, brand1, brand2, inverse, red, orange), 5가지 크기(sm~xxl), outline 변형, loading 상태, 좌/우 아이콘 지원</p>
+<table>
+  <thead>
+    <tr>
+      <th>컴포넌트</th>
+      <th>설명</th>
+      <th>주요 Props</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Button</strong></td>
+      <td>범용 버튼</td>
+      <td>6 타입, 5 크기, outline, loading, 아이콘</td>
+    </tr>
+    <tr>
+      <td><strong>Input</strong></td>
+      <td>텍스트 입력</td>
+      <td>라벨, 헬퍼, 카운터, 클리어, 상태별 스타일</td>
+    </tr>
+    <tr>
+      <td><strong>Select</strong></td>
+      <td>드롭다운 선택기</td>
+      <td>4 트리거 타입(dropdown, chip, button, badge)</td>
+    </tr>
+    <tr>
+      <td><strong>Chips</strong></td>
+      <td>태그/칩</td>
+      <td>선택 가능, 해제 가능 변형</td>
+    </tr>
+    <tr>
+      <td><strong>Badge</strong></td>
+      <td>배지/라벨</td>
+      <td>2 shape(square, round), 18 색상, 아이콘</td>
+    </tr>
+    <tr>
+      <td><strong>Avatar</strong></td>
+      <td>프로필 아바타</td>
+      <td>이미지/이니셜/아이콘, 4 크기(16~48px)</td>
+    </tr>
+    <tr>
+      <td><strong>Typography</strong></td>
+      <td>시맨틱 텍스트</td>
+      <td>카테고리+variant → 자동 HTML 요소 선택</td>
+    </tr>
+    <tr>
+      <td><strong>Icon</strong></td>
+      <td>SVG 아이콘</td>
+      <td>iconPaths 매핑, 4 크기(16~32), 동적 색상</td>
+    </tr>
+    <tr>
+      <td><strong>Infobox</strong></td>
+      <td>정보 박스</td>
+      <td>아이콘, 해제 가능</td>
+    </tr>
+    <tr>
+      <td><strong>List / ListItem</strong></td>
+      <td>리스트</td>
+      <td>3 크기, 선택 상태</td>
+    </tr>
+    <tr>
+      <td><strong>DataTable</strong></td>
+      <td>데이터 테이블</td>
+      <td>복합 패턴, 셀 타입, 고정 열(sticky)</td>
+    </tr>
+    <tr>
+      <td><strong>Control</strong></td>
+      <td>폼 컨트롤 3종</td>
+      <td>Checkbox, Radio, Switch</td>
+    </tr>
+  </tbody>
+</table>
 
-<p><strong>Input</strong> — 텍스트 입력 필드. 라벨, 헬퍼 텍스트(info/success/danger), 글자수 카운터, 클리어 버튼, 상태별 스타일링(success, danger, readonly)</p>
+<h3 id="button-컴포넌트-상세">Button 컴포넌트 상세</h3>
 
-<p><strong>Select</strong> — 드롭다운 선택기. 트리거 타입(dropdown, chip, button, badge), 옵션 배열 기반, 키보드/클릭 인터랙션</p>
+<p>가장 다양한 변형을 가진 Button을 예시로 설명합니다.</p>
 
-<p><strong>Chips</strong> — 태그/칩 컴포넌트. 선택 가능, 해제 가능 변형</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>타입:    default │ brand1 │ brand2 │ inverse │ red │ orange
+크기:    sm │ md │ lg │ xl │ xxl
+변형:    solid(기본) │ outline
+상태:    default │ hover │ pressed │ disabled │ loading
+아이콘:  leftIcon │ rightIcon
+</code></pre></div></div>
 
-<p><strong>Badge</strong> — 배지/라벨. 2가지 shape(square, round), 18가지 색상, 좌/우 아이콘</p>
+<p>각 타입 × 크기 × 변형 조합의 Tailwind 클래스를 Record 객체로 관리합니다. 이 패턴은 조건부 클래스 로직보다 직관적이고, 새 variant 추가 시 Record에 항목만 추가하면 됩니다.</p>
 
-<p><strong>Avatar</strong> — 프로필 아바타. 이미지, 이니셜 텍스트, 기본 아이콘 3가지 상태. 4가지 크기(16/24/32/48px)</p>
+<h3 id="datatable-컴포넌트-상세">DataTable 컴포넌트 상세</h3>
 
-<p><strong>Typography</strong> — 시맨틱 텍스트 렌더링. 카테고리+variant 조합으로 적절한 HTML 요소(h1~h6, p, span)를 자동 선택</p>
+<p>가장 복잡한 컴포넌트로, <strong>복합 컴포넌트 패턴</strong>을 적용했습니다.</p>
 
-<p><strong>Icon</strong> — SVG 아이콘 시스템. <code class="language-plaintext highlighter-rouge">iconPaths.ts</code>에 경로 매핑, 4가지 크기(16/20/24/32), 동적 색상</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;DataTable&gt;
+  &lt;DataTableHead&gt;
+    &lt;DataTableCell type="text"&gt;이름&lt;/DataTableCell&gt;
+    &lt;DataTableCell type="number"&gt;금액&lt;/DataTableCell&gt;
+  &lt;/DataTableHead&gt;
+  &lt;DataTableRow&gt;
+    &lt;DataTableCell type="text"&gt;항목 A&lt;/DataTableCell&gt;
+    &lt;DataTableCell type="number"&gt;10,000&lt;/DataTableCell&gt;
+  &lt;/DataTableRow&gt;
+&lt;/DataTable&gt;
+</code></pre></div></div>
 
-<p><strong>Infobox</strong> — 정보 박스/알림 컴포넌트. 아이콘 지원, 해제 가능</p>
+<p>셀 타입별로 정렬, 포매팅, 스타일이 자동 적용됩니다:</p>
 
-<p><strong>List / ListItem</strong> — 리스트 컴포넌트. 3가지 크기, 선택 상태 지원</p>
-
-<p><strong>DataTable</strong> — 복합 컴포넌트 패턴(DataTable, DataTableHead, DataTableRow, DataTableCell). 셀 타입(text, number, badge, action), 고정 열(sticky) 지원</p>
-
-<p><strong>Control</strong> — 폼 컨트롤 3종 세트:</p>
-<ul>
-  <li>Checkbox — 체크, 미체크, indeterminate 3가지 상태</li>
-  <li>Radio — 라디오 버튼</li>
-  <li>Switch — 토글 스위치</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>셀 타입</th>
+      <th>정렬</th>
+      <th>용도</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>text</td>
+      <td>좌측</td>
+      <td>일반 텍스트</td>
+    </tr>
+    <tr>
+      <td>number</td>
+      <td>우측</td>
+      <td>숫자, 금액</td>
+    </tr>
+    <tr>
+      <td>badge</td>
+      <td>중앙</td>
+      <td>상태 배지</td>
+    </tr>
+    <tr>
+      <td>action</td>
+      <td>우측</td>
+      <td>버튼, 링크</td>
+    </tr>
+  </tbody>
+</table>
 
 <hr />
 
@@ -852,7 +1110,40 @@ DataTable · Icon · Infobox · Input · List · Select · Typography
 
 <p>각 페이지에서 Props 테이블, 코드 블록, 다양한 variant 쇼케이스를 제공합니다.</p>
 
-<p>데모 전용 유틸리티 컴포넌트(<code class="language-plaintext highlighter-rouge">CodeBlock</code>, <code class="language-plaintext highlighter-rouge">PropsTable</code>, <code class="language-plaintext highlighter-rouge">Section</code>, <code class="language-plaintext highlighter-rouge">ShowcaseRow</code>, <code class="language-plaintext highlighter-rouge">Toast</code>)도 함께 구현했습니다.</p>
+<p>데모 전용 유틸리티 컴포넌트도 함께 구현했습니다:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>컴포넌트</th>
+      <th>역할</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CodeBlock</code></td>
+      <td>코드 예시 표시</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">PropsTable</code></td>
+      <td>Props 문서화 테이블</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Section</code></td>
+      <td>데모 섹션 래퍼</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ShowcaseRow</code></td>
+      <td>variant 가로 나열</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">Toast</code></td>
+      <td>인터랙션 피드백 표시</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Storybook 대신 자체 데모 앱을 선택한 이유는 두 가지입니다. 첫째, Storybook의 의존성과 설정 오버헤드를 피하고 싶었습니다. 둘째, 데모 앱 자체가 디자인 시스템의 실사용 사례 역할을 하므로 <strong>사용자 관점에서 컴포넌트를 검증</strong>할 수 있습니다.</p>
 
 <hr />
 
@@ -868,10 +1159,42 @@ npm run build:demo   <span class="c"># 데모 앱 → dist-demo/</span>
 
 <h3 id="배포">배포</h3>
 
-<ul>
-  <li><strong>데모 앱</strong> — Vercel에 자동 배포 (<code class="language-plaintext highlighter-rouge">vercel.json</code> 설정)</li>
-  <li><strong>라이브러리</strong> — npm 패키지로 배포 (peer dependency: React 18 또는 19)</li>
-</ul>
+<table>
+  <thead>
+    <tr>
+      <th>대상</th>
+      <th>플랫폼</th>
+      <th>방식</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>데모 앱</td>
+      <td>Vercel</td>
+      <td>자동 배포 (<code class="language-plaintext highlighter-rouge">vercel.json</code>)</td>
+    </tr>
+    <tr>
+      <td>라이브러리</td>
+      <td>npm</td>
+      <td>패키지 배포 (peer dep: React 18/19)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="크로스-프로젝트-토큰-동기화">크로스 프로젝트 토큰 동기화</h3>
+
+<p>디자인 시스템의 CSS 변수를 다른 프로젝트에서도 활용할 수 있도록 토큰 동기화 스크립트를 제공합니다. 예를 들어 <a href="/blog/2026/02/14/matome-keyword/">Matome Keyword</a> 프로젝트에서는 <code class="language-plaintext highlighter-rouge">sync-tokens.sh</code> 스크립트로 <code class="language-plaintext highlighter-rouge">index.css</code>에서 <code class="language-plaintext highlighter-rouge">:root</code>와 <code class="language-plaintext highlighter-rouge">[data-theme="dark"]</code> 블록을 파싱해 <code class="language-plaintext highlighter-rouge">design-tokens.css</code>로 추출하여 사용합니다.</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>@makestar/design-system
+  └── src/index.css
+       │
+       ▼ sync-tokens.sh
+       │
+matome-keyword/
+  └── public/design-tokens.css
+</code></pre></div></div>
+
+<p>React를 사용하지 않는 프로젝트에서도 CSS 변수만으로 일관된 디자인 언어를 유지할 수 있는 구조입니다.</p>
 
 <hr />
 
@@ -886,32 +1209,34 @@ npm run build:demo   <span class="c"># 데모 앱 → dist-demo/</span>
 │   ├── index.ts                 # 메인 엔트리
 │   ├── index.css                # 글로벌 스타일 + CSS 변수
 │   ├── tokens/
-│   │   ├── colors.ts            # 색상 토큰
-│   │   └── typography.ts        # 타이포그래피 토큰
+│   │   ├── colors.ts            # 색상 토큰 (12군 × 10~11단계)
+│   │   └── typography.ts        # 타이포그래피 토큰 (4 카테고리)
 │   ├── theme/
-│   │   └── ThemeProvider.tsx     # 테마 컨텍스트
-│   ├── components/
+│   │   └── ThemeProvider.tsx     # 테마 컨텍스트 + useTheme
+│   ├── components/              # 12개 컴포넌트
 │   │   ├── Avatar/
 │   │   ├── Badge/
 │   │   ├── Button/
 │   │   ├── Chips/
 │   │   ├── Control/             # Checkbox, Radio, Switch
-│   │   ├── DataTable/
-│   │   ├── Icon/
+│   │   ├── DataTable/           # Head, Row, Cell 복합 패턴
+│   │   ├── Icon/                # SVG 아이콘 + iconPaths
 │   │   ├── Infobox/
 │   │   ├── Input/
-│   │   ├── List/
+│   │   ├── List/                # List + ListItem
 │   │   ├── Select/
 │   │   └── Typography/
 │   └── demo/                    # 데모 앱
 │       ├── App.tsx
-│       ├── components/
+│       ├── components/          # CodeBlock, PropsTable 등
 │       ├── data/
 │       └── pages/               # 14개 컴포넌트 데모 페이지
-├── dist/                        # 라이브러리 빌드
+├── dist/                        # 라이브러리 빌드 (.mjs + .cjs + .d.ts)
 ├── dist-demo/                   # 데모 앱 빌드
-├── vite.config.ts
-├── tsconfig.json
+├── vite.config.ts               # 듀얼 빌드 설정
+├── tsconfig.json                # 기본 TS 설정
+├── tsconfig.app.json            # 데모 앱용
+├── tsconfig.lib.json            # 라이브러리용
 └── package.json
 </code></pre></div></div>
 
@@ -922,18 +1247,21 @@ npm run build:demo   <span class="c"># 데모 앱 → dist-demo/</span>
 <h3 id="잘된-점">잘된 점</h3>
 
 <ul>
-  <li><strong>Figma → 코드 파이프라인</strong> — 디자이너가 Figma에서 토큰을 변경하면 JSON 추출 후 코드에 바로 반영할 수 있는 구조를 만들었습니다.</li>
+  <li><strong>Figma → 코드 파이프라인</strong> — 디자이너가 Figma에서 토큰을 변경하면 JSON 추출 후 코드에 바로 반영할 수 있는 구조를 만들었습니다. 디자이너-개발자 간 “이 색상 코드가 뭐였지?” 같은 커뮤니케이션 비용이 사라집니다.</li>
   <li><strong>시맨틱 토큰 3단계 구조</strong> — Palette → Semantic → CSS 변수로 관심사를 분리하여, 테마 추가 시 시맨틱 레이어만 매핑하면 됩니다.</li>
   <li><strong>듀얼 빌드</strong> — 하나의 설정으로 라이브러리와 데모를 모두 빌드할 수 있어 관리 포인트가 줄었습니다.</li>
+  <li><strong>크로스 프로젝트 활용</strong> — CSS 변수 기반이므로 React 외의 프로젝트에서도 토큰을 동기화해 사용 가능합니다. Matome Keyword에서 실제로 이 방식을 적용했습니다.</li>
+  <li><strong>접근성 기본 내장</strong> — 모든 컴포넌트에 ARIA 속성, focus-visible, label 연결을 기본으로 적용하여, 소비자가 접근성을 별도로 신경 쓸 필요를 줄였습니다.</li>
 </ul>
 
 <h3 id="개선할-점">개선할 점</h3>
 
 <ul>
-  <li>토큰 변환 자동화 스크립트 보강 필요</li>
+  <li>토큰 변환 자동화 스크립트 보강 필요 (현재 수동 JSON 추출)</li>
   <li>Storybook 도입 검토 (현재 자체 데모 앱으로 대체 중)</li>
   <li>컴포넌트 단위 테스트 추가</li>
   <li>접근성 자동 테스트(axe 등) 도입</li>
+  <li>Figma Plugin을 통한 토큰 추출 자동화 (현재 수동 export)</li>
 </ul>
 
   </div>
