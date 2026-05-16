@@ -18,10 +18,13 @@ title: Blog
 <div class="section-label">All Posts</div>
 
 <div class="project-list">
+  {% assign now_ts = 'now' | date: '%s' | plus: 0 %}
   {% for post in site.posts %}
+  {% assign post_ts = post.date | date: '%s' | plus: 0 %}
+  {% assign age = now_ts | minus: post_ts %}
   <a href="{{ post.url }}" class="post-item">
     <span class="post-date">{{ post.date | date: "%Y-%m-%d" }}</span>
-    <span class="post-title">{{ post.title }}</span>
+    <span class="post-title">{{ post.title }}{% if age < 259200 %}<span class="badge-new">NEW</span>{% endif %}</span>
   </a>
   {% endfor %}
 </div>

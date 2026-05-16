@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}bhvd</title>
+  <title>{% if page.title and page.title != "Home" %}{{ page.title }} — {% endif %}{{ site.title }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
@@ -21,25 +21,25 @@
     }
 
     :root {
-      --fg: #c8c8c8;
-      --fg-bright: #ececf1;
-      --fg-muted: #aaa;
-      --fg-faint: #999;
-      --bg: #0a0a0a;
+      --fg: #d4d4d4;
+      --fg-bright: #f0f0f0;
+      --fg-muted: #b0b0b0;
+      --fg-faint: #909090;
+      --bg: #1e1e1e;
       --accent: #B2B9F4;
       --accent-dim: rgba(178, 185, 244, 0.08);
       --accent-glow: rgba(178, 185, 244, 0.3);
       --accent-sub: #5CC9CA;
       --accent-sub-dim: rgba(92, 201, 202, 0.08);
       --accent-sub-glow: rgba(92, 201, 202, 0.3);
-      --border: #444;
-      --surface: rgba(255, 255, 255, 0.03);
+      --border: #555;
+      --surface: rgba(255, 255, 255, 0.05);
       --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, monospace;
     }
 
     html {
       font-family: var(--font);
-      font-size: 11px;
+      font-size: 13px;
       line-height: 1.7;
       color: var(--fg);
       background: var(--bg);
@@ -116,7 +116,7 @@
     .site-prompt {
       color: var(--accent);
       text-decoration: none;
-      font-size: 11px;
+      font-size: 13px;
       white-space: nowrap;
       transition: text-shadow 0.2s;
     }
@@ -143,7 +143,7 @@
     nav a {
       color: var(--fg-muted);
       text-decoration: none;
-      font-size: 11px;
+      font-size: 13px;
       padding: 3px 10px;
       border: 1px solid transparent;
       transition: all 0.2s;
@@ -159,7 +159,7 @@
     /* ── Back Link ── */
     .back-link {
       display: inline-block;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-faint);
       text-decoration: none;
       margin-bottom: 24px;
@@ -180,7 +180,7 @@
     /* ── ASCII Art ── */
     .ascii-art {
       font-family: var(--font);
-      font-size: clamp(6px, 1.8vw, 11px);
+      font-size: clamp(7px, 2.0vw, 13px);
       line-height: 1.15;
       color: var(--accent);
       margin-bottom: 20px;
@@ -207,12 +207,12 @@
     }
 
     .hero p {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-muted);
     }
 
     .hero .term-cmd {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--accent-sub);
       margin-bottom: 16px;
     }
@@ -223,7 +223,7 @@
 
     /* ── Section Label ── */
     .section-label {
-      font-size: 11px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 2px;
       color: var(--accent-sub);
@@ -281,19 +281,19 @@
 
     .project-prefix {
       color: var(--accent-sub);
-      font-size: 11px;
+      font-size: 13px;
       flex-shrink: 0;
       opacity: 0.7;
     }
 
     .project-name {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-bright);
       transition: all 0.15s;
     }
 
     .project-desc {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-faint);
       margin-left: auto;
       white-space: nowrap;
@@ -321,7 +321,7 @@
     }
 
     .post-date {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--accent-sub);
       flex-shrink: 0;
       font-variant-numeric: tabular-nums;
@@ -329,9 +329,24 @@
     }
 
     .post-title {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-bright);
       transition: all 0.15s;
+    }
+
+    .badge-new {
+      display: inline-block;
+      font-size: 10px;
+      line-height: 1;
+      color: var(--accent-sub);
+      background: var(--accent-sub-dim);
+      border: 1px solid var(--accent-sub);
+      padding: 2px 5px;
+      margin-left: 8px;
+      letter-spacing: 1.5px;
+      text-shadow: 0 0 6px var(--accent-sub-glow);
+      vertical-align: baseline;
+      border-radius: 2px;
     }
 
     /* ── Prose (blog content) ── */
@@ -340,7 +355,7 @@
     }
 
     .prose h1 {
-      font-size: 16px;
+      font-size: 19px;
       font-weight: 400;
       margin: 0 0 16px;
       color: var(--accent);
@@ -352,7 +367,7 @@
     }
 
     .prose h2 {
-      font-size: 14px;
+      font-size: 17px;
       font-weight: 400;
       margin: 40px 0 12px;
       color: var(--accent);
@@ -364,7 +379,7 @@
     }
 
     .prose h3 {
-      font-size: 12px;
+      font-size: 15px;
       font-weight: 400;
       margin: 28px 0 10px;
       color: var(--fg-bright);
@@ -402,7 +417,7 @@
 
     .prose code {
       font-family: var(--font);
-      font-size: 11px;
+      font-size: 13px;
       background: rgba(92, 201, 202, 0.08);
       color: var(--accent-sub);
       padding: 2px 6px;
@@ -410,7 +425,7 @@
     }
 
     .prose pre {
-      background: #000;
+      background: #0a0a0a;
       border: 1px dashed var(--border);
       padding: 16px;
       overflow-x: auto;
@@ -422,6 +437,90 @@
       padding: 0;
       color: var(--fg);
     }
+
+    /* ── Syntax highlighting (Rouge) ── */
+    .highlight,
+    .highlighter-rouge .highlight {
+      background: transparent;
+    }
+
+    .highlight .c,
+    .highlight .c1,
+    .highlight .cm,
+    .highlight .cs,
+    .highlight .cp,
+    .highlight .cd { color: #6a7280; font-style: italic; }
+
+    .highlight .k,
+    .highlight .kr,
+    .highlight .kd,
+    .highlight .kc,
+    .highlight .kn,
+    .highlight .kp,
+    .highlight .ow { color: #c586c0; }
+
+    .highlight .kt { color: #4ec9b0; }
+
+    .highlight .s,
+    .highlight .s1,
+    .highlight .s2,
+    .highlight .sb,
+    .highlight .sc,
+    .highlight .sh,
+    .highlight .sx,
+    .highlight .ss,
+    .highlight .dl { color: #ce9178; }
+
+    .highlight .se { color: #d7ba7d; }
+    .highlight .sr { color: #d16969; }
+    .highlight .si { color: #d7ba7d; }
+
+    .highlight .m,
+    .highlight .mi,
+    .highlight .mf,
+    .highlight .mh,
+    .highlight .mo,
+    .highlight .mb,
+    .highlight .il { color: #b5cea8; }
+
+    .highlight .nf,
+    .highlight .fm { color: #dcdcaa; }
+
+    .highlight .nc,
+    .highlight .nn { color: #4ec9b0; }
+
+    .highlight .nb,
+    .highlight .bp { color: #4ec9b0; }
+
+    .highlight .nx { color: var(--fg-bright); }
+
+    .highlight .nl,
+    .highlight .na,
+    .highlight .py { color: #9cdcfe; }
+
+    .highlight .nd { color: #dcdcaa; }
+
+    .highlight .nv,
+    .highlight .vc,
+    .highlight .vg,
+    .highlight .vi,
+    .highlight .no { color: #9cdcfe; }
+
+    .highlight .nt { color: #569cd6; }
+
+    .highlight .o { color: var(--fg); }
+    .highlight .p,
+    .highlight .pi { color: #c8c8c8; }
+
+    .highlight .err { color: #f48771; text-decoration: underline wavy; }
+
+    .highlight .gd { color: #f48771; background: rgba(244,135,113,0.08); }
+    .highlight .gi { color: #b5cea8; background: rgba(181,206,168,0.08); }
+    .highlight .gh,
+    .highlight .gu { color: var(--accent-sub); font-weight: 600; }
+    .highlight .gs { font-weight: 600; }
+    .highlight .ge { font-style: italic; }
+    .highlight .gp { color: var(--accent); }
 
     .prose hr {
       border: none;
@@ -437,7 +536,7 @@
     }
 
     .prose h4 {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       margin: 24px 0 8px;
       color: var(--fg-bright);
@@ -453,7 +552,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 16px;
-      font-size: 11px;
+      font-size: 13px;
     }
 
     .prose th {
@@ -478,7 +577,7 @@
     }
 
     .prose td code {
-      font-size: 10px;
+      font-size: 12px;
     }
 
     .prose a {
@@ -509,7 +608,7 @@
     }
 
     .profile-row dt {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--accent-sub);
       flex-shrink: 0;
       min-width: 80px;
@@ -518,7 +617,7 @@
     }
 
     .profile-row dd {
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-bright);
     }
 
@@ -542,7 +641,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 13px;
       color: var(--fg-faint);
       letter-spacing: 0.5px;
     }
@@ -580,7 +679,7 @@
   <header>
     <div class="container">
       <div class="header-inner">
-        <a href="/" class="site-prompt">bhvd@nvy:~$<span class="blink">_</span></a>
+        <a href="/" class="site-prompt">cheonjiyoung@nvy:~$<span class="blink">_</span></a>
         <nav>
           <a href="/">home</a>
           <a href="/blog/">blog</a>
@@ -602,7 +701,7 @@
   <footer>
     <div class="container">
       <div class="footer-inner">
-        <span>&copy; 2026 bhvd</span>
+        <span>&copy; 2026 {{ site.title }}</span>
         <span class="status">all systems operational</span>
       </div>
     </div>
