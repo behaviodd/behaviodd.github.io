@@ -1,3 +1,11 @@
 title: CHEON JIYOUNG
 url: https://behaviodd.github.io
 permalink: /blog/:slug/
+
+# React 소스 폴더는 Jekyll 빌드에서 제외한다.
+# 실제 배포본은 /work-hours/ 에 빌드된 정적 파일이 서빙된다.
+exclude:
+  - work-hours-calculator/
+  - vendor/
+  - Gemfile
+  - Gemfile.lock

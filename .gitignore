@@ -4,3 +4,9 @@ _site/
 vendor/
 .bundle/
 Gemfile.lock
+
+# work-hours-calculator (React 소스) 빌드 산출물/의존성
+# - 배포본은 /work-hours/ 에 빌드되어 커밋된다.
+work-hours-calculator/node_modules/
+work-hours-calculator/.tsbuild/
+work-hours-calculator/*.tsbuildinfo

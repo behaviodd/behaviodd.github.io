@@ -1,0 +1,459 @@
+:root {
+  /* 차분한 미색/회색 톤 - 피곤한 밤에 봐도 부담 없게 */
+  --bg: #f4f4f2;
+  --card: #ffffff;
+  --card-muted: #faf9f7;
+  --border: #e6e4df;
+  --text: #2b2b2b;
+  --text-soft: #6b6b6b;
+  --text-faint: #9a9a96;
+  --accent: #3a6ea5;
+  --accent-soft: #eaf1f8;
+
+  /* 플랜 톤 (색 + 텍스트 함께 사용) */
+  --easy: #2f7d4f;
+  --easy-bg: #eaf6ee;
+  --normal: #3a6ea5;
+  --normal-bg: #eaf1f8;
+  --warn: #b5680f;
+  --warn-bg: #fdf2e3;
+  --danger: #c0392b;
+  --danger-bg: #fdecea;
+
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.05);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select {
+  font-family: inherit;
+}
+
+/* ===== 레이아웃 ===== */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 16px calc(96px + var(--safe-bottom));
+  min-height: 100vh;
+}
+
+.app-header {
+  padding: 8px 4px 16px;
+}
+
+.app-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.app-subtitle {
+  margin: 6px 0 0;
+  color: var(--text-soft);
+  font-size: 14px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+
+/* ===== 입력 ===== */
+.field {
+  margin-bottom: 16px;
+}
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-unit {
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.num-input,
+.time-input,
+.clock-input {
+  width: 100%;
+  height: 52px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-muted);
+  padding: 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+.num-input:focus,
+.time-input:focus,
+.clock-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.clock-input {
+  text-align: left;
+}
+
+.input-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.input-hint.error {
+  color: var(--danger);
+}
+
+/* 프리셋(휴게시간) */
+.preset-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preset-btn {
+  flex: 1 1 0;
+  min-width: 64px;
+  height: 46px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-muted);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-soft);
+  transition: all 0.12s ease;
+}
+.preset-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ===== 메인 결과(SummaryCard) ===== */
+.summary {
+  border-width: 1.5px;
+}
+.summary.level-easy {
+  border-color: var(--easy);
+  background: var(--easy-bg);
+}
+.summary.level-normal {
+  border-color: var(--normal);
+  background: var(--normal-bg);
+}
+.summary.level-warn {
+  border-color: var(--warn);
+  background: var(--warn-bg);
+}
+.summary.level-danger {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.summary-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-soft);
+  margin: 0 0 4px;
+}
+
+.summary-big {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 4px 0;
+}
+
+.summary-leave {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 2px 0 8px;
+}
+
+.summary-sub {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 2px 0;
+}
+
+.summary-rows {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+.summary-stat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.65);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.summary-stat .k {
+  font-size: 12px;
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.summary-stat .v {
+  font-size: 19px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.level-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 12px;
+}
+.level-easy .level-badge {
+  background: var(--easy);
+  color: #fff;
+}
+.level-normal .level-badge {
+  background: var(--normal);
+  color: #fff;
+}
+.level-warn .level-badge {
+  background: var(--warn);
+  color: #fff;
+}
+.level-danger .level-badge {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ===== 빠른 시나리오 버튼 ===== */
+.scenario-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.scenario-btn {
+  min-height: 52px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-muted);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px;
+  text-align: center;
+  line-height: 1.3;
+  transition: all 0.12s ease;
+}
+.scenario-btn:active {
+  transform: scale(0.98);
+}
+.scenario-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ===== 시나리오 결과 카드 ===== */
+.scenario-card {
+  border-left-width: 4px;
+}
+.scenario-card.level-easy {
+  border-left-color: var(--easy);
+}
+.scenario-card.level-normal {
+  border-left-color: var(--normal);
+}
+.scenario-card.level-warn {
+  border-left-color: var(--warn);
+}
+.scenario-card.level-danger {
+  border-left-color: var(--danger);
+}
+
+.scenario-head {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+.scenario-line {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 0 0 10px;
+}
+.kv-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kv-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 14px;
+}
+.kv-list li:last-child {
+  border-bottom: none;
+}
+.kv-list .k {
+  color: var(--text-soft);
+}
+.kv-list .v {
+  font-weight: 700;
+  text-align: right;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--card-muted);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.note.warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+.note.danger {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* ===== 아코디언 ===== */
+.accordion summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-soft);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.accordion summary::-webkit-details-marker {
+  display: none;
+}
+.accordion summary::after {
+  content: "▾";
+  color: var(--text-faint);
+  transition: transform 0.15s ease;
+}
+.accordion[open] summary::after {
+  transform: rotate(180deg);
+}
+.calc-detail {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--card-muted);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-line;
+}
+
+/* ===== 오류/안내 배너 ===== */
+.banner {
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.banner.info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.banner.done {
+  background: var(--easy-bg);
+  color: var(--easy);
+}
+.banner.error {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ===== 복사 버튼 ===== */
+.copy-btn {
+  width: 100%;
+  height: 44px;
+  margin-top: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-muted);
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 700;
+}
+.copy-btn:active {
+  background: var(--accent-soft);
+}
+
+/* ===== 하단 고정 영역 ===== */
+.footer-note {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 18px 0 4px;
+}
