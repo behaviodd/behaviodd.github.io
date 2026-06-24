@@ -11,6 +11,7 @@ import {
   toMinutes,
 } from "./time";
 import {
+  applyCoreTime,
   calculateAfterTodayLeave,
   calculateAfterTodayStay,
   calculateDailyPlan,
@@ -96,6 +97,19 @@ describe("케이스 5: 오늘만 9시간 체류 시 나머지 날", () => {
     );
     expect(formatDuration(r.nextRequiredWorkMinutes)).toBe("8시간 28분");
     expect(formatDuration(r.nextRequiredStayMinutes)).toBe("9시간 28분");
+  });
+});
+
+describe("코어타임: 12:00~17:00 의무 근무", () => {
+  it("계산상 퇴근이 17:00보다 이르면 17:00으로 보정", () => {
+    const early = applyCoreTime(toMinutes(16, 30));
+    expect(early.floored).toBe(true);
+    expect(formatClockTime(early.leave)).toBe("17:00");
+  });
+  it("17:00 이후면 그대로 둔다", () => {
+    const late = applyCoreTime(toMinutes(17, 50));
+    expect(late.floored).toBe(false);
+    expect(formatClockTime(late.leave)).toBe("17:50");
   });
 });
 
