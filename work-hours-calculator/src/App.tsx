@@ -75,12 +75,12 @@ export default function App() {
     [holidays],
   );
 
-  // 인정근무시간 기본값 = 이번 달 영업일 × 8시간 (flex 월 소정근로시간).
   // 남은 근무일 기본값 = 오늘 포함 남은 평일.
-  const [remaining, setRemaining] = useState(() =>
-    fromMinutes(monthDefault.monthTotalMinutes),
-  );
+  // 남은 인정근무시간 기본값 = 남은 근무일 × 8시간.
   const [days, setDays] = useState(monthDefault.remainingBusinessDays);
+  const [remaining, setRemaining] = useState(() =>
+    fromMinutes(monthDefault.remainingTotalMinutes),
+  );
   const [remainingTouched, setRemainingTouched] = useState(false);
   const [daysTouched, setDaysTouched] = useState(false);
 
@@ -92,8 +92,10 @@ export default function App() {
 
   // 공휴일이 갱신되면, 사용자가 직접 만지지 않은 기본값만 다시 채운다.
   useEffect(() => {
-    if (!remainingTouched) setRemaining(fromMinutes(monthDefault.monthTotalMinutes));
     if (!daysTouched) setDays(monthDefault.remainingBusinessDays);
+    if (!remainingTouched) {
+      setRemaining(fromMinutes(monthDefault.remainingTotalMinutes));
+    }
   }, [monthDefault, remainingTouched, daysTouched]);
 
   const [includeBreak, setIncludeBreak] = useState(true);
@@ -201,6 +203,19 @@ export default function App() {
       {/* 입력 카드 */}
       <section className="card">
         <p className="card-title">기본 입력</p>
+        <DaysInput
+          label="남은 근무일"
+          days={days}
+          onChange={(d) => {
+            setDays(d);
+            setDaysTouched(true);
+            // 인정근무시간을 따로 만지지 않았다면 남은 근무일 × 8시간으로 같이 갱신
+            if (!remainingTouched) setRemaining(fromMinutes(d * 8 * 60));
+          }}
+        />
+        <p className="input-hint">
+          기본값은 오늘 포함 이번 달 남은 평일 {monthDefault.remainingBusinessDays}일이에요.
+        </p>
         <TimeInput
           label="남은 인정근무시간"
           hours={remaining.hours}
@@ -211,20 +226,9 @@ export default function App() {
           }}
         />
         <p className="input-hint">
-          기본값은 이번 달 평일(토·일·공휴일 제외) {monthDefault.monthBusinessDays}일 × 8시간 ={" "}
-          <strong>{formatDuration(monthDefault.monthTotalMinutes)}</strong> 기준이에요. flex의 남은
-          시간을 알면 직접 입력하세요.
-        </p>
-        <DaysInput
-          label="남은 근무일"
-          days={days}
-          onChange={(d) => {
-            setDays(d);
-            setDaysTouched(true);
-          }}
-        />
-        <p className="input-hint">
-          기본값은 오늘 포함 이번 달 남은 평일 {monthDefault.remainingBusinessDays}일이에요.
+          기본값은 남은 근무일 {days}일 × 8시간 ={" "}
+          <strong>{formatDuration(days * 8 * 60)}</strong>. flex의 남은 시간을 알면 직접
+          입력하세요.
         </p>
         <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
         <ClockInInput
