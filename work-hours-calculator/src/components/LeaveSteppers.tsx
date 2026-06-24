@@ -20,19 +20,19 @@ export function LeaveSteppers({ value, onChange }: Props) {
       <div className="stepper-list">
         <Stepper
           label="연차"
-          sublabel="8시간 · 근무일도 −1"
+          sublabel="−8시간"
           value={value.annual}
           onChange={(annual) => onChange({ ...value, annual })}
         />
         <Stepper
           label="반차"
-          sublabel="4시간"
+          sublabel="−4시간"
           value={value.half}
           onChange={(half) => onChange({ ...value, half })}
         />
         <Stepper
           label="반반차"
-          sublabel="2시간"
+          sublabel="−2시간"
           value={value.quarter}
           onChange={(quarter) => onChange({ ...value, quarter })}
         />

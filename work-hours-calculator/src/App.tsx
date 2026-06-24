@@ -33,7 +33,7 @@ import {
   parseClockTime,
   toMinutes,
 } from "./lib/time";
-import { businessDaysRemainingThisMonth } from "./lib/calendar";
+import { businessDaysInMonth } from "./lib/calendar";
 import {
   applyCoreTime,
   calculateAfterTodayLeave,
@@ -64,11 +64,11 @@ type ScenarioCardData = {
 };
 
 export default function App() {
-  // 기본값: 토·일·공휴일을 제외한 이번 달 남은 인정근무시간/근무일.
-  const monthDefault = useMemo(() => businessDaysRemainingThisMonth(), []);
+  // 기본값: 이번 달(1일~말일) 토·일·공휴일 제외 영업일 × 8시간 (flex 월 소정근로시간).
+  const monthDefault = useMemo(() => businessDaysInMonth(), []);
 
   const [remaining, setRemaining] = useState(() =>
-    fromMinutes(monthDefault.remainingMinutes),
+    fromMinutes(monthDefault.totalMinutes),
   );
   const [days, setDays] = useState(monthDefault.businessDays);
   const [includeBreak, setIncludeBreak] = useState(true);
@@ -82,7 +82,8 @@ export default function App() {
 
   const breakMinutes = includeBreak ? BREAK_TIME_MINUTES : 0;
 
-  // 연차 등 차감: 연차는 시간 + 근무일 1일, 반차/반반차는 시간만 차감.
+  // 연차/반차/반반차는 인정근무시간(시간)에서만 차감한다. 근무일 수는 건드리지 않는다.
+  // (연차 = −8시간, 반차 = −4시간, 반반차 = −2시간)
   const leaveDeductMinutes =
     leave.annual * ANNUAL_MINUTES +
     leave.half * HALF_MINUTES +
@@ -90,7 +91,7 @@ export default function App() {
 
   const baseRemainingMinutes = toMinutes(remaining.hours, remaining.minutes);
   const remainingMinutes = Math.max(0, baseRemainingMinutes - leaveDeductMinutes);
-  const effectiveDays = Math.max(0, days - leave.annual);
+  const effectiveDays = days;
 
   // ===== 출근 시간 검증 (오전 8시 ~ 정오) =====
   const clockInRaw = parseClockTime(clockIn);
@@ -182,8 +183,9 @@ export default function App() {
           onChange={setRemaining}
         />
         <p className="input-hint">
-          기본값은 이번 달 남은 평일(토·일·공휴일 제외) {monthDefault.businessDays}일
-          × 8시간 기준이에요.
+          기본값은 이번 달 평일(토·일·공휴일 제외) {monthDefault.businessDays}일 × 8시간 ={" "}
+          <strong>{formatDuration(monthDefault.totalMinutes)}</strong> 기준이에요. (flex 월
+          소정근로시간)
         </p>
         <DaysInput label="남은 근무일" days={days} onChange={setDays} />
         <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
@@ -196,9 +198,8 @@ export default function App() {
         <LeaveSteppers value={leave} onChange={setLeave} />
         {leaveDeductMinutes > 0 && (
           <p className="input-hint">
-            연차 등 {formatDuration(leaveDeductMinutes)} 차감 → 적용된 남은 시간{" "}
+            연차 등 {formatDuration(leaveDeductMinutes)} 차감 → 적용된 인정근무시간{" "}
             <strong>{formatDuration(remainingMinutes)}</strong>
-            {leave.annual > 0 && `, 근무일 ${effectiveDays}일`}
           </p>
         )}
       </section>

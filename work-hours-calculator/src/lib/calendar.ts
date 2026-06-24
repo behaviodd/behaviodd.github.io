@@ -91,32 +91,31 @@ export function isBusinessDay(date: Date): boolean {
   return !isWeekend(date) && !isHoliday(date);
 }
 
-export type MonthRemaining = {
-  /** 오늘 포함, 이번 달 말일까지 남은 영업일 수 */
+export type MonthWork = {
+  /** 이번 달(1일~말일) 토·일·공휴일을 제외한 영업일 수 */
   businessDays: number;
-  /** businessDays × 8시간(분) */
-  remainingMinutes: number;
+  /** businessDays × 8시간(분) — flex 월 소정근로시간과 동일 */
+  totalMinutes: number;
 };
 
 /**
- * 오늘(포함)부터 이번 달 말일까지 남은 영업일 수와 인정근무시간을 계산한다.
+ * 이번 달(1일~말일)에서 토·일·공휴일을 제외한 영업일 수와,
+ * 1일 8시간 근무 기준 총 인정근무시간을 계산한다.
  * today를 주입할 수 있어 테스트가 가능하다.
  */
-export function businessDaysRemainingThisMonth(
-  today: Date = new Date(),
-): MonthRemaining {
+export function businessDaysInMonth(today: Date = new Date()): MonthWork {
   const year = today.getFullYear();
   const month = today.getMonth();
   const lastDay = new Date(year, month + 1, 0).getDate();
 
   let businessDays = 0;
-  for (let d = today.getDate(); d <= lastDay; d++) {
+  for (let d = 1; d <= lastDay; d++) {
     const date = new Date(year, month, d);
     if (isBusinessDay(date)) businessDays++;
   }
 
   return {
     businessDays,
-    remainingMinutes: businessDays * STANDARD_WORK_MINUTES,
+    totalMinutes: businessDays * STANDARD_WORK_MINUTES,
   };
 }

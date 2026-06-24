@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  businessDaysRemainingThisMonth,
+  businessDaysInMonth,
   isBusinessDay,
   isHoliday,
   isWeekend,
@@ -20,15 +20,17 @@ describe("calendar: 주말/공휴일 판별", () => {
   });
 });
 
-describe("calendar: 이번 달 남은 인정근무시간 기본값", () => {
-  it("2026-06-24 기준 남은 평일 5일 × 8시간", () => {
-    const r = businessDaysRemainingThisMonth(new Date(2026, 5, 24));
-    expect(r.businessDays).toBe(5); // 24,25,26,29,30
-    expect(r.remainingMinutes).toBe(5 * 8 * 60);
+describe("calendar: 이번 달 인정근무시간 기본값(한 달 전체)", () => {
+  it("2026년 6월 = 평일 22일 × 8시간 = 176시간", () => {
+    const r = businessDaysInMonth(new Date(2026, 5, 24));
+    expect(r.businessDays).toBe(22);
+    expect(r.totalMinutes).toBe(22 * 8 * 60); // 10560분 = 176시간
   });
 
-  it("remainingMinutes = businessDays × 480 불변식", () => {
-    const r = businessDaysRemainingThisMonth(new Date(2026, 1, 10));
-    expect(r.remainingMinutes).toBe(r.businessDays * 480);
+  it("달 중간 어느 날을 넣어도 그 달 전체 기준(날짜 무관)", () => {
+    const a = businessDaysInMonth(new Date(2026, 5, 1));
+    const b = businessDaysInMonth(new Date(2026, 5, 30));
+    expect(a.businessDays).toBe(b.businessDays);
+    expect(a.totalMinutes).toBe(a.businessDays * 480);
   });
 });
