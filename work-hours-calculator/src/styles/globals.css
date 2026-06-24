@@ -59,22 +59,6 @@ body {
   background: var(--bg);
 }
 
-/* 아주 옅은 스캔라인 (화이트라 거의 종이 질감 정도) */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.012) 3px,
-    rgba(0, 0, 0, 0.012) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
 ::selection {
   background: var(--accent-sub-dim);
   color: var(--fg-bright);
@@ -232,6 +216,60 @@ select {
 }
 .clock-input {
   text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 출근 시간 입력 + 지움 버튼 */
+.clock-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.clock-wrap .clock-input {
+  flex: 1;
+}
+.clock-clear {
+  flex-shrink: 0;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.clock-clear:active {
+  background: var(--bg-soft);
+}
+
+/* 시간 프리셋 칩 */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chip {
+  flex: 1 1 0;
+  min-width: 56px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.12s ease;
+}
+.chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.chip.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
 }
 
 .input-hint {
