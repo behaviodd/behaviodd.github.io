@@ -3,8 +3,16 @@ import "./styles/globals.css";
 
 import { TimeInput } from "./components/TimeInput";
 import { DaysInput } from "./components/DaysInput";
-import { BreakTimeSelector } from "./components/BreakTimeSelector";
-import { ClockInInput } from "./components/ClockInInput";
+import {
+  BreakTimeSelector,
+  BREAK_TIME_MINUTES,
+} from "./components/BreakTimeSelector";
+import {
+  ClockInInput,
+  CLOCK_IN_MIN,
+  CLOCK_IN_MAX,
+} from "./components/ClockInInput";
+import { LeaveSteppers, type LeaveCounts } from "./components/LeaveSteppers";
 import { SummaryCard } from "./components/SummaryCard";
 import { CalculationDetailAccordion } from "./components/CalculationDetailAccordion";
 import {
@@ -21,9 +29,11 @@ import {
   formatClockTime,
   formatDuration,
   formatDurationDetailed,
+  fromMinutes,
   parseClockTime,
   toMinutes,
 } from "./lib/time";
+import { businessDaysRemainingThisMonth } from "./lib/calendar";
 import {
   calculateAfterTodayLeave,
   calculateAfterTodayStay,
@@ -36,6 +46,14 @@ import {
   type PlanLevel,
 } from "./lib/calculations";
 
+// 연차/반차/반반차 1개당 차감되는 인정근무시간(분)
+const ANNUAL_MINUTES = 8 * 60;
+const HALF_MINUTES = 4 * 60;
+const QUARTER_MINUTES = 2 * 60;
+
+const CLOCK_IN_MIN_MINUTES = parseClockTime(CLOCK_IN_MIN)!;
+const CLOCK_IN_MAX_MINUTES = parseClockTime(CLOCK_IN_MAX)!;
+
 type ScenarioCardData = {
   title: string;
   headline: string;
@@ -45,25 +63,51 @@ type ScenarioCardData = {
 };
 
 export default function App() {
-  // 기본값은 요구사항 예시(케이스 1)로 두어, 열자마자 결과가 보이게 한다.
-  const [remaining, setRemaining] = useState({ hours: 41, minutes: 54 });
-  const [days, setDays] = useState(5);
-  const [breakMinutes, setBreakMinutes] = useState(60);
+  // 기본값: 토·일·공휴일을 제외한 이번 달 남은 인정근무시간/근무일.
+  const monthDefault = useMemo(() => businessDaysRemainingThisMonth(), []);
+
+  const [remaining, setRemaining] = useState(() =>
+    fromMinutes(monthDefault.remainingMinutes),
+  );
+  const [days, setDays] = useState(monthDefault.businessDays);
+  const [includeBreak, setIncludeBreak] = useState(true);
   const [clockIn, setClockIn] = useState(""); // "HH:MM"
+  const [leave, setLeave] = useState<LeaveCounts>({
+    annual: 0,
+    half: 0,
+    quarter: 0,
+  });
   const [scenario, setScenario] = useState<ScenarioKey | null>(null);
 
-  const remainingMinutes = toMinutes(remaining.hours, remaining.minutes);
-  const clockInMinutes = parseClockTime(clockIn);
+  const breakMinutes = includeBreak ? BREAK_TIME_MINUTES : 0;
+
+  // 연차 등 차감: 연차는 시간 + 근무일 1일, 반차/반반차는 시간만 차감.
+  const leaveDeductMinutes =
+    leave.annual * ANNUAL_MINUTES +
+    leave.half * HALF_MINUTES +
+    leave.quarter * QUARTER_MINUTES;
+
+  const baseRemainingMinutes = toMinutes(remaining.hours, remaining.minutes);
+  const remainingMinutes = Math.max(0, baseRemainingMinutes - leaveDeductMinutes);
+  const effectiveDays = Math.max(0, days - leave.annual);
+
+  // ===== 출근 시간 검증 (오전 8시 ~ 정오) =====
+  const clockInRaw = parseClockTime(clockIn);
+  const clockInOutOfRange =
+    clockInRaw !== null &&
+    (clockInRaw < CLOCK_IN_MIN_MINUTES || clockInRaw > CLOCK_IN_MAX_MINUTES);
+  const clockInMinutes = clockInOutOfRange ? null : clockInRaw;
 
   // ===== 입력 검증 =====
   const minutesInvalid = remaining.minutes < 0 || remaining.minutes > 59;
-  const daysInvalid = days <= 0;
+  const daysInvalid = effectiveDays <= 0;
   const alreadyDone = remainingMinutes <= 0;
+  const baseValid = !daysInvalid && !alreadyDone && !minutesInvalid;
 
   // ===== 기본 하루 목표 =====
   const basePlan = useMemo(
-    () => calculateDailyPlan(remainingMinutes, days, breakMinutes),
-    [remainingMinutes, days, breakMinutes],
+    () => calculateDailyPlan(remainingMinutes, effectiveDays, breakMinutes),
+    [remainingMinutes, effectiveDays, breakMinutes],
   );
   const baseLevel = evaluateLevel(
     basePlan.requiredWorkMinutes,
@@ -71,7 +115,7 @@ export default function App() {
   );
 
   // ===== 출근 기준 퇴근 시간(B) =====
-  const leaveMinutes =
+  const leaveTimeMinutes =
     clockInMinutes !== null
       ? calculateLeaveTime(
           clockInMinutes,
@@ -80,20 +124,23 @@ export default function App() {
         )
       : undefined;
   const bufferLeaveMinutes =
-    leaveMinutes !== undefined ? withBuffer(leaveMinutes) : undefined;
-
-  const baseValid = !daysInvalid && !alreadyDone && !minutesInvalid;
+    leaveTimeMinutes !== undefined ? withBuffer(leaveTimeMinutes) : undefined;
 
   // ===== 상세 계산 문구 =====
   const baseDetail = baseValid
     ? [
-        `남은 시간 ${formatDuration(remainingMinutes)} ÷ ${days}일`,
+        leaveDeductMinutes > 0
+          ? `원래 남은 시간 ${formatDuration(baseRemainingMinutes)} − 연차 등 ${formatDuration(leaveDeductMinutes)} = ${formatDuration(remainingMinutes)}`
+          : null,
+        `남은 시간 ${formatDuration(remainingMinutes)} ÷ ${effectiveDays}일`,
         `= 하루 평균 ${formatDurationDetailed(basePlan.averageWorkMinutesRaw)}`,
         `안전하게 1분 올림`,
         `= 하루 ${formatDuration(basePlan.requiredWorkMinutes)} 인정근무`,
-        `휴게 ${formatDuration(breakMinutes)} 포함`,
+        includeBreak ? `휴게 1시간 포함` : `휴게 없음`,
         `= 하루 체류 ${formatDuration(basePlan.requiredStayMinutes)}`,
-      ].join("\n")
+      ]
+        .filter(Boolean)
+        .join("\n")
     : "";
 
   // ===== 시나리오 카드 데이터 =====
@@ -102,11 +149,11 @@ export default function App() {
     return buildScenario(
       scenario,
       remainingMinutes,
-      days,
+      effectiveDays,
       breakMinutes,
       clockInMinutes,
     );
-  }, [scenario, baseValid, remainingMinutes, days, breakMinutes, clockInMinutes]);
+  }, [scenario, baseValid, remainingMinutes, effectiveDays, breakMinutes, clockInMinutes]);
 
   return (
     <div className="app">
@@ -126,23 +173,33 @@ export default function App() {
           minutes={remaining.minutes}
           onChange={setRemaining}
         />
+        <p className="input-hint">
+          기본값은 이번 달 남은 평일(토·일·공휴일 제외) {monthDefault.businessDays}일
+          × 8시간 기준이에요.
+        </p>
         <DaysInput label="남은 근무일" days={days} onChange={setDays} />
-        <BreakTimeSelector
-          breakMinutes={breakMinutes}
-          onChange={setBreakMinutes}
-        />
+        <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
         <ClockInInput
           label="출근 시간 (선택)"
           value={clockIn}
           onChange={setClockIn}
-          hint="입력하면 오늘 퇴근 시각까지 계산해요."
+          hint="오전 8시~정오 사이. 입력하면 오늘 퇴근 시각까지 계산해요."
         />
+        <LeaveSteppers value={leave} onChange={setLeave} />
+        {leaveDeductMinutes > 0 && (
+          <p className="input-hint">
+            연차 등 {formatDuration(leaveDeductMinutes)} 차감 → 적용된 남은 시간{" "}
+            <strong>{formatDuration(remainingMinutes)}</strong>
+            {leave.annual > 0 && `, 근무일 ${effectiveDays}일`}
+          </p>
+        )}
       </section>
 
       {/* 안내/오류 배너 */}
       {daysInvalid && (
         <div className="banner error">
-          남은 근무일을 1일 이상 입력해 주세요.
+          남은 근무일을 1일 이상으로 맞춰 주세요. (연차로 모두 소진됐을 수
+          있어요)
         </div>
       )}
       {!daysInvalid && alreadyDone && (
@@ -157,15 +214,13 @@ export default function App() {
           requiredWorkMinutes={basePlan.requiredWorkMinutes}
           requiredStayMinutes={basePlan.requiredStayMinutes}
           level={baseLevel}
-          leaveMinutes={leaveMinutes}
+          leaveMinutes={leaveTimeMinutes}
           bufferLeaveMinutes={bufferLeaveMinutes}
         />
       )}
 
       {/* 상세 계산 */}
-      {baseValid && (
-        <CalculationDetailAccordion detail={baseDetail} />
-      )}
+      {baseValid && <CalculationDetailAccordion detail={baseDetail} />}
 
       {/* 빠른 시나리오 */}
       {baseValid && (
@@ -304,7 +359,9 @@ function leaveScenario(
       headline: "출근 시간을 먼저 입력해 주세요.",
       level: "normal",
       rows: [],
-      note: { text: "위 입력 카드에서 출근 시간을 넣으면 계산할 수 있어요." },
+      note: {
+        text: "위 입력 카드에서 오전 8시~정오 사이로 출근 시간을 넣어 주세요.",
+      },
     };
   }
   if (leave <= clockInMinutes) {
