@@ -76,12 +76,13 @@ export default function App() {
   );
 
   // 남은 근무일 기본값 = 오늘 포함 남은 평일.
-  // 남은 인정근무시간 기본값 = 남은 근무일 × 8시간.
+  // base = 연차 차감 "전"의 남은 인정근무시간 (기본값 = 남은 근무일 × 8시간).
+  // 화면에 보이는 남은 인정근무시간 = base − 연차/반차/반반차 차감분.
   const [days, setDays] = useState(monthDefault.remainingBusinessDays);
-  const [remaining, setRemaining] = useState(() =>
+  const [base, setBase] = useState(() =>
     fromMinutes(monthDefault.remainingTotalMinutes),
   );
-  const [remainingTouched, setRemainingTouched] = useState(false);
+  const [baseTouched, setBaseTouched] = useState(false);
   const [daysTouched, setDaysTouched] = useState(false);
 
   // 공휴일 API 로드 (올해 + 내년)
@@ -93,10 +94,10 @@ export default function App() {
   // 공휴일이 갱신되면, 사용자가 직접 만지지 않은 기본값만 다시 채운다.
   useEffect(() => {
     if (!daysTouched) setDays(monthDefault.remainingBusinessDays);
-    if (!remainingTouched) {
-      setRemaining(fromMinutes(monthDefault.remainingTotalMinutes));
+    if (!baseTouched) {
+      setBase(fromMinutes(monthDefault.remainingTotalMinutes));
     }
-  }, [monthDefault, remainingTouched, daysTouched]);
+  }, [monthDefault, baseTouched, daysTouched]);
 
   const [includeBreak, setIncludeBreak] = useState(true);
   const [clockIn, setClockIn] = useState(""); // "HH:MM"
@@ -116,9 +117,17 @@ export default function App() {
     leave.half * HALF_MINUTES +
     leave.quarter * QUARTER_MINUTES;
 
-  const baseRemainingMinutes = toMinutes(remaining.hours, remaining.minutes);
+  const baseRemainingMinutes = toMinutes(base.hours, base.minutes);
+  // 화면에 표시·계산에 쓰는 남은 인정근무시간 = base − 연차 차감분 (즉시 반영)
   const remainingMinutes = Math.max(0, baseRemainingMinutes - leaveDeductMinutes);
+  const remainingParts = fromMinutes(remainingMinutes);
   const effectiveDays = days;
+
+  // 남은 인정근무시간 입력을 직접 수정하면, base를 (입력값 + 현재 차감분)으로 둔다.
+  const handleRemainingChange = (v: { hours: number; minutes: number }) => {
+    setBase(fromMinutes(toMinutes(v.hours, v.minutes) + leaveDeductMinutes));
+    setBaseTouched(true);
+  };
 
   // ===== 출근 시간 검증 (오전 8시 ~ 정오) =====
   const clockInRaw = parseClockTime(clockIn);
@@ -128,7 +137,7 @@ export default function App() {
   const clockInMinutes = clockInOutOfRange ? null : clockInRaw;
 
   // ===== 입력 검증 =====
-  const minutesInvalid = remaining.minutes < 0 || remaining.minutes > 59;
+  const minutesInvalid = remainingParts.minutes < 0 || remainingParts.minutes > 59;
   const daysInvalid = effectiveDays <= 0;
   const alreadyDone = remainingMinutes <= 0;
   const baseValid = !daysInvalid && !alreadyDone && !minutesInvalid;
@@ -209,27 +218,42 @@ export default function App() {
           onChange={(d) => {
             setDays(d);
             setDaysTouched(true);
-            // 인정근무시간을 따로 만지지 않았다면 남은 근무일 × 8시간으로 같이 갱신
-            if (!remainingTouched) setRemaining(fromMinutes(d * 8 * 60));
+            // 인정근무시간을 직접 만지지 않았다면 남은 근무일 × 8시간으로 같이 갱신
+            if (!baseTouched) setBase(fromMinutes(d * 8 * 60));
           }}
         />
         <p className="input-hint">
           기본값은 오늘 포함 이번 달 남은 평일 {monthDefault.remainingBusinessDays}일이에요.
         </p>
-        <TimeInput
-          label="남은 인정근무시간"
-          hours={remaining.hours}
-          minutes={remaining.minutes}
-          onChange={(v) => {
-            setRemaining(v);
-            setRemainingTouched(true);
-          }}
-        />
-        <p className="input-hint">
-          기본값은 남은 근무일 {days}일 × 8시간 ={" "}
-          <strong>{formatDuration(days * 8 * 60)}</strong>. flex의 남은 시간을 알면 직접
-          입력하세요.
-        </p>
+
+        {/* 남은 인정근무시간 + 연차/반차/반반차를 한 묶음으로 (차감 즉시 반영) */}
+        <div className="linked-group">
+          <TimeInput
+            label="남은 인정근무시간"
+            hours={remainingParts.hours}
+            minutes={remainingParts.minutes}
+            onChange={handleRemainingChange}
+          />
+          {leaveDeductMinutes > 0 ? (
+            <p className="input-hint">
+              남은 근무일 {days}일 × 8시간({formatDuration(baseRemainingMinutes)}) − 연차·반차·반반차{" "}
+              {formatDuration(leaveDeductMinutes)} ={" "}
+              <strong>{formatDuration(remainingMinutes)}</strong>
+            </p>
+          ) : (
+            <p className="input-hint">
+              기본값은 남은 근무일 {days}일 × 8시간 ={" "}
+              <strong>{formatDuration(baseRemainingMinutes)}</strong>. flex의 남은 시간을 알면 직접
+              입력하세요.
+            </p>
+          )}
+
+          <div className="leave-connector" aria-hidden="true">
+            ↳ 연차·반차·반반차로 위 시간에서 바로 차감
+          </div>
+          <LeaveSteppers value={leave} onChange={setLeave} />
+        </div>
+
         <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
         <ClockInInput
           label="출근 시간 (선택)"
@@ -237,13 +261,6 @@ export default function App() {
           onChange={setClockIn}
           hint="오전 8시~정오 사이. 입력하면 오늘 퇴근 시각까지 계산해요."
         />
-        <LeaveSteppers value={leave} onChange={setLeave} />
-        {leaveDeductMinutes > 0 && (
-          <p className="input-hint">
-            연차 등 {formatDuration(leaveDeductMinutes)} 차감 → 적용된 인정근무시간{" "}
-            <strong>{formatDuration(remainingMinutes)}</strong>
-          </p>
-        )}
       </section>
 
       {/* 안내/오류 배너 */}
