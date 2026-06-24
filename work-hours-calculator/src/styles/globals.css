@@ -242,6 +242,59 @@ select {
   background: var(--bg-soft);
 }
 
+/* 커스텀 시/분 드롭다운 */
+.timepick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.select-wrap {
+  position: relative;
+  flex: 1;
+}
+.select-wrap::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--fg-faint);
+  pointer-events: none;
+  font-size: 12px;
+}
+.time-select {
+  width: 100%;
+  height: 50px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--bg-soft);
+  padding: 0 32px 0 14px;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-bright);
+  appearance: none;
+  -webkit-appearance: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.time-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.time-select:disabled {
+  color: var(--fg-faint);
+  background: var(--bg-soft);
+}
+.timepick-colon {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--fg-faint);
+}
+
 /* 시간 프리셋 칩 */
 .chip-row {
   display: flex;

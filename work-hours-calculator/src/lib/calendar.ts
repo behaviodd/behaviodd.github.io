@@ -67,6 +67,8 @@ export type MonthWork = {
   monthTotalMinutes: number;
   /** 오늘(포함)부터 말일까지 남은 영업일 수 */
   remainingBusinessDays: number;
+  /** remainingBusinessDays × 8시간(분) — 남은 인정근무시간 기본값 */
+  remainingTotalMinutes: number;
 };
 
 /**
@@ -95,6 +97,7 @@ export function monthWorkSummary(
     monthBusinessDays,
     monthTotalMinutes: monthBusinessDays * STANDARD_WORK_MINUTES,
     remainingBusinessDays,
+    remainingTotalMinutes: remainingBusinessDays * STANDARD_WORK_MINUTES,
   };
 }
 
