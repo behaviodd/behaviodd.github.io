@@ -360,6 +360,25 @@ select {
   accent-color: var(--accent);
 }
 
+/* 남은 인정근무시간 + 연차 차감을 시각적으로 묶는 그룹 */
+.linked-group {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 2px;
+  padding: 14px;
+  margin-bottom: 16px;
+  background: var(--accent-dim);
+}
+.linked-group .field {
+  margin-bottom: 10px;
+}
+.leave-connector {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 12px 0 8px;
+}
+
 /* 연차/반차/반반차 stepper */
 .stepper-list {
   display: flex;
