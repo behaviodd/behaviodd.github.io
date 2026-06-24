@@ -35,6 +35,7 @@ import {
 } from "./lib/time";
 import { businessDaysRemainingThisMonth } from "./lib/calendar";
 import {
+  applyCoreTime,
   calculateAfterTodayLeave,
   calculateAfterTodayStay,
   calculateDailyPlan,
@@ -114,8 +115,8 @@ export default function App() {
     basePlan.requiredStayMinutes,
   );
 
-  // ===== 출근 기준 퇴근 시간(B) =====
-  const leaveTimeMinutes =
+  // ===== 출근 기준 퇴근 시간(B) + 코어타임(12~17시) 보정 =====
+  const rawLeaveMinutes =
     clockInMinutes !== null
       ? calculateLeaveTime(
           clockInMinutes,
@@ -123,6 +124,10 @@ export default function App() {
           breakMinutes,
         )
       : undefined;
+  const core =
+    rawLeaveMinutes !== undefined ? applyCoreTime(rawLeaveMinutes) : undefined;
+  const leaveTimeMinutes = core?.leave;
+  const coreFloored = core?.floored ?? false;
   const bufferLeaveMinutes =
     leaveTimeMinutes !== undefined ? withBuffer(leaveTimeMinutes) : undefined;
 
@@ -161,6 +166,9 @@ export default function App() {
         <h1 className="app-title">퇴근 계산기</h1>
         <p className="app-subtitle">
           남은 근무시간을 나눠서 오늘 몇 시에 집 갈 수 있는지 계산해요.
+        </p>
+        <p className="app-note">
+          코어타임 12:00~17:00 의무 근무 (연차·반차·반반차 제외)
         </p>
       </header>
 
@@ -216,6 +224,7 @@ export default function App() {
           level={baseLevel}
           leaveMinutes={leaveTimeMinutes}
           bufferLeaveMinutes={bufferLeaveMinutes}
+          coreFloored={coreFloored}
         />
       )}
 
