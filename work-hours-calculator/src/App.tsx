@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./styles/globals.css";
 
 import { TimeInput } from "./components/TimeInput";
@@ -33,7 +33,11 @@ import {
   parseClockTime,
   toMinutes,
 } from "./lib/time";
-import { businessDaysInMonth } from "./lib/calendar";
+import {
+  monthWorkSummary,
+  fetchKoreanHolidays,
+  KR_HOLIDAYS_FALLBACK,
+} from "./lib/calendar";
 import {
   applyCoreTime,
   calculateAfterTodayLeave,
@@ -64,13 +68,34 @@ type ScenarioCardData = {
 };
 
 export default function App() {
-  // 기본값: 이번 달(1일~말일) 토·일·공휴일 제외 영업일 × 8시간 (flex 월 소정근로시간).
-  const monthDefault = useMemo(() => businessDaysInMonth(), []);
-
-  const [remaining, setRemaining] = useState(() =>
-    fromMinutes(monthDefault.totalMinutes),
+  // 대한민국 공휴일 (API 로드 전엔 내장 폴백). 로드되면 기본값을 재계산한다.
+  const [holidays, setHolidays] = useState(() => new Set(KR_HOLIDAYS_FALLBACK));
+  const monthDefault = useMemo(
+    () => monthWorkSummary(new Date(), holidays),
+    [holidays],
   );
-  const [days, setDays] = useState(monthDefault.businessDays);
+
+  // 인정근무시간 기본값 = 이번 달 영업일 × 8시간 (flex 월 소정근로시간).
+  // 남은 근무일 기본값 = 오늘 포함 남은 평일.
+  const [remaining, setRemaining] = useState(() =>
+    fromMinutes(monthDefault.monthTotalMinutes),
+  );
+  const [days, setDays] = useState(monthDefault.remainingBusinessDays);
+  const [remainingTouched, setRemainingTouched] = useState(false);
+  const [daysTouched, setDaysTouched] = useState(false);
+
+  // 공휴일 API 로드 (올해 + 내년)
+  useEffect(() => {
+    const y = new Date().getFullYear();
+    fetchKoreanHolidays([y, y + 1]).then(setHolidays);
+  }, []);
+
+  // 공휴일이 갱신되면, 사용자가 직접 만지지 않은 기본값만 다시 채운다.
+  useEffect(() => {
+    if (!remainingTouched) setRemaining(fromMinutes(monthDefault.monthTotalMinutes));
+    if (!daysTouched) setDays(monthDefault.remainingBusinessDays);
+  }, [monthDefault, remainingTouched, daysTouched]);
+
   const [includeBreak, setIncludeBreak] = useState(true);
   const [clockIn, setClockIn] = useState(""); // "HH:MM"
   const [leave, setLeave] = useState<LeaveCounts>({
@@ -180,14 +205,27 @@ export default function App() {
           label="남은 인정근무시간"
           hours={remaining.hours}
           minutes={remaining.minutes}
-          onChange={setRemaining}
+          onChange={(v) => {
+            setRemaining(v);
+            setRemainingTouched(true);
+          }}
         />
         <p className="input-hint">
-          기본값은 이번 달 평일(토·일·공휴일 제외) {monthDefault.businessDays}일 × 8시간 ={" "}
-          <strong>{formatDuration(monthDefault.totalMinutes)}</strong> 기준이에요. (flex 월
-          소정근로시간)
+          기본값은 이번 달 평일(토·일·공휴일 제외) {monthDefault.monthBusinessDays}일 × 8시간 ={" "}
+          <strong>{formatDuration(monthDefault.monthTotalMinutes)}</strong> 기준이에요. flex의 남은
+          시간을 알면 직접 입력하세요.
         </p>
-        <DaysInput label="남은 근무일" days={days} onChange={setDays} />
+        <DaysInput
+          label="남은 근무일"
+          days={days}
+          onChange={(d) => {
+            setDays(d);
+            setDaysTouched(true);
+          }}
+        />
+        <p className="input-hint">
+          기본값은 오늘 포함 이번 달 남은 평일 {monthDefault.remainingBusinessDays}일이에요.
+        </p>
         <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
         <ClockInInput
           label="출근 시간 (선택)"

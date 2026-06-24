@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  businessDaysInMonth,
+  monthWorkSummary,
   isBusinessDay,
   isHoliday,
   isWeekend,
@@ -20,17 +20,20 @@ describe("calendar: 주말/공휴일 판별", () => {
   });
 });
 
-describe("calendar: 이번 달 인정근무시간 기본값(한 달 전체)", () => {
-  it("2026년 6월 = 평일 22일 × 8시간 = 176시간", () => {
-    const r = businessDaysInMonth(new Date(2026, 5, 24));
-    expect(r.businessDays).toBe(22);
-    expect(r.totalMinutes).toBe(22 * 8 * 60); // 10560분 = 176시간
+describe("calendar: 월 인정근무시간 총합 + 남은 근무일", () => {
+  it("2026년 6월 = 평일 22일 × 8시간 = 176시간 (월 총합)", () => {
+    const r = monthWorkSummary(new Date(2026, 5, 24));
+    expect(r.monthBusinessDays).toBe(22);
+    expect(r.monthTotalMinutes).toBe(22 * 8 * 60); // 176시간
   });
 
-  it("달 중간 어느 날을 넣어도 그 달 전체 기준(날짜 무관)", () => {
-    const a = businessDaysInMonth(new Date(2026, 5, 1));
-    const b = businessDaysInMonth(new Date(2026, 5, 30));
-    expect(a.businessDays).toBe(b.businessDays);
-    expect(a.totalMinutes).toBe(a.businessDays * 480);
+  it("2026-06-24 기준 남은 평일 = 5일 (24,25,26,29,30, 오늘 포함)", () => {
+    const r = monthWorkSummary(new Date(2026, 5, 24));
+    expect(r.remainingBusinessDays).toBe(5);
+  });
+
+  it("월초엔 남은 평일 = 월 전체 평일", () => {
+    const r = monthWorkSummary(new Date(2026, 5, 1));
+    expect(r.remainingBusinessDays).toBe(r.monthBusinessDays);
   });
 });
