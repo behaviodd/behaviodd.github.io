@@ -17,6 +17,8 @@ type Props = {
   /** 출근 시간이 입력된 경우의 퇴근 시각(자정 기준 분) */
   leaveMinutes?: number;
   bufferLeaveMinutes?: number;
+  /** 코어타임(17:00)까지 강제로 늘어났는지 여부 */
+  coreFloored?: boolean;
 };
 
 export function SummaryCard({
@@ -25,6 +27,7 @@ export function SummaryCard({
   level,
   leaveMinutes,
   bufferLeaveMinutes,
+  coreFloored,
 }: Props) {
   const hasLeave = typeof leaveMinutes === "number";
 
@@ -37,6 +40,11 @@ export function SummaryCard({
           {typeof bufferLeaveMinutes === "number" && (
             <p className="summary-sub">
               1분 버퍼를 두면 {formatClockTime(bufferLeaveMinutes)} 퇴근이 안전합니다.
+            </p>
+          )}
+          {coreFloored && (
+            <p className="summary-sub core-note">
+              코어타임(12:00~17:00)이 있어 목표를 일찍 채워도 17:00까지는 근무해요.
             </p>
           )}
         </>
