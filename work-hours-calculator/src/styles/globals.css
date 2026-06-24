@@ -162,28 +162,80 @@ select {
   color: var(--danger);
 }
 
-/* 프리셋(휴게시간) */
-.preset-row {
+/* 휴게시간 체크박스 */
+.checkbox-row {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.preset-btn {
-  flex: 1 1 0;
-  min-width: 64px;
-  height: 46px;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 14px;
   border: 1.5px solid var(--border);
   border-radius: 12px;
   background: var(--card-muted);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-soft);
-  transition: all 0.12s ease;
+  cursor: pointer;
 }
-.preset-btn.active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+.checkbox-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+/* 연차/반차/반반차 stepper */
+.stepper-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-muted);
+}
+.stepper-label {
+  display: flex;
+  flex-direction: column;
+}
+.stepper-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+.stepper-sub {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.stepper-btn {
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
   color: var(--accent);
+}
+.stepper-btn:disabled {
+  color: var(--text-faint);
+  background: var(--card-muted);
+}
+.stepper-value {
+  min-width: 32px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 /* ===== 메인 결과(SummaryCard) ===== */

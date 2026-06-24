@@ -1,33 +1,31 @@
-/** 휴게시간 선택. 기본 60분, 프리셋 30/45/60/90분. */
+/** 휴게시간 포함 여부 체크박스. 휴게시간은 1시간만 선택 가능. */
 
-import { formatDuration } from "../lib/time";
-
-const PRESETS = [30, 45, 60, 90];
+const BREAK_MINUTES = 60;
 
 type Props = {
-  breakMinutes: number;
-  onChange: (minutes: number) => void;
+  included: boolean;
+  onChange: (included: boolean) => void;
 };
 
-export function BreakTimeSelector({ breakMinutes, onChange }: Props) {
+export function BreakTimeSelector({ included, onChange }: Props) {
   return (
     <div className="field">
-      <label className="field-label">
-        휴게시간 <span className="input-unit">(현재 {formatDuration(breakMinutes)})</span>
+      <label className="field-label">휴게시간</label>
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={included}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span>휴게시간 1시간 포함</span>
       </label>
-      <div className="preset-row">
-        {PRESETS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            className={`preset-btn${breakMinutes === m ? " active" : ""}`}
-            aria-pressed={breakMinutes === m}
-            onClick={() => onChange(m)}
-          >
-            {formatDuration(m)}
-          </button>
-        ))}
-      </div>
+      <p className="input-hint">
+        {included
+          ? "체류시간 = 인정근무 + 1시간으로 계산해요."
+          : "휴게 없이 체류시간 = 인정근무로 계산해요."}
+      </p>
     </div>
   );
 }
+
+export const BREAK_TIME_MINUTES = BREAK_MINUTES;
