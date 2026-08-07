@@ -10,7 +10,7 @@
 
 K-POP Digging Club은 K-POP 청취자가 익숙한 취향의 벽을 넘어 새로운 음악을 발견할 수 있도록 돕는 웹 기반 음악 추천 서비스입니다.
 
-Spotify 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, 템포, 청취 패턴)을 분석하여 **K-POP을 제외한** 전 세계 유사 곡을 최대 30곡까지 추천합니다.
+Spotify 또는 Apple Music 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, 템포, 청취 패턴)을 분석하여 **K-POP을 제외한** 전 세계 유사 곡을 최대 30곡까지 추천합니다.
 
 ### 핵심 가치
 
@@ -23,11 +23,12 @@ Spotify 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, �
 ## 사용 흐름
 
 ```
-1. Spotify 트랙 URL 입력
+1. Spotify 또는 Apple Music 트랙 URL 입력
 2. [Dig] 버튼 클릭
-3. 6개 소스에서 후보 수집 → K-POP 필터링 → 스코어링
-4. 최대 30곡 추천 결과 확인
-5. 미리 듣기 / 좋아요·스킵 피드백 / Spotify 플레이리스트 생성
+3. 5개 소스에서 후보 수집 → K-POP 필터링 → Stage 1 스코어링
+4. Deezer Track Features로 Stage 2 재랭킹
+5. 최대 30곡 추천 결과 확인
+6. 미리 듣기 / 좋아요·스킵 피드백 / Spotify 플레이리스트 생성
 ```
 
 ---
@@ -36,7 +37,7 @@ Spotify 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, �
 
 ### 하이브리드 디스커버리 엔진
 
-6개의 독립적인 음악 데이터 소스를 병렬로 탐색하여 단일 플랫폼의 추천 편향을 극복합니다.
+5개의 독립적인 후보 수집 소스와 BPM 수집을 병렬로 실행하여 단일 플랫폼의 추천 편향을 극복합니다.
 
 | 소스 | 플랫폼 | 탐색 방식 |
 |------|--------|-----------|
@@ -47,19 +48,48 @@ Spotify 트랙 링크를 입력하면, 해당 곡의 음악적 특성(태그, �
 | Source F | Deezer | 관련 아티스트 → 인기곡 |
 | BPM Data | Deezer | 템포 매칭용 BPM 수집 |
 
-### 7요소 스코어링 시스템 (100점 만점)
+### 2단계 스코어링 시스템 (100점 만점)
 
 각 후보곡에 대해 복합적인 음악적 유사도를 점수화합니다.
+Stage 1에서 85점 예산으로 코어 점수를 내고, Stage 2에서 오디오 피처로 최대 15점을 더합니다.
+
+#### Stage 1 — 코어 (85점)
 
 | 요소 | 배점 | 설명 |
 |------|------|------|
-| Listener Behavior | 12 | Last.fm 청취 패턴 기반 유사도 |
-| Vibe Match | 25 | TF-IDF 가중 태그 유사도 |
-| Digging Index | 28 | 청취 깊이(재생/리스너 비율) + 희소성 보너스 |
-| Multi-Source Confidence | 15 | 다중 소스 교차 검증 보너스 |
-| Cross-Platform | 10 | 플랫폼 간 존재 확인 |
+| Digging Index | 23 | 청취 깊이(재생/리스너 비율) + 희소성 보너스 |
+| Vibe Match | 22 | TF-IDF 가중 태그 유사도 |
+| Multi-Source Confidence | 12 | 다중 소스 교차 검증 (4개 이상 12 / 3개 10 / 2개 6) |
+| Listener Behavior | 10 | Last.fm 청취 패턴 기반 유사도 |
 | BPM Match | 10 | 하모닉 템포 매칭 (half/double tempo 포함) |
+| Cross-Platform | 8 | 플랫폼 간 존재 확인 (3개 이상 8 / 2개 5) |
 | Feedback Bias | ±8 | 사용자 취향 프로필 보정 |
+
+Digging Index에는 **Vibe 감쇠**가 걸립니다 — `vibeScore < 5`면 ×0.5, `< 10`이면 ×0.75.
+태그 유사도가 낮은데 희소하기만 한 곡이 상위에 오르는 것을 막습니다.
+
+#### Stage 2 — Deezer Track Features (+15점)
+
+Worker에서 Deezer `/track/{id}` 를 배치 호출해 오디오 피처를 비교합니다 (`TF_MAX = 15`).
+
+| 피처 | 가중치 | 설명 |
+|------|--------|------|
+| Gain | 50% | 라우드니스 — 에너지 프록시 |
+| BPM | 30% | 정밀 BPM (track 엔드포인트) |
+| Duration | 20% | 곡 길이 유사도 (3분 차이 = 최대 감점) |
+
+#### 데이터 누락 시 비례 재정규화
+
+고정 보상점 대신 **누락 요소를 제외한 나머지를 스케일업**해, 어떤 조합이 빠지든 이론적
+최대점이 100점이 되게 합니다. 데이터가 있는 곡이 구조적으로 유리해지는 편향을 없애기
+위한 처리입니다.
+
+| 시나리오 | 처리 | 이론적 최대 |
+|----------|------|-----------|
+| 모든 데이터 있음 | Stage 1 + Stage 2 | 100 |
+| BPM 없음 | Stage 1 코어를 85점 예산으로 재정규화 | 100 |
+| Track Features 없음 | Stage 1 점수 × (100 / 85) | 100 |
+| BPM + TF 없음 | 위 두 처리 연속 적용 | 100 |
 
 ### K-POP 3단계 필터링
 
@@ -93,11 +123,14 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 
 ### 소스 신뢰도 표시
 
-결과 화면에서 6개 데이터 소스의 가용 상태를 실시간으로 표시합니다.
+결과 화면에서 7개 데이터 소스의 가용 상태를 실시간으로 표시합니다.
+후보 수집 5개 + BPM Data + Track Features 입니다.
 
 ```
-●●●○●● 5/6 sources
+●●●○●●● 6/7 sources
 ```
+
+Track Features가 레이트 리밋에 걸리면 `(audio features limited)` 표기가 덧붙습니다.
 
 ---
 
@@ -106,9 +139,9 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 ### 프론트엔드
 
 - **Jekyll** (GitHub Pages) 정적 사이트
-- 순수 JavaScript (프레임워크 미사용), ~1200줄 인라인 스크립트
+- 순수 JavaScript (프레임워크 미사용), 단일 페이지 인라인 스크립트
 - 터미널 스타일 UI (JetBrains Mono, scanline effect)
-- Deezer 30초 프리뷰 재생 + Spotify IFrame Embed API
+- 미리듣기는 **iTunes 우선 → Deezer 폴백** (iTunes는 URL 만료 없음, JSONP 직접 호출)
 
 ### 백엔드 (Cloudflare Worker)
 
@@ -124,6 +157,7 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 | Deezer (기타) | 24시간 | 아티스트 메타데이터 등 |
 | MusicBrainz | 7일 | MBID 등 변동 없는 데이터 |
 | ListenBrainz | 24시간 | 유사 아티스트 |
+| Deezer Track Features | KV: 검색 7일 / 트랙 30일 | Stage 2 배치 조회 |
 
 ### 사용 외부 API
 
@@ -131,7 +165,8 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 |-----|------|------|
 | Spotify Web API | 시드 트랙 정보, 검색, 플레이리스트 생성 | Client Credentials + PKCE |
 | Last.fm API | 유사 트랙, 태그, 아티스트 정보, 태그 유사도 | API Key |
-| Deezer API | 태그 검색, 관련 아티스트, BPM, 프리뷰 | 공개 |
+| Deezer API | 태그 검색, 관련 아티스트, BPM, Track Features, 프리뷰 | 공개 |
+| iTunes Search API | Apple Music 메타데이터, 프리뷰(1순위) | JSONP (프록시 미경유) |
 | MusicBrainz API | 아티스트/녹음 MBID 확인 | User-Agent |
 | ListenBrainz Labs API | 세션 기반 유사 아티스트 | 공개 |
 
@@ -144,10 +179,16 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 │   Browser    │────▶│  Cloudflare Worker    │────▶│  Spotify API    │
 │              │     │  (kpop-digging-proxy) │────▶│  Last.fm API    │
 │  digging.html│     │                      │────▶│  Deezer API     │
-│  ~1200 lines │     │  - Token management  │────▶│  MusicBrainz    │
-│  inline JS   │     │  - CORS proxy        │────▶│  ListenBrainz   │
+│  inline JS   │     │  - Token management  │────▶│  MusicBrainz    │
+│              │     │  - CORS proxy        │────▶│  ListenBrainz   │
 │              │     │  - Response caching   │     └─────────────────┘
-└─────────────┘     └──────────────────────┘
+│              │     │  - KV cache (TF)      │
+└──────┬───────┘     └──────────────────────┘
+       │
+       │ JSONP (direct)
+       │   ┌─────────────────┐
+       ├──▶│  iTunes API      │  메타데이터 + 프리뷰
+       │   └─────────────────┘
        │
        │ PKCE OAuth (direct)
        ▼
@@ -163,11 +204,11 @@ dream pop → shoegaze, ethereal, ambient pop, noise pop ...
 ## 알고리즘 상세 흐름
 
 ```
-Spotify Track URL
+Spotify / Apple Music Track URL
        │
        ▼
 [Step 1] Seed 분석
-  ├── Spotify: 트랙 메타데이터
+  ├── Spotify 또는 iTunes: 트랙 메타데이터
   ├── Last.fm: 트랙 태그 + 아티스트 태그
   ├── Last.fm: 유사 트랙 목록
   └── MusicBrainz: 아티스트 MBID 확인
@@ -194,11 +235,17 @@ Spotify Track URL
   └── Deezer: 각 후보의 BPM
        │
        ▼
-[Step 3] 7요소 스코어링 (max 100)
+[Step 3] Stage 1 스코어링 (max 85 → 정규화)
   ├── TF-IDF 코퍼스 구축 (비음악적 태그 제외)
   ├── Digging Index에 Vibe 감쇠 적용
-  ├── BPM 데이터 없을 시 동적 배점 재분배
+  ├── BPM 데이터 없을 시 비례 재정규화
   └── 취향 프로필 바이어스 (시간 감쇠 포함)
+       │
+       ▼
+[Step 3.5] Stage 2 Track Features (+15)
+  ├── Worker에서 Deezer /track/{id} 배치 호출 (KV 캐시)
+  ├── gain / BPM / duration 유사도 계산
+  └── TF 데이터 없을 시 비례 재정규화 (× 100/85)
        │
        ▼
 [Step 4] 다양성 필터
@@ -214,8 +261,10 @@ Spotify Track URL
 
 ## 제한사항
 
-- Deezer 프리뷰는 30초로 제한됩니다
-- 일부 국가에서 Deezer 프리뷰가 제공되지 않을 수 있습니다
+- 프리뷰는 30초로 제한됩니다 (iTunes 우선, 없으면 Deezer)
+- 일부 국가에서 프리뷰가 제공되지 않을 수 있습니다
 - Last.fm 태그 데이터는 사용자 입력 기반이므로 노이즈가 포함될 수 있습니다
+- Apple Music은 입력(메타데이터 조회)만 지원하며, 플레이리스트 생성은 Spotify만 가능합니다
 - Spotify 플레이리스트 생성에는 Spotify 계정 연동이 필요합니다
+- Track Features가 레이트 리밋에 걸리면 Stage 2가 생략되고 Stage 1 점수가 재정규화됩니다
 - 취향 프로필은 브라우저 localStorage에 저장되어 기기 간 동기화되지 않습니다
