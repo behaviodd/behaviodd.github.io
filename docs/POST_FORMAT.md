@@ -52,8 +52,9 @@ layout: post
 ## 세부 규약
 
 - **제목**: front matter `title`만 사용. 본문 H1 금지 (`post.html`이 이미 출력 → 중복)
-- **시리즈 표기**: `> 바이브 코딩 시리즈 · 4편 중 N편`
-  1. K-POP Digging Club / 2. Luckydraw Maker / 3. Review MVP / 4. Simple Event Winner
+- **시리즈 표기**: `> 바이브 코딩 시리즈 · 7편 중 N편`
+  1. K-POP Digging Club / 2. Luckydraw Maker / 3. Review MVP / 4. Simple Event Winner /
+  5. WHAT'S IN MY JO?(photobooth) / 6. Emoji Studio(gen-emoji) / 7. 한 문장 칭찬 MVP
   ※ Matome Keyword는 서비스 종료(배포 내려감)로 2026-08-07 글 삭제 — 시리즈에서 제외
   ※ 번호는 **최초 발행 순서로 고정**한다. 글 내용이 발행일 이후까지 확장돼 `date`를 갱신해도
     번호는 바꾸지 않는다(목록 정렬 순서와 시리즈 번호는 어긋날 수 있다).
