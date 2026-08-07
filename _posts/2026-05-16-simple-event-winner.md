@@ -8,10 +8,7 @@ layout: post
 
 이벤트 응모 엑셀을 올려 리워드별 당첨자를 뽑는 도구입니다. 백엔드가 없고, 사내용이라 URL은 비공개입니다.
 
-<!-- 이미지 자리 ①: 히어로.
-     엑셀 업로드 → 결과 테이블이 뜨는 3~5초 구간 GIF 또는 스크린샷 1장.
-     글 전체에서 이 이미지가 가장 중요합니다.
-     경로 예: assets/images/simple-event-winner/hero.gif -->
+![응모권별 탭과 당첨자 목록 — 이름은 자동 마스킹된다 (샘플 데이터)](/assets/images/simple-event-winner/hero.jpg)
 
 ---
 
@@ -63,8 +60,7 @@ layout: post
 
 결과 화면은 발표 직전에 검증하는 자리라 합산 근거가 필요합니다. 반면 다운로드 시트는 정산·외부 공유용 문서고, 거기서 "이 사람은 3건이 합쳐졌음"은 읽는 사람이 판단할 일 없는 노이즈입니다. 그래서 화면에만 `합산 3건` 칩을 두고, 누르면 개별 주문이 팝오버로 열리게 했습니다.
 
-<!-- 이미지 자리 ②: 합산 내역 팝오버 스크린샷 1장.
-     경로 예: assets/images/simple-event-winner/merge-popover.png -->
+![합산 3건 칩을 누르면 개별 주문번호·주문일시·수량이 열린다 (샘플 데이터)](/assets/images/simple-event-winner/merge-popover.jpg)
 
 ### 4. 화면에 나오는 문장을 직접 정한 것
 
