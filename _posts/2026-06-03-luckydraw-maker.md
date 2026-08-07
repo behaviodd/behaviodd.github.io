@@ -4,7 +4,7 @@ date: 2026-06-03
 layout: post
 ---
 
-> 바이브 코딩 시리즈 · 7편 중 2편
+> 바이브 코딩 시리즈 · 6편 중 2편
 
 이벤트 카페에서 쓰는 럭키드로우를 웹으로 만들고 URL 하나로 공유하는 도구입니다. 손님은 QR을 찍고 로그인 없이 바로 뽑습니다. [luckydraw-maker.vercel.app](https://luckydraw-maker.vercel.app)
 

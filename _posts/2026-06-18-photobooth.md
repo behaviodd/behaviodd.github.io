@@ -4,7 +4,7 @@ date: 2026-06-18
 layout: post
 ---
 
-> 바이브 코딩 시리즈 · 7편 중 5편
+> 바이브 코딩 시리즈 · 6편 중 4편
 
 브라우저에서 바로 네 컷을 찍어 세로 포토 스트립으로 저장하는 웹 포토부스입니다. 설치도 가입도 없고, 사진은 기기 밖으로 나가지 않습니다. [photobooth-navy-eta.vercel.app](https://photobooth-navy-eta.vercel.app/)
 
