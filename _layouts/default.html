@@ -580,6 +580,55 @@
       font-size: 12px;
     }
 
+    /* ── Collapsible block (기술 상세) ── */
+    .prose details {
+      border: 1px dashed var(--border);
+      background: var(--surface);
+      padding: 0 16px;
+      margin: 32px 0;
+    }
+
+    .prose details[open] {
+      border-color: var(--accent-sub);
+    }
+
+    .prose summary {
+      cursor: pointer;
+      list-style: none;
+      margin: 0 -16px;
+      padding: 12px 16px;
+      color: var(--accent-sub);
+      font-size: 13px;
+      user-select: none;
+    }
+
+    .prose summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .prose summary::before {
+      content: '[+] ';
+    }
+
+    .prose details[open] > summary::before {
+      content: '[-] ';
+    }
+
+    .prose summary:hover {
+      color: var(--fg-bright);
+      text-shadow: 0 0 8px var(--accent-sub-glow);
+    }
+
+    .prose details[open] > summary {
+      border-bottom: 1px dashed var(--border);
+      margin-bottom: 16px;
+    }
+
+    /* 접힘 영역 안에서는 h2가 최상위라 상단 여백을 줄인다 */
+    .prose details > h2:first-of-type {
+      margin-top: 0;
+    }
+
     .prose a {
       color: var(--accent);
       text-decoration: none;
