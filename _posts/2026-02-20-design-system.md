@@ -309,7 +309,7 @@ npm run build:demo   # 데모 앱 → dist-demo/
 
 ### 크로스 프로젝트 토큰 동기화
 
-디자인 시스템의 CSS 변수를 다른 프로젝트에서도 활용할 수 있도록 토큰 동기화 스크립트를 제공합니다. 예를 들어 [Matome Keyword](/blog/2026/02/14/matome-keyword/) 프로젝트에서는 `sync-tokens.sh` 스크립트로 `index.css`에서 `:root`와 `[data-theme="dark"]` 블록을 파싱해 `design-tokens.css`로 추출하여 사용합니다.
+디자인 시스템의 CSS 변수를 다른 프로젝트에서도 활용할 수 있도록 토큰 동기화 스크립트를 제공합니다. 예를 들어 Matome Keyword 프로젝트에서는 `sync-tokens.sh` 스크립트로 `index.css`에서 `:root`와 `[data-theme="dark"]` 블록을 파싱해 `design-tokens.css`로 추출하여 사용합니다.
 
 ```
 @makestar/design-system
