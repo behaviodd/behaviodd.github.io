@@ -52,9 +52,13 @@ layout: post
 ## 세부 규약
 
 - **제목**: front matter `title`만 사용. 본문 H1 금지 (`post.html`이 이미 출력 → 중복)
-- **시리즈 표기**: `> 바이브 코딩 시리즈 · 5편 중 N편` (발행일 순)
+- **시리즈 표기**: `> 바이브 코딩 시리즈 · 5편 중 N편`
   1. Matome Keyword / 2. K-POP Digging Club / 3. Luckydraw Maker / 4. Review MVP / 5. Simple Event Winner
+  ※ 번호는 **최초 발행 순서로 고정**한다. 글 내용이 발행일 이후까지 확장돼 `date`를 갱신해도
+    번호는 바꾸지 않는다(목록 정렬 순서와 시리즈 번호는 어긋날 수 있다).
   ※ Design System 작업기는 시리즈 제외
+- **발행일**: 기존 발행일 유지가 기본. 단 글이 다루는 사건이 발행일 이후까지 이어지면
+  마지막 작업 시점으로 `date`와 파일명을 갱신한다(permalink는 slug 기준이라 URL은 불변).
 - **접힘 영역**: `<details markdown="1">` 필수 (`markdown="1"` 없으면 kramdown이 내부를 렌더하지 않음).
   스타일은 `_layouts/default.html`의 `.prose details` / `.prose summary` — `[+]`/`[-]` 마커
 - **이미지**: 확보 전에는 HTML 주석으로 자리·요구사항·권장 경로를 남긴다.
