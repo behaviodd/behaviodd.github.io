@@ -1,12 +1,12 @@
 ---
-title: 한 문장 칭찬 MVP 작업기
+title: 호메큐우(Homekyu) 작업기
 date: 2026-08-01
 layout: post
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 6편
 
-친구 아홉 명의 한 문장이 모이면, 내가 몰랐던 내 장점이 열리는 모바일 웹입니다. 쓴 사람이 누구인지는 끝까지 알 수 없습니다. [praise-red.vercel.app](https://praise-red.vercel.app/)
+친구 아홉 명의 한 문장이 모이면, 내가 몰랐던 내 장점이 열리는 모바일 웹 **호메큐우(Homekyu)**입니다. 쓴 사람이 누구인지는 끝까지 알 수 없습니다. [homekyu.com](https://homekyu.com/)
 
 ![아홉 개가 모여 열린 프로필 — 칭찬은 색과 도형이 제각각인 스티커로 붙는다 (데모 프로필)](/assets/images/praise-mvp/hero.jpg)
 
