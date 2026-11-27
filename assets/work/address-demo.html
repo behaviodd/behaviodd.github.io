@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>배송지 입력 체험 · 천지영 포트폴리오</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color: #171b20; background: #f6f2f3; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; word-break: keep-all; }
+    body { margin: 0; }
+    main { max-width: 500px; margin: clamp(12px, 5vh, 60px) auto; padding: 0 12px; }
+    .back { display: inline-block; margin: 0 0 16px 4px; color: #504249; font-size: 14px; text-underline-offset: 4px; }
+    .sheet { background: white; overflow: hidden; border: 1px solid #e4dde0; border-radius: 22px; box-shadow: 0 12px 30px #46203609; }
+    .top { display: flex; justify-content: space-between; align-items: center; padding: 15px 24px; border-bottom: 1px solid #ecedef; color: #62656b; font-size: 13px; }
+    .body { padding: clamp(20px, 5vw, 32px); }
+    h1 { margin: 0 0 8px; font-size: clamp(25px, 6vw, 32px); letter-spacing: -.06em; line-height: 1.22; }
+    h2 { margin: 24px 0 12px; font-size: 17px; }
+    p { margin: 0; line-height: 1.65; }
+    .note, .hint { color: #5a626d; font-size: 14px; }
+    label { display: block; margin: 20px 0 7px; font-size: 15px; font-weight: 650; }
+    select, button { font: inherit; }
+    button { cursor: pointer; }
+    select { width: 100%; min-height: 48px; border: 1px solid #dce2e5; border-radius: 8px; padding: 10px 12px; color: #182028; background-color: #f3f5f6; }
+    .required { color: #c72060; padding-left: 3px; }
+    .action { display: block; width: 100%; margin-top: 24px; min-height: 49px; border: 0; border-radius: 9px; background: #18212a; color: white; font-size: 16px; font-weight: 650; }
+    button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #7943b8; outline-offset: 3px; }
+    .secondary { color: #4f5360; background: white; border: 1px solid #dfe3e6; }
+    .action + .action { margin-top: 10px; }
+    .error { margin: 6px 0 0; color: #ac1e49; font-size: 14px; }
+    select[aria-invalid="true"] { border-color: #ac1e49; }
+    .address { border-radius: 12px; background: #f6f7f8; padding: 16px 18px; overflow-wrap: anywhere; word-break: normal; }
+    .address + h2 { margin-top: 18px; }
+    .address p + p { margin-top: 3px; }
+    .preview { margin: 14px 0 0; padding: 12px 14px; border-left: 2px solid #e7b6c9; background: #fff6f9; font-size: 14px; }
+    [hidden] { display: none !important; }
+    @media (prefers-reduced-motion: no-preference) { .action { transition: background-color .16s; } .action:hover { background-color: #374655; } .secondary:hover { background: #f3f5f6; } }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="../../work/global-address/" class="back">← 프로젝트로 돌아가기</a>
+    <section class="sheet" aria-label="배송지 입력 체험">
+      <div class="top"><span>메이크스타 · 배송 정보</span><span>예시 데이터 체험</span></div>
+      <section class="body" id="entry">
+        <h1 id="editor-title" tabindex="-1">배송지 입력</h1>
+        <p class="note">가상 주소를 골라 배송지와 영문 표기를 확인해 보세요.</p>
+        <form id="address-form">
+          <label for="country">배송 국가·지역</label>
+          <select id="country">
+            <option value="HK">홍콩</option>
+            <option value="KR">대한민국</option>
+            <option value="CN">중국</option>
+            <option value="TW">대만</option>
+            <option value="JP">일본 · 추후 반영안</option>
+          </select>
+          <p class="hint" id="instruction" style="margin-top:8px"></p>
+          <div id="fields"></div>
+          <button class="action" type="submit">저장하고 확인</button>
+        </form>
+      </section>
+      <section class="body" id="confirmation" hidden>
+        <h1 id="saved-title" tabindex="-1">배송 정보</h1>
+        <p class="note">주문 전에 저장된 배송지를 확인해 주세요.</p>
+        <h2>배송 주소</h2><div class="address"><p id="local-address"></p></div>
+        <h2>송장용 영문 주소</h2><div class="address"><p id="english-address" lang="en"></p></div>
+        <button class="action" type="button" id="edit">변경</button>
+        <button class="action secondary" type="button" id="restart">다른 배송지 입력</button>
+      </section>
+    </section>
+    <noscript><p>체험을 실행하려면 JavaScript를 켜 주세요.</p></noscript>
+  </main>
+  <script>
+    'use strict';
+    // Each entry pairs a fictional local address component with its invoice rendering.
+    const countries = {
+      HK: {
+        country: '홍콩', english: 'Hong Kong', hint: '예시 검색 결과에서 건물을 고르고 층과 호를 더해 주세요.',
+        labels: ['건물 검색 결과', '층', '호'],
+        choices: [
+          [['示例大廈', 'Sample Building'], ['演示中心', 'Demo Centre']],
+          [['12樓', 'Floor 12'], ['8樓', 'Floor 8']],
+          [['A室', 'Flat A'], ['B室', 'Flat B']]
+        ]
+      },
+      KR: {
+        country: '대한민국', english: 'South Korea', hint: '검색 결과에서 기본주소를 고르고 상세주소를 더해 주세요.',
+        labels: ['기본주소 검색 결과', '상세주소'],
+        choices: [
+          [['예시시 견본로 12', '12, Gyeonbon-ro, Sample City'], ['예시시 모형로 8', '8, Mohyeong-ro, Sample City']],
+          [['101호', 'Unit 101'], ['203호', 'Unit 203']]
+        ]
+      },
+      CN: {
+        country: '중국', english: 'China', hint: '성·시·구를 먼저 정한 다음 상세주소를 더해 주세요.',
+        labels: ['성', '시', '구·현', '상세주소'],
+        choices: [
+          [['示例省', 'Sample Province']],
+          [['示例市', 'Sample City']],
+          [['示例区', 'Sample District'], ['演示区', 'Demo District']],
+          [['示例路12号 101室', 'Room 101, 12 Sample Road'], ['示例路12号 203室', 'Room 203, 12 Sample Road']]
+        ]
+      },
+      TW: {
+        country: '대만', english: 'Taiwan', hint: '시·현과 구를 고르면 해당 구의 예시 우편번호가 표시됩니다.',
+        labels: ['시·현', '구', '상세주소'],
+        choices: [
+          [['示例市', 'Sample City']],
+          [['示例區', 'Sample District'], ['演示區', 'Demo District']],
+          [['示例街12號 2樓', '2F, 12 Sample Street'], ['示例街12號 3樓', '3F, 12 Sample Street']]
+        ],
+        postal: ['000', '001']
+      },
+      JP: {
+        country: '일본', english: 'Japan', hint: '추후 반영안입니다. 예시 우편번호로 지역을 확인하고 번지와 건물명을 더해 주세요.',
+        labels: ['우편번호 검색 결과', '번지', '건물명·호수'],
+        choices: [
+          [['000-0000　見本市 見本町', 'Sample Town, Sample City, 000-0000']],
+          [['1丁目2番3号', '1-2-3'], ['2丁目3番4号', '2-3-4']],
+          [['見本ビル 101号', 'Sample Building, Unit 101'], ['見本ビル 203号', 'Sample Building, Unit 203']]
+        ]
+      }
+    };
+    const byId = id => document.getElementById(id);
+    const country = byId('country');
+    const fields = byId('fields');
+    const controls = () => Array.from(fields.querySelectorAll('select'));
+
+    function drawFields() {
+      const data = countries[country.value];
+      fields.replaceChildren();
+      byId('instruction').textContent = data.hint;
+      data.labels.forEach((name, index) => {
+        const select = document.createElement('select');
+        select.id = 'part-' + index;
+        select.required = true;
+        const label = document.createElement('label');
+        label.htmlFor = select.id;
+        label.textContent = name;
+        const mark = document.createElement('span');
+        mark.className = 'required';
+        mark.textContent = '•';
+        mark.setAttribute('aria-hidden', 'true');
+        label.append(mark);
+        select.add(new Option('선택해 주세요', ''));
+        data.choices[index].forEach(([local], choiceIndex) => select.add(new Option(local, String(choiceIndex))));
+        const error = document.createElement('p');
+        error.id = select.id + '-error';
+        error.className = 'error';
+        error.hidden = true;
+        error.textContent = name + ' 항목을 선택해 주세요.';
+        select.addEventListener('invalid', () => {
+          error.hidden = false;
+          select.setAttribute('aria-invalid', 'true');
+          select.setAttribute('aria-describedby', error.id);
+        });
+        select.addEventListener('change', () => {
+          error.hidden = true;
+          select.removeAttribute('aria-invalid');
+          select.removeAttribute('aria-describedby');
+        });
+        fields.append(label, select, error);
+        if (data.postal && index === 1) {
+          const preview = document.createElement('p');
+          preview.className = 'preview';
+          preview.id = 'postal';
+          preview.setAttribute('aria-live', 'polite');
+          preview.textContent = '구를 고르면 예시 우편번호가 표시됩니다.';
+          fields.append(preview);
+          select.addEventListener('change', () => {
+            preview.textContent = select.value === '' ? '구를 고르면 예시 우편번호가 표시됩니다.' : '예시 우편번호 ' + data.postal[Number(select.value)];
+          });
+        }
+      });
+    }
+
+    function showEditor() {
+      byId('confirmation').hidden = true;
+      byId('entry').hidden = false;
+      byId('editor-title').focus();
+    }
+
+    country.addEventListener('change', drawFields);
+    byId('address-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const data = countries[country.value];
+      const values = controls().map(select => Number(select.value));
+      const parts = values.map((choice, index) => data.choices[index][choice]);
+      const postal = data.postal ? data.postal[values[1]] : '';
+      byId('local-address').textContent = [data.country, postal, ...parts.map(pair => pair[0])].filter(Boolean).join(' ');
+      byId('english-address').textContent = [...parts].reverse().map(pair => pair[1]).concat([postal, data.english]).filter(Boolean).join(', ');
+      byId('entry').hidden = true;
+      byId('confirmation').hidden = false;
+      byId('saved-title').focus();
+    });
+    byId('edit').addEventListener('click', showEditor);
+    byId('restart').addEventListener('click', () => {
+      country.value = 'HK';
+      drawFields();
+      showEditor();
+    });
+    drawFields();
+  </script>
+</body>
+</html>

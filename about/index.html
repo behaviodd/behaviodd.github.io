@@ -1,0 +1,21 @@
+---
+layout: default
+title: 필로소피
+---
+<header class="page-heading"><h1>필로소피</h1></header>
+<div class="about">
+  <header class="about-person">
+    <h2>{{ site.data.about.name }}</h2>
+    <p lang="en">{{ site.data.about.role }}</p>
+    <a class="inline-link" href="{{ site.data.about.linkedin }}" lang="en">LinkedIn <span aria-hidden="true">↗</span></a>
+  </header>
+  <div class="about-body">
+    <section aria-label="디자인 철학">
+      {% for item in site.data.about.philosophy %}<div class="principle" data-reveal><h2>{{ item.title }}</h2><p>{{ item.text }}</p></div>{% endfor %}
+    </section>
+    <section aria-labelledby="career"><h2 id="career" class="about-label" lang="en" data-reveal>Career</h2>
+      <ul class="career">{% for item in site.data.about.career %}<li data-reveal><div><h3>{{ item.company }}</h3><p>{{ item.role }}</p></div><span>{{ item.period }}</span></li>{% endfor %}</ul>
+    </section>
+  </div>
+</div>
+<script src="{{ '/assets/js/philosophy.js' | relative_url }}" defer></script>

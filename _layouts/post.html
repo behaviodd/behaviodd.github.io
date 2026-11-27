@@ -1,15 +1,13 @@
 ---
 layout: default
 ---
-
-<article>
-  <div class="hero">
-    <div class="term-cmd">$ <span>cat ~/blog/{{ page.slug }}.md</span></div>
+{% assign ai = site.data.ai_projects | where: 'slug', page.slug | first %}
+<article class="post">
+  <header class="story-header">
+    {% if ai %}<a class="back" href="{{ '/ai-projects/' | relative_url }}" lang="en"><span aria-hidden="true">←</span> AI Projects</a>{% else %}<a class="back" href="{{ '/' | relative_url }}"><span aria-hidden="true">←</span> 홈</a>{% endif %}
     <h1>{{ page.title }}</h1>
-    <p style="color:var(--fg-faint);font-size:13px;margin-top:4px;">{{ page.date | date: "%Y-%m-%d" }}</p>
-  </div>
-
-  <div class="prose">
-    {{ content }}
-  </div>
+    <time class="story-meta" datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: '%Y.%m.%d' }}</time>
+  </header>
+  <div class="prose">{{ content }}</div>
+  {% if ai %}<div class="story-end"><a class="inline-link" href="{{ '/ai-projects/' | relative_url }}"><span aria-hidden="true">←</span> AI Projects 목록</a></div>{% endif %}
 </article>

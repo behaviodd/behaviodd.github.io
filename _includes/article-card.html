@@ -1,0 +1,8 @@
+<article class="article-card">
+  <a href="{{ include.url | relative_url }}">
+    <div class="article-image">
+      <img src="{{ include.item.cover | relative_url }}" width="1500" height="1000" alt="{{ include.item.cover_alt | default: include.item.alt | escape }}" decoding="async"{% unless include.eager %} loading="lazy"{% endunless %}>
+    </div>
+    <h2>{{ include.item.title | escape }}</h2>
+  </a>
+</article>

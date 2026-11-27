@@ -3,7 +3,7 @@ _site/
 .jekyll-metadata
 vendor/
 .bundle/
-Gemfile.lock
+.DS_Store
 
 # work-hours-calculator (React 소스) 빌드 산출물/의존성
 # - 배포본은 /work-hours/ 에 빌드되어 커밋된다.

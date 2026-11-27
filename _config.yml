@@ -1,9 +1,19 @@
-title: CHEON JIYOUNG
+title: Cheon Jiyoung
 url: https://behaviodd.github.io
+lang: ko
+timezone: Asia/Seoul
 permalink: /blog/:slug/
-
+markdown: kramdown
+collections:
+  work:
+    output: true
+    permalink: /work/:name/
+kramdown:
+  input: GFM
 exclude:
+  - README.md
   - work-hours-calculator/
-  - vendor/
+  - worker/
   - Gemfile
   - Gemfile.lock
+  - vendor
