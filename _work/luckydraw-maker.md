@@ -2,6 +2,11 @@
 title: Luckydraw Maker 작업기
 date: 2026-06-03
 layout: post
+permalink: /blog/luckydraw-maker/
+card_title: "Luckydraw Maker"
+cover: /assets/ai-covers/luckydraw-maker.png
+cover_alt: 이벤트 뽑기의 캐릭터 선택지와 당첨 카드
+order: 4
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 2편

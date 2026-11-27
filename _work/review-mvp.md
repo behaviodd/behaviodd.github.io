@@ -2,6 +2,11 @@
 title: 사내 리뷰 시스템 작업기
 date: 2026-08-07
 layout: post
+permalink: /blog/review-mvp/
+card_title: "사내 리뷰 시스템"
+cover: /assets/ai-covers/review-mvp.png
+cover_alt: 메이크스타 리뷰 시스템의 계정 로그인 화면
+order: 10
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 3편

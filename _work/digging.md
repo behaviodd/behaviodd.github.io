@@ -2,6 +2,11 @@
 title: K-POP Digging Club 작업기
 date: 2026-02-19
 layout: post
+permalink: /blog/digging/
+card_title: "K-POP Digging Club"
+cover: /assets/ai-covers/digging.png
+cover_alt: 뉴진스 Ditto에서 찾은 해외 음악 두 곡이 보이는 검색 결과
+order: 9
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 1편

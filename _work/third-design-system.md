@@ -2,7 +2,7 @@
 layout: project
 title: 삼분의일 디자인 시스템
 company: 삼분의일
-order: 4
+order: 7
 cover: /assets/work/third-system-cover.png
 cover_alt: 삼분의일 아이콘 라이브러리와 그리드에 맞춘 화살표·알림·얼굴 아이콘
 description: 색상의 이름에서 컴포넌트 사용법까지 팀이 함께 쓰는 기준을 만들고, 온라인 체험관 리뉴얼에 적용했습니다.

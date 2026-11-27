@@ -2,6 +2,11 @@
 title: WHAT'S IN MY JO? 작업기
 date: 2026-06-18
 layout: post
+permalink: /blog/photobooth/
+card_title: "WHAT'S IN MY JO?"
+cover: /assets/ai-covers/photobooth.png
+cover_alt: 네 컷 데모 사진과 프레임·필터를 고르는 편집 화면
+order: 6
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 4편

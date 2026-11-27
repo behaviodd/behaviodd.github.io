@@ -1,7 +1,7 @@
 # 작업기 포스트 양식
 
 바이브 코딩 시리즈(작업기) 글은 아래 양식으로 통일한다.
-기준 구현: `_posts/2026-02-19-digging.md`
+기준 구현: `_work/digging.md`
 
 ## 원칙
 
@@ -15,6 +15,11 @@
 title: {서비스명} 작업기          # '구축기' 아님. 본문에 H1을 다시 쓰지 않는다
 date: YYYY-MM-DD                  # 기존 발행일 유지
 layout: post
+permalink: /blog/{slug}/           # 기존 글은 주소 유지
+card_title: {서비스명}             # 목록에 표시할 제목
+cover: /assets/ai-covers/{slug}.png
+cover_alt: {표지 이미지 설명}
+order: 11                         # 작은 숫자부터 목록에 표시
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 N편
@@ -60,7 +65,7 @@ layout: post
     번호는 바꾸지 않는다(목록 정렬 순서와 시리즈 번호는 어긋날 수 있다).
   ※ Design System 작업기는 시리즈 제외
 - **발행일**: 기존 발행일 유지가 기본. 단 글이 다루는 사건이 발행일 이후까지 이어지면
-  마지막 작업 시점으로 `date`와 파일명을 갱신한다(permalink는 slug 기준이라 URL은 불변).
+  마지막 작업 시점으로 `date`를 갱신한다. 파일명과 `permalink`는 유지한다.
 - **접힘 영역**: `<details markdown="1">` 필수 (`markdown="1"` 없으면 kramdown이 내부를 렌더하지 않음).
   스타일은 `_layouts/default.html`의 `.prose details` / `.prose summary` — `[+]`/`[-]` 마커
 - **이미지**: 확보 전에는 HTML 주석으로 자리·요구사항·권장 경로를 남긴다.

@@ -3,12 +3,12 @@ layout: default
 ---
 <article class="project">
   <header class="story-header">
-    <a class="back" href="{{ '/work/' | relative_url }}" lang="en"><span aria-hidden="true">←</span> Work</a>
+    <a class="back" href="{{ '/works/' | relative_url }}" lang="en"><span aria-hidden="true">←</span> works</a>
     <h1>{{ page.title }}</h1>
     <p class="story-meta">{{ page.company }}{% if page.period %}<span aria-hidden="true">·</span>{{ page.period }}{% endif %}</p>
     {% if page.description %}<p class="standfirst">{{ page.description }}</p>{% endif %}
   </header>
   <div class="cover"><img src="{{ page.cover | relative_url }}" alt="{{ page.cover_alt | escape }}" fetchpriority="high"></div>
   <div class="prose">{{ content }}</div>
-  <div class="story-end"><a class="inline-link" href="{{ '/work/' | relative_url }}"><span aria-hidden="true">←</span> Work 목록</a></div>
+  <div class="story-end"><a class="inline-link" href="{{ '/works/' | relative_url }}"><span aria-hidden="true">←</span> works 목록</a></div>
 </article>

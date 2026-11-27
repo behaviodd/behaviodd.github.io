@@ -2,6 +2,18 @@
 
 작성일: 2026-11-27 (Asia/Seoul) · 다음 작업: 2026-11-28
 
+## 후속 변경: works 통합
+
+- 주 메뉴와 목록은 `works`(`/works/`)로 통합했다. 이전 목록 주소는 새 목록으로 이동한다.
+- 기존 Work 4개와 AI Projects 6개의 원고를 모두 `_work/`에 모았다. 일반 블로그 글 3개는 `_posts/`에 유지한다.
+- `_data/ai_projects.yml`은 제거했다. 제목·목록용 제목(`card_title`)·표지·순서(`order`)는 각 원고 상단에서 수정한다.
+- 상세 글 주소와 본문, 목록 순서는 유지했다. 옮긴 작업기는 명시적인 `permalink`로 기존 `/blog/…/` 주소를 유지한다.
+- Profile 소개의 AI 표현 두 곳을 LLM으로 변경했다.
+- 사이트 제목을 `CHEON JIYOUNG`으로 변경했다. 카드에 Profile과 같은 스크롤 fade-in을 적용하고 링크·메뉴·접힘 항목에 마이크로 모션을 추가했다. 모션 줄이기 설정을 지원한다.
+- Profile의 Resume 링크는 `assets/documents/cheon-jiyoung-resume-2026.pdf`를 새 탭으로 연다. 최종 파일은 사용자가 제공한 `[2026] Resume_천지영.pdf`이며, 처음 제공한 DesignPortfolio PDF를 교체했다.
+- README의 원고 수정 안내는 사용자 요청으로 제거했다.
+- 사용자가 이번까지의 전체 변경 사항 커밋·푸시와 GitHub Pages 배포를 요청했다. 아래 내용은 이전 세션 기록이다.
+
 ## 현재 상태
 
 - 저장소: `https://github.com/behaviodd/behaviodd.github.io`

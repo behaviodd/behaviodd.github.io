@@ -1,16 +1,6 @@
 {% assign works = site.work | sort: 'order' %}
-{% assign ai_projects = site.data.ai_projects %}
-{% assign last_index = works.size | at_least: ai_projects.size | minus: 1 %}
 <div class="article-grid{% if include.category == 'home' %} front-page{% endif %}">
-  {% for index in (0..last_index) %}
-    {% assign project = works[index] %}
-    {% if include.category != 'ai' and project %}
-      {% include article-card.html item=project url=project.url eager=forloop.first %}
-    {% endif %}
-    {% assign ai = ai_projects[index] %}
-    {% if include.category != 'work' and ai %}
-      {% assign post = site.posts | where: 'slug', ai.slug | first %}
-      {% if post %}{% include article-card.html item=ai url=post.url eager=forloop.first %}{% endif %}
-    {% endif %}
+  {% for project in works %}
+    {% include article-card.html item=project url=project.url eager=forloop.first %}
   {% endfor %}
 </div>

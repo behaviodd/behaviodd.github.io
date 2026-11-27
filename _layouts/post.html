@@ -1,13 +1,13 @@
 ---
 layout: default
 ---
-{% assign ai = site.data.ai_projects | where: 'slug', page.slug | first %}
+{% assign is_work = false %}{% if page.collection == 'work' %}{% assign is_work = true %}{% endif %}
 <article class="post">
   <header class="story-header">
-    {% if ai %}<a class="back" href="{{ '/ai-projects/' | relative_url }}" lang="en"><span aria-hidden="true">←</span> AI Projects</a>{% else %}<a class="back" href="{{ '/' | relative_url }}"><span aria-hidden="true">←</span> 홈</a>{% endif %}
+    {% if is_work %}<a class="back" href="{{ '/works/' | relative_url }}" lang="en"><span aria-hidden="true">←</span> works</a>{% else %}<a class="back" href="{{ '/' | relative_url }}"><span aria-hidden="true">←</span> 홈</a>{% endif %}
     <h1>{{ page.title }}</h1>
     <time class="story-meta" datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: '%Y.%m.%d' }}</time>
   </header>
   <div class="prose">{{ content }}</div>
-  {% if ai %}<div class="story-end"><a class="inline-link" href="{{ '/ai-projects/' | relative_url }}"><span aria-hidden="true">←</span> AI Projects 목록</a></div>{% endif %}
+  {% if is_work %}<div class="story-end"><a class="inline-link" href="{{ '/works/' | relative_url }}"><span aria-hidden="true">←</span> works 목록</a></div>{% endif %}
 </article>

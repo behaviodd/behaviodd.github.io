@@ -2,6 +2,11 @@
 title: 호메큐우(Homekyu) 작업기
 date: 2026-08-01
 layout: post
+permalink: /blog/praise-mvp/
+card_title: "호메큐우"
+cover: /assets/ai-covers/praise-mvp.png
+cover_alt: 친구들에게 칭찬을 받는 방법을 안내하는 호메큐우 첫 화면
+order: 8
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 6편

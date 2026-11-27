@@ -2,6 +2,11 @@
 title: Emoji Studio 작업기
 date: 2026-07-31
 layout: post
+permalink: /blog/gen-emoji/
+card_title: "Emoji Studio"
+cover: /assets/ai-covers/gen-emoji.png
+cover_alt: 같은 조명과 재질로 생성한 분홍색 하트 풍선, 꽃다발, 선물 상자
+order: 2
 ---
 
 > 바이브 코딩 시리즈 · 6편 중 5편

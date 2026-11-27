@@ -12,15 +12,16 @@
   <a class="skip" href="#content">본문으로 이동</a>
   <header class="mast">
     <div class="wrap mast-inner">
-      <a class="signature" href="{{ '/' | relative_url }}" lang="en">Cheon Jiyoung</a>
+      <a class="signature" href="{{ '/' | relative_url }}" lang="en">{{ site.title }}</a>
       <nav aria-label="주 메뉴">
-        {% assign routes = 'profile|/about/,Work|/work/,AI Projects|/ai-projects/' | split: ',' %}
+        {% assign routes = 'profile|/about/,works|/works/' | split: ',' %}
         {% for route in routes %}{% assign item = route | split: '|' %}
-        <a href="{{ item[1] | relative_url }}"{% if page.url == item[1] %} aria-current="page"{% elsif page.collection == 'work' and item[0] == 'Work' %} aria-current="location"{% elsif page.collection == 'posts' and item[0] == 'AI Projects' %}{% assign match = site.data.ai_projects | where: 'slug', page.slug | first %}{% if match %} aria-current="location"{% endif %}{% endif %}>{{ item[0] }}</a>
+        <a href="{{ item[1] | relative_url }}"{% if page.url == item[1] %} aria-current="page"{% elsif page.collection == 'work' and item[0] == 'works' %} aria-current="location"{% endif %}>{{ item[0] }}</a>
         {% endfor %}
       </nav>
     </div>
   </header>
   <main id="content" class="wrap" tabindex="-1">{{ content }}</main>
+<script src="{{ '/assets/js/philosophy.js' | relative_url }}" defer></script>
 </body>
 </html>

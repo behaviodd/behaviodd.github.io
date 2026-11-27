@@ -3,7 +3,7 @@ layout: project
 title: 메이커와 LLM이 함께 쓰는 디자인 시스템
 company: 메이크스타
 period: 2025–2026
-order: 3
+order: 5
 cover: /assets/work/makestar-system-cover.png
 cover_alt: Figma 라이브러리의 모서리 반경 기준과 design.md 구현 규칙
 description: Figma에서 고른 컴포넌트가 개발과 LLM 구현에서도 같은 규칙을 따르도록 토큰, 상태, 사용 기준을 연결했습니다.

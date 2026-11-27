@@ -3,7 +3,7 @@ layout: project
 title: 당첨자 선정부터 발표까지, 엑셀 중심의 업무를 시스템으로
 company: 메이크스타
 period: 2025.09–2026.03
-order: 2
+order: 3
 cover: /assets/work/winners-cover.png
 cover_alt: 당첨자 선정 어드민의 리워드 설정과 응모자 정보 입력 화면
 description: 10명 이상의 이벤트 PM이 엑셀로 진행하던 응모권 집계, 소속사 검수, 발표와 현장 준비를 하나의 흐름으로 설계했습니다.
