@@ -10,3 +10,6 @@ vendor/
 work-hours-calculator/node_modules/
 work-hours-calculator/.tsbuild/
 work-hours-calculator/*.tsbuildinfo
+
+# Personal resume PDFs must never be published
+assets/documents/*.pdf
