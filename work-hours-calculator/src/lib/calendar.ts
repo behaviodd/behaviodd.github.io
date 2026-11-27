@@ -102,17 +102,69 @@ export function monthWorkSummary(
 }
 
 /**
- * Nager.Date 공개 API에서 대한민국 공휴일(YYYY-MM-DD)을 불러온다.
- * 실패하면 폴백 목록을 반환한다. (브라우저에서 직접 호출, CORS 허용됨)
+ * 접속한 사용자의 국가 코드(ISO 3166-1 alpha-2)를 추정한다.
+ * 1) IP 기반 위치(실제 접속 국가) → 2) 브라우저 로캘/지역 → 3) 기본값 KR.
  */
-export async function fetchKoreanHolidays(
+export async function detectCountryCode(): Promise<string> {
+  // 1) IP 지오로케이션 — 접속 위치 기준 (CORS·HTTPS 허용, 키 불필요)
+  try {
+    const res = await fetch("https://ipwho.is/?fields=country_code,success");
+    if (res.ok) {
+      const data: { country_code?: string; success?: boolean } =
+        await res.json();
+      const cc = data.country_code?.toUpperCase();
+      if (data.success !== false && cc && /^[A-Z]{2}$/.test(cc)) return cc;
+    }
+  } catch {
+    /* 다음 단계로 폴백 */
+  }
+
+  // 2) 브라우저 로캘의 지역 코드 (예: ko-KR → KR)
+  const fromLocale = regionFromLocale();
+  if (fromLocale) return fromLocale;
+
+  // 3) 기본값
+  return "KR";
+}
+
+function regionFromLocale(): string | null {
+  try {
+    const lang =
+      typeof navigator !== "undefined" && navigator.language
+        ? navigator.language
+        : "ko-KR";
+    const region = new Intl.Locale(lang).maximize().region;
+    if (region && /^[A-Z]{2}$/.test(region)) return region;
+  } catch {
+    /* 무시 */
+  }
+  return null;
+}
+
+/** 국가 코드 → 한국어 표시명 (예: "KR" → "대한민국"). 실패 시 코드 그대로. */
+export function countryDisplayName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["ko"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+/**
+ * Nager.Date 공개 API에서 해당 국가의 공휴일(YYYY-MM-DD)을 불러온다.
+ * 실패하면: KR이면 내장 폴백, 그 외 국가는 공휴일 없음(평일만)으로 처리한다.
+ * (브라우저에서 직접 호출, CORS 허용됨)
+ */
+export async function fetchHolidays(
   years: number[],
+  countryCode: string,
 ): Promise<Set<string>> {
+  const cc = countryCode.toUpperCase();
   try {
     const lists = await Promise.all(
       years.map(async (year) => {
         const res = await fetch(
-          `https://date.nager.at/api/v3/PublicHolidays/${year}/KR`,
+          `https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`,
         );
         if (!res.ok) throw new Error(`holiday api ${res.status}`);
         const data: Array<{ date: string }> = await res.json();
@@ -121,10 +173,12 @@ export async function fetchKoreanHolidays(
     );
     const set = new Set<string>(lists.flat());
     if (set.size === 0) throw new Error("empty holiday list");
-    // 폴백 항목도 합쳐 누락을 보완
-    KR_HOLIDAYS_FALLBACK.forEach((d) => set.add(d));
+    // KR은 내장 폴백을 합쳐 누락(대체공휴일 등)을 보완
+    if (cc === "KR") KR_HOLIDAYS_FALLBACK.forEach((d) => set.add(d));
     return set;
   } catch {
-    return new Set(KR_HOLIDAYS_FALLBACK);
+    return cc === "KR"
+      ? new Set(KR_HOLIDAYS_FALLBACK)
+      : new Set<string>();
   }
 }

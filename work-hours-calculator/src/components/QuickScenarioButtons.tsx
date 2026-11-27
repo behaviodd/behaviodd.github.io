@@ -24,21 +24,18 @@ type Props = {
 
 export function QuickScenarioButtons({ active, onSelect }: Props) {
   return (
-    <section className="card">
-      <p className="card-title">빠른 시나리오</p>
-      <div className="scenario-buttons">
-        {BUTTONS.map((b) => (
-          <button
-            key={b.key}
-            type="button"
-            className={`scenario-btn${active === b.key ? " active" : ""}`}
-            aria-pressed={active === b.key}
-            onClick={() => onSelect(b.key)}
-          >
-            {b.label}
-          </button>
-        ))}
-      </div>
-    </section>
+    <div className="scenario-buttons">
+      {BUTTONS.map((b) => (
+        <button
+          key={b.key}
+          type="button"
+          className={`scenario-btn${active === b.key ? " active" : ""}`}
+          aria-pressed={active === b.key}
+          onClick={() => onSelect(b.key)}
+        >
+          {b.label}
+        </button>
+      ))}
+    </div>
   );
 }

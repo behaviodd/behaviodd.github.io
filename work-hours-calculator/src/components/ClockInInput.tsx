@@ -3,11 +3,14 @@
  * 네이티브 time 스피너 대신 커스텀 시/분 드롭다운 + 프리셋 칩으로 사용성 개선.
  */
 
+import { type ReactNode } from "react";
+import { FieldLabel } from "./FieldLabel";
+
 type Props = {
   label: string;
   value: string; // "HH:MM" 또는 ""
   onChange: (value: string) => void;
-  hint?: string;
+  info?: ReactNode;
 };
 
 const HOURS = [8, 9, 10, 11, 12];
@@ -16,7 +19,7 @@ const PRESETS = ["08:00", "08:30", "09:00", "09:30", "10:00"];
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export function ClockInInput({ label, value, onChange, hint }: Props) {
+export function ClockInInput({ label, value, onChange, info }: Props) {
   const [hStr, mStr] = value ? value.split(":") : ["", ""];
   const hour = hStr === "" ? "" : Number(hStr);
   const minute = mStr === "" ? "" : Number(mStr);
@@ -35,7 +38,7 @@ export function ClockInInput({ label, value, onChange, hint }: Props) {
 
   return (
     <div className="field">
-      <label className="field-label">{label}</label>
+      <FieldLabel info={info}>{label}</FieldLabel>
 
       <div className="timepick">
         <div className="select-wrap">
@@ -98,8 +101,6 @@ export function ClockInInput({ label, value, onChange, hint }: Props) {
           </button>
         ))}
       </div>
-
-      {hint && <p className="input-hint">{hint}</p>}
     </div>
   );
 }

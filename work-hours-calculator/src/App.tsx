@@ -13,6 +13,7 @@ import {
   CLOCK_IN_MAX,
 } from "./components/ClockInInput";
 import { LeaveSteppers, type LeaveCounts } from "./components/LeaveSteppers";
+import { FieldLabel } from "./components/FieldLabel";
 import { SummaryCard } from "./components/SummaryCard";
 import { CalculationDetailAccordion } from "./components/CalculationDetailAccordion";
 import {
@@ -35,7 +36,9 @@ import {
 } from "./lib/time";
 import {
   monthWorkSummary,
-  fetchKoreanHolidays,
+  detectCountryCode,
+  fetchHolidays,
+  countryDisplayName,
   KR_HOLIDAYS_FALLBACK,
 } from "./lib/calendar";
 import {
@@ -68,11 +71,16 @@ type ScenarioCardData = {
 };
 
 export default function App() {
-  // 대한민국 공휴일 (API 로드 전엔 내장 폴백). 로드되면 기본값을 재계산한다.
+  // 접속 국가 (감지 전 기본 KR). 감지되면 해당 국가 공휴일을 불러온다.
+  const [country, setCountry] = useState("KR");
+  // 공휴일 (API 로드 전엔 내장 KR 폴백). 로드되면 기본값을 재계산한다.
   const [holidays, setHolidays] = useState(() => new Set(KR_HOLIDAYS_FALLBACK));
+  // 사용자의 "지금" — 날짜가 바뀌면 남은 근무일도 따라 바뀐다.
+  const [now, setNow] = useState(() => new Date());
+
   const monthDefault = useMemo(
-    () => monthWorkSummary(new Date(), holidays),
-    [holidays],
+    () => monthWorkSummary(now, holidays),
+    [now, holidays],
   );
 
   // 남은 근무일 기본값 = 오늘 포함 남은 평일.
@@ -85,10 +93,34 @@ export default function App() {
   const [baseTouched, setBaseTouched] = useState(false);
   const [daysTouched, setDaysTouched] = useState(false);
 
-  // 공휴일 API 로드 (올해 + 내년)
+  // 접속 국가 감지 (IP → 로캘 → KR)
   useEffect(() => {
-    const y = new Date().getFullYear();
-    fetchKoreanHolidays([y, y + 1]).then(setHolidays);
+    detectCountryCode().then(setCountry);
+  }, []);
+
+  // 국가가 정해지면 그 나라의 공휴일을 불러온다 (올해 + 내년)
+  useEffect(() => {
+    const y = now.getFullYear();
+    fetchHolidays([y, y + 1], country).then(setHolidays);
+    // now는 연도 확인용이라 의존성에 넣지 않는다 (날짜 갱신마다 재요청 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country]);
+
+  // 사용자의 현재 시각을 주기적으로 갱신 — 자정을 넘기거나 탭에 다시 들어오면
+  // 남은 근무일이 자동으로 줄어든다. (매시간 + 포커스/가시성 복귀 시)
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const id = window.setInterval(tick, 60 * 60 * 1000);
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", tick);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", tick);
+    };
   }, []);
 
   // 공휴일이 갱신되면, 사용자가 직접 만지지 않은 기본값만 다시 채운다.
@@ -197,69 +229,51 @@ export default function App() {
     );
   }, [scenario, baseValid, remainingMinutes, effectiveDays, breakMinutes, clockInMinutes]);
 
+  // 세부 조정이 기본값에서 바뀌면 접힌 상태에서도 요약에 표시 (숨겨진 입력 신호)
+  const adjustments = [
+    daysTouched && days !== monthDefault.remainingBusinessDays
+      ? `근무일 ${days}일`
+      : null,
+    !includeBreak ? "휴게 없음" : null,
+    leave.annual ? `연차 ${leave.annual}` : null,
+    leave.half ? `반차 ${leave.half}` : null,
+    leave.quarter ? `반반차 ${leave.quarter}` : null,
+  ].filter(Boolean);
+  const detailSummary = adjustments.length
+    ? `세부 조정 · ${adjustments.join(", ")}`
+    : "세부 조정";
+
   return (
     <div className="app">
       <header className="app-header">
         <h1 className="app-title">퇴근 계산기</h1>
-        <p className="app-subtitle">
-          남은 근무시간을 나눠서 오늘 몇 시에 집 갈 수 있는지 계산해요.
-        </p>
-        <p className="app-note">
-          코어타임 12:00~17:00 의무 근무 (연차·반차·반반차 제외)
-        </p>
+        <p className="app-subtitle">오늘 몇 시에 집 갈 수 있는지 계산해요.</p>
       </header>
 
-      {/* 입력 카드 */}
+      {/* 핵심 입력 — 남은 시간 + 출근 시간만 */}
       <section className="card">
-        <p className="card-title">기본 입력</p>
-        <DaysInput
-          label="남은 근무일"
-          days={days}
-          onChange={(d) => {
-            setDays(d);
-            setDaysTouched(true);
-            // 인정근무시간을 직접 만지지 않았다면 남은 근무일 × 8시간으로 같이 갱신
-            if (!baseTouched) setBase(fromMinutes(d * 8 * 60));
-          }}
+        <TimeInput
+          label="남은 인정근무시간"
+          hours={remainingParts.hours}
+          minutes={remainingParts.minutes}
+          onChange={handleRemainingChange}
+          info={`flex·시프티 등에서 본 '남은 인정근무시간'을 넣으세요. 비워두면 남은 근무일 × 8시간(${formatDuration(
+            baseRemainingMinutes,
+          )})으로 계산해요.`}
         />
-        <p className="input-hint">
-          기본값은 오늘 포함 이번 달 남은 평일 {monthDefault.remainingBusinessDays}일이에요.
-        </p>
+        {leaveDeductMinutes > 0 && (
+          <p className="input-hint">
+            {formatDuration(baseRemainingMinutes)} − 연차·반차·반반차{" "}
+            {formatDuration(leaveDeductMinutes)} ={" "}
+            <strong>{formatDuration(remainingMinutes)}</strong>
+          </p>
+        )}
 
-        {/* 남은 인정근무시간 + 연차/반차/반반차를 한 묶음으로 (차감 즉시 반영) */}
-        <div className="linked-group">
-          <TimeInput
-            label="남은 인정근무시간"
-            hours={remainingParts.hours}
-            minutes={remainingParts.minutes}
-            onChange={handleRemainingChange}
-          />
-          {leaveDeductMinutes > 0 ? (
-            <p className="input-hint">
-              남은 근무일 {days}일 × 8시간({formatDuration(baseRemainingMinutes)}) − 연차·반차·반반차{" "}
-              {formatDuration(leaveDeductMinutes)} ={" "}
-              <strong>{formatDuration(remainingMinutes)}</strong>
-            </p>
-          ) : (
-            <p className="input-hint">
-              기본값은 남은 근무일 {days}일 × 8시간 ={" "}
-              <strong>{formatDuration(baseRemainingMinutes)}</strong>. flex의 남은 시간을 알면 직접
-              입력하세요.
-            </p>
-          )}
-
-          <div className="leave-connector" aria-hidden="true">
-            ↳ 연차·반차·반반차로 위 시간에서 바로 차감
-          </div>
-          <LeaveSteppers value={leave} onChange={setLeave} />
-        </div>
-
-        <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
         <ClockInInput
           label="출근 시간 (선택)"
           value={clockIn}
           onChange={setClockIn}
-          hint="오전 8시~정오 사이. 입력하면 오늘 퇴근 시각까지 계산해요."
+          info="오전 8시~정오 사이. 넣으면 오늘 퇴근 시각까지 계산해요."
         />
       </section>
 
@@ -288,28 +302,58 @@ export default function App() {
         />
       )}
 
+      {/* 세부 조정 — 근무일 / 휴게 / 연차 (기본값으로 충분해 평소엔 접어둠) */}
+      <details className="card accordion">
+        <summary>{detailSummary}</summary>
+        <div className="accordion-body">
+          <DaysInput
+            label="남은 근무일"
+            days={days}
+            onChange={(d) => {
+              setDays(d);
+              setDaysTouched(true);
+              // 인정근무시간을 직접 만지지 않았다면 남은 근무일 × 8시간으로 같이 갱신
+              if (!baseTouched) setBase(fromMinutes(d * 8 * 60));
+            }}
+            info={`오늘 포함, 이번 달 말일까지 남은 평일이에요. ${countryDisplayName(
+              country,
+            )}(${country})의 주말·공휴일을 빼고 셉니다. 기본값 ${monthDefault.remainingBusinessDays}일.`}
+          />
+
+          <BreakTimeSelector included={includeBreak} onChange={setIncludeBreak} />
+
+          <div className="field">
+            <FieldLabel info="연차 −8시간, 반차 −4시간, 반반차 −2시간씩 남은 인정근무시간에서 바로 빠져요. 근무일 수는 그대로예요.">
+              연차·반차·반반차
+            </FieldLabel>
+            <LeaveSteppers value={leave} onChange={setLeave} />
+          </div>
+        </div>
+      </details>
+
       {/* 상세 계산 */}
       {baseValid && <CalculationDetailAccordion detail={baseDetail} />}
 
-      {/* 빠른 시나리오 */}
+      {/* 다른 경우 따져보기 (시나리오) */}
       {baseValid && (
-        <QuickScenarioButtons active={scenario} onSelect={setScenario} />
+        <details className="card accordion">
+          <summary>다른 경우 따져보기</summary>
+          <div className="accordion-body">
+            <QuickScenarioButtons active={scenario} onSelect={setScenario} />
+            {scenarioData && (
+              <ScenarioCard
+                title={scenarioData.title}
+                headline={scenarioData.headline}
+                level={scenarioData.level}
+                rows={scenarioData.rows}
+                note={scenarioData.note}
+              />
+            )}
+          </div>
+        </details>
       )}
 
-      {/* 시나리오 결과 */}
-      {scenarioData && (
-        <ScenarioCard
-          title={scenarioData.title}
-          headline={scenarioData.headline}
-          level={scenarioData.level}
-          rows={scenarioData.rows}
-          note={scenarioData.note}
-        />
-      )}
-
-      <p className="footer-note">
-        인정근무 = 체류 − 휴게 · 모든 계산은 분 단위로 처리해요.
-      </p>
+      <p className="footer-note">인정근무 = 체류 − 휴게</p>
     </div>
   );
 }

@@ -1,13 +1,17 @@
 /** 시간 + 분 입력(예: 남은 인정근무시간). 분은 0~59만 허용. */
 
+import { type ReactNode } from "react";
+import { FieldLabel } from "./FieldLabel";
+
 type Props = {
   label: string;
   hours: number;
   minutes: number;
   onChange: (next: { hours: number; minutes: number }) => void;
+  info?: ReactNode;
 };
 
-export function TimeInput({ label, hours, minutes, onChange }: Props) {
+export function TimeInput({ label, hours, minutes, onChange, info }: Props) {
   const minutesInvalid = minutes < 0 || minutes > 59;
 
   const clampInt = (raw: string) => {
@@ -17,7 +21,7 @@ export function TimeInput({ label, hours, minutes, onChange }: Props) {
 
   return (
     <div className="field">
-      <label className="field-label">{label}</label>
+      <FieldLabel info={info}>{label}</FieldLabel>
       <div className="input-row">
         <input
           className="time-input"
