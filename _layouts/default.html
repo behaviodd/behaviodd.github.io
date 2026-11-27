@@ -1,24 +1,38 @@
 <!doctype html>
-<html lang="ko">
+{% assign locale = page.lang | default: 'ko' %}
+<html lang="{{ locale }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% if page.title %}{{ page.title | escape }} · {% endif %}{{ site.title }}</title>
+  {% if page.layout == 'resume' %}
+  <link rel="alternate" hreflang="ko" href="{{ '/resume/' | absolute_url }}">
+  <link rel="alternate" hreflang="en" href="{{ '/en/resume/' | absolute_url }}">
+  <link rel="alternate" hreflang="ja" href="{{ '/ja/resume/' | absolute_url }}">
+  <link rel="alternate" hreflang="x-default" href="{{ '/resume/' | absolute_url }}">
+  {% endif %}
   <link rel="icon" type="image/png" href="{{ '/assets/identity/monogram.png' | relative_url }}">
   <link rel="stylesheet" href="{{ '/assets/css/portfolio.css' | relative_url }}">
   <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 </head>
 <body id="top">
-  <a class="skip" href="#content">본문으로 이동</a>
+  <a class="skip" href="#content">{% case locale %}{% when 'en' %}Skip to content{% when 'ja' %}本文へ移動{% else %}본문으로 이동{% endcase %}</a>
   <header class="mast">
     <div class="wrap mast-inner">
       <a class="signature" href="{{ '/' | relative_url }}" lang="en">{{ site.title }}</a>
-      <nav aria-label="주 메뉴">
-        {% assign routes = 'profile|/about/,works|/works/' | split: ',' %}
-        {% for route in routes %}{% assign item = route | split: '|' %}
-        <a href="{{ item[1] | relative_url }}"{% if page.url == item[1] %} aria-current="page"{% elsif page.collection == 'work' and item[0] == 'works' %} aria-current="location"{% endif %}>{{ item[0] }}</a>
-        {% endfor %}
-      </nav>
+      <div class="header-actions">
+        <nav class="primary-nav" aria-label="{% case locale %}{% when 'en' %}Main navigation{% when 'ja' %}メインナビゲーション{% else %}주 메뉴{% endcase %}">
+          {% assign resume_url = '/resume/' %}
+          {% if locale == 'en' %}{% assign resume_url = '/en/resume/' %}{% elsif locale == 'ja' %}{% assign resume_url = '/ja/resume/' %}{% endif %}
+          <a href="{{ resume_url | relative_url }}"{% if page.layout == 'resume' %} aria-current="page"{% endif %} lang="en">resume</a>
+          <a href="{{ '/works/' | relative_url }}"{% if page.url == '/works/' %} aria-current="page"{% elsif page.collection == 'work' %} aria-current="location"{% endif %} lang="en">works</a>
+        </nav>
+        <nav class="language-switch" aria-label="{% case locale %}{% when 'en' %}Resume language{% when 'ja' %}履歴書の言語{% else %}이력서 언어{% endcase %}">
+          <a href="{{ '/resume/' | relative_url }}" lang="ko" hreflang="ko"{% if page.layout == 'resume' and locale == 'ko' %} aria-current="page"{% endif %}>한국어</a>
+          <a href="{{ '/en/resume/' | relative_url }}" lang="en" hreflang="en"{% if page.layout == 'resume' and locale == 'en' %} aria-current="page"{% endif %}>English</a>
+          <a href="{{ '/ja/resume/' | relative_url }}" lang="ja" hreflang="ja"{% if page.layout == 'resume' and locale == 'ja' %} aria-current="page"{% endif %}>日本語</a>
+        </nav>
+      </div>
     </div>
   </header>
   <main id="content" class="wrap" tabindex="-1">{{ content }}</main>

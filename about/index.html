@@ -1,22 +1,7 @@
 ---
 layout: default
-title: profile
+title: resume
 ---
-<header class="page-heading"><h1>profile</h1></header>
-<div class="about">
-  <header class="about-person">
-    <h2>{{ site.data.about.name }}</h2>
-    <p lang="en">{{ site.data.about.role }}</p>
-    <div class="profile-links">
-      <a class="inline-link" href="{{ site.data.about.linkedin }}" lang="en">LinkedIn <span aria-hidden="true">↗</span></a>
-    </div>
-  </header>
-  <div class="about-body">
-    <section aria-label="디자인 철학">
-      {% for item in site.data.about.philosophy %}<div class="principle" data-reveal><h2>{{ item.title }}</h2><p>{{ item.text }}</p></div>{% endfor %}
-    </section>
-    <section aria-labelledby="career"><h2 id="career" class="about-label" lang="en" data-reveal>Career</h2>
-      <ul class="career">{% for item in site.data.about.career %}<li data-reveal><div><h3>{{ item.company }}</h3><p>{{ item.role }}</p></div><span>{{ item.period }}</span></li>{% endfor %}</ul>
-    </section>
-  </div>
-</div>
+<meta http-equiv="refresh" content="0; url={{ '/resume/' | relative_url }}">
+<link rel="canonical" href="{{ '/resume/' | absolute_url }}">
+<p><a href="{{ '/resume/' | relative_url }}">resume</a></p>

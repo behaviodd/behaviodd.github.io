@@ -1,0 +1,704 @@
+{
+  "ko": {
+    "intro": "다양한 산업의 디지털 제품을 설계해온 Product Designer입니다. 복잡한 사용자 요구, 운영 정책과 기술적 제약을 구조화해 실행 가능한 제품 경험으로 전환하고, 엔지니어와 함께 문제 정의부터 출시와 개선까지 제품의 전 과정을 이끌어왔습니다. 디자인 시스템과 LLM 기반 프로토타이핑·자동화를 활용해 개인의 디자인 역량을 팀이 반복해서 사용할 수 있는 시스템으로 확장하는 데 강점이 있습니다.",
+    "philosophy": [
+      {
+        "title": "복잡한 문제를 실행 가능한 제품으로 구조화합니다",
+        "paragraphs": [
+          "사용자 요구, 운영 정책, 비즈니스 목표와 기술적 제약이 충돌하는 지점을 찾아 문제의 구조를 명확하게 만듭니다. 화면을 설계하기 전에 워크플로우와 정책, 예외 상황을 정리하고 실제로 구현할 수 있는 제품 경험으로 전환합니다."
+        ]
+      },
+      {
+        "title": "개인의 역량을 팀이 사용할 수 있는 시스템으로 확장합니다",
+        "paragraphs": [
+          "한 번의 좋은 결과보다 반복해서 좋은 결과를 만들 수 있는 구조를 중요하게 생각합니다.",
+          "디자인 시스템, 컴포넌트, 토큰, 가이드와 업무 워크플로우를 구축해 디자인과 개발의 일관성·확장성·유지보수성을 높입니다."
+        ]
+      },
+      {
+        "title": "다양한 직군이 더 좋은 결정을 내릴 수 있도록 돕습니다",
+        "paragraphs": [
+          "엔지니어, 운영 담당자와 설계 초기부터 협업하며 각자의 요구와 제약을 하나의 방향으로 정렬합니다.",
+          "직접 모든 결정을 내리기보다 복잡한 정보를 구조화하고 선택지를 명확하게 만들어 팀의 의사결정 품질을 높이는 데 강점이 있습니다."
+        ]
+      },
+      {
+        "title": "LLM으로 탐색과 실행의 거리를 줄입니다",
+        "paragraphs": [
+          "LLM을 리서치, 요구사항 정리, UX Writing, 프로토타이핑과 반복 업무 자동화에 폭넓게 활용합니다.",
+          "아이디어를 빠르게 동작 가능한 형태로 검증하고 사람이 판단해야 할 문제에 더 많은 시간과 에너지를 사용할 수 있는 작업 방식을 지향합니다."
+        ]
+      }
+    ],
+    "career": [
+      {
+        "company": "메이크스타",
+        "role": "커머스 프로덕트 스쿼드 · 디자인센터 - Product Designer",
+        "period": "2025.06 – 현재",
+        "projects": [
+          {
+            "title": "메이크스타 글로벌 커머스 웹사이트 & 어드민",
+            "bullets": [
+              "10명 이상의 PM이 Excel과 수작업으로 각각 운영하던 당첨자 발표 프로세스를 분석하고 표준 워크플로우로 구조화",
+              "인터뷰 자료, PM·물류 담당자의 실제 업무 및 이벤트 현장을 조사해 운영 정책과 예외 케이스 정의",
+              "상품 구매·이벤트 응모부터 응모권 집계, 중복 응모 합산, 당첨자 선정, 소속사 검수, 제외 대상 처리, 발표 및 현장 운영까지 End-to-End 플로우 설계",
+              "반복적인 Excel·수기 업무를 제품과 AI 기반 자동화 도구로 대체하여 현장 spreadsheet 사용을 약 80% 축소",
+              "한국·중국·일본·영어권 사용자를 고려한 다국어 UX Writing 및 글로벌 이벤트 사용자 경험 설계",
+              "국가별 문자 체계 차이를 고려해 성·이름 데이터 구조화, 현장 신분 확인까지 본인 확인 정책 설계"
+            ]
+          },
+          {
+            "title": "메이크스타 디자인시스템 & AI Workflow",
+            "bullets": [
+              "커머스 웹·어드민의 일관성과 개발 효율을 높이기 위한 디자인 시스템 및 공통 UI 컴포넌트 구축",
+              "컬러, 타이포그래피, 간격, 상태값 등 디자인 요소를 토큰화하고 제품 확장과 유지보수를 고려한 컴포넌트 구조 설계",
+              "디자인 원칙과 컴포넌트 규칙을 문서화해 디자인·개발 과정에서 공통 기준으로 활용",
+              "ChatGPT, Claude Code 등을 리서치, 정책 정리, UX Writing, 요구사항 구조화에 활용",
+              "코드 생성 도구를 활용해 주요 사용자 플로우와 인터랙션을 동작 가능한 프로토타입으로 구현하고 개발 전 정책·예외 케이스 검증",
+              "반복적인 운영 업무는 AI 자동화 도구로 해결하고, 제품 기능으로 개발해야 할 문제와 경량 자동화로 해결할 문제를 구분해 개발 리소스 최적화"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "삼분의일",
+        "role": "Tech Division - Product Designer",
+        "period": "2020.04 – 2024.10",
+        "projects": [
+          {
+            "title": "스마트 매트리스 D2C 브랜드. 하드웨어–앱–커머스를 잇는 풀스택 프로덕트 조직",
+            "bullets": [
+              "슬립큐브 애플리케이션 프로젝트 전체 일정 및 스프린트(계획, 배포, 회고) 관리",
+              "백로그(Jira) 바탕의 디자인 요구사항 정의와 개발 정책에 따른 플로우차트 작성",
+              "개발 정책에 따른 UX 설계, 프로토타이핑, UI 시각화",
+              "Adobe After Effect와 Lottie를 활용한 서비스 내 마이크로 모션 정의 및 아이콘 제작"
+            ]
+          },
+          {
+            "title": "삼분의일 디자인 시스템(ARGOS Design Principles)",
+            "bullets": [
+              "디자인 시스템 목표 설정 및 디자인 가이드라인 문서(Figma, Storybook) 배포",
+              "디자인 시스템 업데이트에 따른 변경 기록 문서화 관리",
+              "삼분의일 전용 컬러 팔레트 아이콘 세트 제작",
+              "Light mode, Dark mode 컬러 셋 정의",
+              "디자인 구성요소 토큰화 및 배포 후 프로젝트에 적용",
+              "재사용을 위한 UI 컴포넌트 모듈러 디자인 작업"
+            ]
+          },
+          {
+            "title": "삼분의일 온라인 체험관(삼분의일 공식몰)",
+            "bullets": [
+              "삼분의일 디자인 총괄",
+              "마케팅, 물류 운영 부서에서 발생하는 디자인 업무 조율 및 팀원 관리",
+              "파트너사 피드백 관리 및 프론트엔드 엔지니어 협업",
+              "온라인 체험관 및 오프라인 체험관 통합 어드민 구축",
+              "유지보수에 따른 삼분의일 공식몰 화면 설계 및 UI 디자인",
+              "프로모션 또는 마케팅 관련 배너, 이벤트 페이지, SNS 이미지 콘텐츠 제작"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "팍스넷",
+        "role": "블록체인 사업본부 UI/UX Designer, 대리",
+        "period": "2019.04 – 2020.04",
+        "projects": [
+          {
+            "title": "블록체인 기반 암호화 메신저 'SHH'",
+            "bullets": [
+              "모바일 애플리케이션 UI•UX 디자인 유닛 총괄",
+              "파트너사 피드백 및 디자인 산출물 프로젝트 매니지먼트",
+              "러시아 등 동구권 블록체인 전문 개발자 커뮤니케이션 및 해외출장 시 현지 스태프 업무지원 경험"
+            ]
+          },
+          {
+            "title": "블록체인 서비스 프로젝트 선행 기획 및 디자인",
+            "bullets": [
+              "블록체인 메인넷 '그리다(GRIDA)'브랜드 디자인 참여",
+              "자기주권형 신원증명 서비스 'GRIDA DID' UI•UX 디자인",
+              "팬덤문화 기반 NFT 마켓플레이스 'GRIDA Flace’ UI•UX 디자인",
+              "모바일 애플리케이션, 웹 서비스 UI 디자인, 서비스 내 아이콘 제작, 일러스트",
+              "신규 프로젝트 서비스(화면) 선행 기획 및 디자인 프로토타이핑",
+              "브랜드 아이덴티티, BX 설계 프로젝트 디렉팅 참여",
+              "해외 투자자 유치를 위한 프리젠테이션 작업, 신사업 개발 디자인 프로젝트 매니지먼트"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "다이닝코드",
+        "role": "개발팀 UI/UX Designer",
+        "period": "2017.04 – 2019.01",
+        "projects": [
+          {
+            "title": "빅데이터 기반 맛집 정보 검색 서비스 '다이닝코드' 모바일 애플리케이션",
+            "bullets": [
+              "월간 식당 조회수 1,500만 회, 월 순사용자 200만 명",
+              "애플리케이션 누적 다운로드 수 180만 건",
+              "모바일 서비스 앱, 웹사이트 UI•UX 디자인",
+              "앱스토어 프로모션 이미지, 앱 내 아이콘 및 일러스트 등 서비스 컴포넌트 제작",
+              "사용자 환경에 따른 모바일 앱 서비스 개선사항(유지보수) 개발대응"
+            ]
+          },
+          {
+            "title": "빅데이터 맛집 택배 서비스 ‘다코박스’",
+            "bullets": [
+              "빅데이터 맛집 택배 서비스 '다코박스'런칭",
+              "웹사이트 UI•UX 기획, 디자인 리서치 및 GUI 작업",
+              "제휴사 마케팅 배너, 이벤트 페이지, 커머셜 상세페이지 제작",
+              "외부 채널 마케팅 카드뉴스 등 이미지 콘텐츠 제작"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "(주)유라이크",
+        "role": "사업기획팀 UI/UX Designer, 과장",
+        "period": "2013.06 – 2016.11",
+        "projects": [
+          {
+            "title": "SK텔레콤 E-스포츠 경기 실시간 스트리밍 서비스 'T-LoL'",
+            "bullets": [
+              "구글 스토어 100만 다운로드",
+              "누적 사용자 600만명",
+              "모바일 앱 서비스 UI•UX 디자인",
+              "실시간 스트리밍, 커뮤니티(이벤트 등) 콘텐츠 디자인",
+              "개발대응(UI Guideline) 및 유지보수, 고객사 커뮤니케이션"
+            ]
+          },
+          {
+            "title": "SK텔레콤 스포츠 중계 스트리밍, 경기정보 제공 포털 서비스 'T-스포츠' (현 SKT wavve로 통합)",
+            "bullets": []
+          },
+          {
+            "title": "SK텔레콤 영어 학습 서비스 'T-마스터'",
+            "bullets": [
+              "모바일 앱 서비스 UI•UX 디자인",
+              "실시간 스트리밍, 커뮤니티(이벤트 등) 콘텐츠 디자인",
+              "개발대응(UI Guideline) 및 유지보수, 고객사 커뮤니케이션"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "아메바(amoeba)",
+        "role": "인터페이스팀 GUI Designer, 대리",
+        "period": "2009.09 – 2012.12",
+        "projects": [
+          {
+            "title": "SK텔레콤 농구 중계 스트리밍, 경기 정보 제공 서비스 T-Basketball GUI",
+            "bullets": [
+              "선행 디자인 시안 및 고객사, 외주사 커뮤니케이션",
+              "개발부서 이관용 디자인 가이드라인 제작",
+              "이벤트 페이지 및 콘텐츠 디자인"
+            ]
+          },
+          {
+            "title": "삼성전자 GUI",
+            "bullets": [
+              "삼성전자 MSC(서비스부문) 러닝허브, 러닝허브 스토어 태블릿&모바일 앱 GUI",
+              "삼성전자 MSC(서비스부문) 메신저 서비스 `챗온` 모바일 앱 GUI",
+              "삼성전자 무선사업부 갤럭시 S 시리즈 GUI(One UI) 참여",
+              "삼성전자 무선사업부 갤럭시 S2 구주향, 인도향 GUI",
+              "삼성전자 무선사업부 갤럭시 S2 GUI",
+              "삼성전자 무선사업부 TouchWiz 3.0 갤럭시 S2 아이콘 SET",
+              "삼성전자 무선사업부 BADA, Wave GUI"
+            ]
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "title": "Design, Prototyping",
+        "text": "Figma, Claud code, Codex and more"
+      },
+      {
+        "title": "Management",
+        "text": "Confluence, JIRA, Notion, Storybook"
+      }
+    ],
+    "etc": [
+      "수선, 리폼 플랫폼 Oldee — 사이드 프로젝트 디자이너 참여",
+      "컴퓨터그래픽스운용기능사 — 한국산업인력공단",
+      "제2회 I·DIGITAL·U 시민아이디어공모전(서울디지털재단) — 장려상 수상",
+      "제14회 국제 디자인트렌드 대전 (디자인트렌드학회) — 기관장상 수상",
+      "영어, 일본어 — 일상회화 가능"
+    ],
+    "name": "천지영",
+    "role": "Product Designer",
+    "linkedin": "https://www.linkedin.com/in/nvydec/",
+    "philosophy_label": "Philosophy",
+    "career_label": "Career",
+    "skills_label": "Skills",
+    "etc_label": "ETC"
+  },
+  "en": {
+    "intro": "I am a Product Designer who has designed digital products across a range of industries. I turn complex user needs, operational policies, and technical constraints into actionable product experiences, working with engineers through every stage from problem definition to launch and iteration. My strength is using design systems and LLM-based prototyping and automation to turn individual design capabilities into systems a team can use repeatedly.",
+    "philosophy": [
+      {
+        "title": "I structure complex problems into actionable products.",
+        "paragraphs": [
+          "I identify where user needs, operational policies, business goals, and technical constraints conflict, and clarify the structure of the problem. Before designing screens, I define workflows, policies, and edge cases, turning them into product experiences that can actually be implemented."
+        ]
+      },
+      {
+        "title": "I turn individual capabilities into systems the team can use.",
+        "paragraphs": [
+          "I value structures that produce good results repeatedly over a single good outcome.",
+          "I build design systems, components, tokens, guidelines, and workflows to improve consistency, scalability, and maintainability across design and development."
+        ]
+      },
+      {
+        "title": "I help people across disciplines make better decisions.",
+        "paragraphs": [
+          "I collaborate with engineers and operations staff from the beginning of the design process, aligning their needs and constraints toward a shared direction.",
+          "My strength is improving the quality of team decisions by structuring complex information and clarifying options, rather than making every decision myself."
+        ]
+      },
+      {
+        "title": "I use LLMs to shorten the distance between exploration and execution.",
+        "paragraphs": [
+          "I use LLMs extensively for research, organizing requirements, UX writing, prototyping, and automating repetitive tasks.",
+          "I aim for a way of working that tests ideas quickly in a functioning form and leaves more time and energy for problems that require human judgment."
+        ]
+      }
+    ],
+    "career": [
+      {
+        "company": "MAKESTAR",
+        "role": "Commerce Product Squad · Design Center - Product Designer",
+        "period": "2025.06 – present",
+        "projects": [
+          {
+            "title": "MAKESTAR global commerce website & admin",
+            "bullets": [
+              "Analyzed winner announcement processes that more than 10 PMs managed separately in Excel and by hand, and structured them into a standard workflow.",
+              "Defined operational policies and edge cases through interviews, observations of PM and logistics work, and event-site research.",
+              "Designed the end-to-end flow from purchase and event entry through entry counting, duplicate entry consolidation, winner selection, agency review, exclusions, announcement, and on-site operations.",
+              "Replaced repetitive Excel and manual tasks with product features and AI automation tools, reducing on-site spreadsheet use by approximately 80%.",
+              "Designed multilingual UX writing and global event experiences for Korean-, Chinese-, Japanese-, and English-speaking users.",
+              "Structured family and given name data for different writing systems and designed identity verification policies through on-site ID checks."
+            ]
+          },
+          {
+            "title": "MAKESTAR design system & AI workflow",
+            "bullets": [
+              "Built a design system and shared UI components to improve consistency and development efficiency across the commerce website and admin.",
+              "Tokenized color, typography, spacing, and states, and designed a component structure for product growth and maintenance.",
+              "Documented design principles and component rules as shared standards for design and development.",
+              "Used ChatGPT and Claude Code for research, policy clarification, UX writing, and structuring requirements.",
+              "Used code generation tools to build working prototypes of key user flows and interactions, validating policies and edge cases before development.",
+              "Automated repetitive operational work with AI, distinguishing problems that need product features from those suited to lightweight automation to optimize development resources."
+            ]
+          }
+        ]
+      },
+      {
+        "company": "3boon1",
+        "role": "Tech Division - Product Designer",
+        "period": "2020.04 – 2024.10",
+        "projects": [
+          {
+            "title": "Smart mattress D2C brand connecting hardware, apps, and commerce",
+            "bullets": [
+              "Managed the overall Sleepcube app project schedule and sprints, including planning, release, and retrospectives.",
+              "Defined design requirements from the Jira backlog and created flowcharts based on development policies.",
+              "Designed UX, prototypes, and UI visuals aligned with development policies.",
+              "Defined in-product micro motion and created icons using Adobe After Effect and Lottie."
+            ]
+          },
+          {
+            "title": "3boon1 design system (ARGOS Design Principles)",
+            "bullets": [
+              "Set design system goals and published guidelines in Figma and Storybook.",
+              "Documented and maintained the design system changelog.",
+              "Created a brand-specific color palette and icon set.",
+              "Defined color sets for light and dark modes.",
+              "Tokenized and distributed design elements and applied them to projects.",
+              "Created modular UI components for reuse."
+            ]
+          },
+          {
+            "title": "3boon1 online showroom (official store)",
+            "bullets": [
+              "Led design at 3boon1.",
+              "Coordinated design work across marketing and logistics operations and managed the design team.",
+              "Managed partner feedback and collaborated with frontend engineers.",
+              "Built a unified admin for online and physical showrooms.",
+              "Designed screens and UI for ongoing maintenance of the official store.",
+              "Created promotional and marketing banners, event pages, and social media visuals."
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Paxnet",
+        "role": "Blockchain Division - UI/UX Designer, Assistant Manager",
+        "period": "2019.04 – 2020.04",
+        "projects": [
+          {
+            "title": "SHH blockchain-based encrypted messenger",
+            "bullets": [
+              "Led the mobile app UI/UX design unit.",
+              "Managed partner feedback and design deliverables.",
+              "Communicated with blockchain developers in Russia and Eastern Europe and supported local staff during overseas business trips."
+            ]
+          },
+          {
+            "title": "Early-stage planning and design for blockchain services",
+            "bullets": [
+              "Contributed to brand design for the GRIDA blockchain mainnet.",
+              "Designed UI/UX for GRIDA DID, a self-sovereign identity service.",
+              "Designed UI/UX for GRIDA Flace, a fandom-based NFT marketplace.",
+              "Designed UI for mobile apps and web services, along with icons and illustrations.",
+              "Planned early-stage service screens and built design prototypes for new projects.",
+              "Participated in directing brand identity and BX projects.",
+              "Created presentations for international investors and managed design projects for new business development."
+            ]
+          }
+        ]
+      },
+      {
+        "company": "DiningCode",
+        "role": "Development Team - UI/UX Designer",
+        "period": "2017.04 – 2019.01",
+        "projects": [
+          {
+            "title": "DiningCode, a big-data-based restaurant discovery app",
+            "bullets": [
+              "15 million monthly restaurant views and 2 million monthly unique users.",
+              "1.8 million cumulative app downloads.",
+              "Designed UI/UX for the mobile app and website.",
+              "Created app store promotional images, in-app icons, illustrations, and other service components.",
+              "Supported development of mobile app improvements and maintenance for different user environments."
+            ]
+          },
+          {
+            "title": "DakoBox, a big-data-based restaurant food delivery service",
+            "bullets": [
+              "Launched DakoBox, a big-data-based restaurant food delivery service.",
+              "Planned website UI/UX, conducted design research, and created GUI designs.",
+              "Created partner marketing banners, event pages, and commercial detail pages.",
+              "Created visual content including card news for external marketing channels."
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Ulike",
+        "role": "Business Planning Team - UI/UX Designer, Manager",
+        "period": "2013.06 – 2016.11",
+        "projects": [
+          {
+            "title": "SK Telecom T-LoL esports live streaming service",
+            "bullets": [
+              "1 million downloads on Google Play.",
+              "6 million cumulative users.",
+              "Designed UI/UX for the mobile app.",
+              "Designed content for live streaming and community features, including events.",
+              "Provided development support and UI guidelines, maintained the service, and communicated with clients."
+            ]
+          },
+          {
+            "title": "SK Telecom T-Sports streaming and sports information portal (now integrated into SKT wavve)",
+            "bullets": []
+          },
+          {
+            "title": "SK Telecom T-Master English learning service",
+            "bullets": [
+              "Designed UI/UX for the mobile app.",
+              "Designed content for live streaming and community features, including events.",
+              "Provided development support and UI guidelines, maintained the service, and communicated with clients."
+            ]
+          }
+        ]
+      },
+      {
+        "company": "amoeba",
+        "role": "Interface Team - GUI Designer, Assistant Manager",
+        "period": "2009.09 – 2012.12",
+        "projects": [
+          {
+            "title": "SK Telecom T-Basketball streaming and game information service GUI",
+            "bullets": [
+              "Created early-stage design proposals and coordinated with clients and vendors.",
+              "Created design guidelines for handoff to development.",
+              "Designed event pages and content."
+            ]
+          },
+          {
+            "title": "Samsung Electronics GUI",
+            "bullets": [
+              "GUI for Samsung MSC Learning Hub and Learning Hub Store tablet and mobile apps.",
+              "GUI for the Samsung MSC ChatON mobile messenger app.",
+              "Contributed to Samsung Mobile Galaxy S series GUI (One UI).",
+              "Galaxy S2 GUI for European and Indian markets.",
+              "Galaxy S2 GUI.",
+              "TouchWiz 3.0 Galaxy S2 icon set.",
+              "BADA and Wave GUI."
+            ]
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "title": "Design, Prototyping",
+        "text": "Figma, Claude Code, Codex and more"
+      },
+      {
+        "title": "Management",
+        "text": "Confluence, JIRA, Notion, Storybook"
+      }
+    ],
+    "etc": [
+      "Oldee, an alterations and upcycling platform — side project designer",
+      "Computer Graphics Operation Technician — Human Resources Development Service of Korea",
+      "2nd I·DIGITAL·U Citizen Idea Contest (Seoul Digital Foundation) — Encouragement Award",
+      "14th International Design Trend Competition (Design Trend Society) — Institutional Head Award",
+      "English and Japanese — conversational proficiency"
+    ],
+    "name": "Cheon Jiyoung",
+    "role": "Product Designer",
+    "linkedin": "https://www.linkedin.com/in/nvydec/",
+    "philosophy_label": "Philosophy",
+    "career_label": "Career",
+    "skills_label": "Skills",
+    "etc_label": "Additional experience"
+  },
+  "ja": {
+    "intro": "さまざまな業界のデジタルプロダクトを設計してきたProduct Designerです。複雑なユーザーニーズ、運用ポリシー、技術的制約を構造化し、実現可能なプロダクト体験へとつなげてきました。エンジニアとともに、課題の定義からリリース、改善までの全過程を推進してきました。デザインシステムとLLMを活用したプロトタイピング・自動化を通じて、個人のデザイン能力をチームが繰り返し活用できる仕組みへと広げることを強みとしています。",
+    "philosophy": [
+      {
+        "title": "複雑な課題を、実現可能なプロダクトへと構造化します。",
+        "paragraphs": [
+          "ユーザーニーズ、運用ポリシー、ビジネス目標、技術的制約がぶつかる点を見つけ、課題の構造を明確にします。画面を設計する前に、ワークフロー、ポリシー、例外的な状況を整理し、実装可能なプロダクト体験へとつなげます。"
+        ]
+      },
+      {
+        "title": "個人の能力を、チームが活用できる仕組みへと広げます。",
+        "paragraphs": [
+          "一度のよい成果よりも、よい成果を繰り返し生み出せる仕組みを大切にしています。",
+          "デザインシステム、コンポーネント、トークン、ガイド、業務ワークフローを構築し、デザインと開発の一貫性・拡張性・保守性を高めます。"
+        ]
+      },
+      {
+        "title": "さまざまな職種が、よりよい意思決定をできるよう支援します。",
+        "paragraphs": [
+          "設計の初期段階からエンジニアや運用担当者と協働し、それぞれの要望と制約を一つの方向へと整えます。",
+          "すべてを自分で決めるのではなく、複雑な情報を構造化し、選択肢を明確にすることで、チームの意思決定の質を高めることを得意としています。"
+        ]
+      },
+      {
+        "title": "LLMで、探索と実行の距離を縮めます。",
+        "paragraphs": [
+          "リサーチ、要件整理、UXライティング、プロトタイピング、反復業務の自動化にLLMを幅広く活用しています。",
+          "アイデアを素早く動く形で検証し、人が判断すべき課題により多くの時間とエネルギーを使える働き方を目指しています。"
+        ]
+      }
+    ],
+    "career": [
+      {
+        "company": "MAKESTAR",
+        "role": "コマースプロダクトスクワッド・デザインセンター - Product Designer",
+        "period": "2025.06 – 現在",
+        "projects": [
+          {
+            "title": "MAKESTAR グローバルコマースサイト・管理画面",
+            "bullets": [
+              "10名以上のPMがExcelと手作業で個別に運用していた当選者発表プロセスを分析し、標準ワークフローとして構造化。",
+              "インタビュー資料、PM・物流担当者の実務、イベント現場を調査し、運用ポリシーと例外ケースを定義。",
+              "商品購入・イベント応募から、応募券集計、重複応募の合算、当選者選定、所属事務所の確認、除外処理、発表、現場運営までのEnd-to-Endフローを設計。",
+              "反復的なExcel・手作業をプロダクトとAI自動化ツールに置き換え、現場でのスプレッドシート利用を約80%削減。",
+              "韓国語・中国語・日本語・英語のユーザーを考慮した多言語UXライティングと、グローバルイベントのユーザー体験を設計。",
+              "国ごとの文字体系の違いを考慮して姓・名のデータを構造化し、現場での身分確認まで含めた本人確認ポリシーを設計。"
+            ]
+          },
+          {
+            "title": "MAKESTAR デザインシステム・AIワークフロー",
+            "bullets": [
+              "コマースサイト・管理画面の一貫性と開発効率を高めるデザインシステムと共通UIコンポーネントを構築。",
+              "色、タイポグラフィ、余白、状態などをトークン化し、プロダクトの拡張と保守を考慮したコンポーネント構造を設計。",
+              "デザイン原則とコンポーネントのルールを文書化し、デザイン・開発の共通基準として活用。",
+              "ChatGPTやClaude Codeをリサーチ、ポリシー整理、UXライティング、要件の構造化に活用。",
+              "コード生成ツールで主要なユーザーフローとインタラクションを動くプロトタイプとして実装し、開発前にポリシーと例外ケースを検証。",
+              "反復的な運用業務をAIで自動化し、プロダクト機能として開発すべき課題と軽量な自動化で解決できる課題を分け、開発リソースを最適化。"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "3boon1（サンブンノイル）",
+        "role": "Tech Division - Product Designer",
+        "period": "2020.04 – 2024.10",
+        "projects": [
+          {
+            "title": "ハードウェア・アプリ・コマースをつなぐスマートマットレスのD2Cブランド",
+            "bullets": [
+              "Sleepcubeアプリの全体スケジュールとスプリント（計画・リリース・振り返り）を管理。",
+              "Jiraのバックログに基づくデザイン要件の定義と、開発ポリシーに沿ったフローチャートを作成。",
+              "開発ポリシーに沿ったUX設計、プロトタイピング、UIのビジュアル化。",
+              "Adobe After EffectとLottieを用い、サービス内のマイクロモーションを定義し、アイコンを制作。"
+            ]
+          },
+          {
+            "title": "3boon1 デザインシステム（ARGOS Design Principles）",
+            "bullets": [
+              "デザインシステムの目標を設定し、Figma・Storybookでガイドラインを公開。",
+              "デザインシステムの更新に伴う変更履歴を文書化・管理。",
+              "ブランド専用のカラーパレットとアイコンセットを制作。",
+              "ライトモード・ダークモードのカラーセットを定義。",
+              "デザイン要素をトークン化・配布し、プロジェクトに適用。",
+              "再利用を目的としたUIコンポーネントのモジュール設計。"
+            ]
+          },
+          {
+            "title": "3boon1 オンラインショールーム（公式ストア）",
+            "bullets": [
+              "3boon1のデザインを統括。",
+              "マーケティング・物流運用部門のデザイン業務を調整し、チームを管理。",
+              "パートナー企業のフィードバックを管理し、フロントエンドエンジニアと協働。",
+              "オンライン・実店舗ショールームを統合する管理画面を構築。",
+              "公式ストアの保守に伴う画面設計・UIデザイン。",
+              "プロモーション・マーケティング向けのバナー、イベントページ、SNS画像を制作。"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Paxnet",
+        "role": "ブロックチェーン事業本部 - UI/UX Designer、代理",
+        "period": "2019.04 – 2020.04",
+        "projects": [
+          {
+            "title": "ブロックチェーン暗号化メッセンジャー「SHH」",
+            "bullets": [
+              "モバイルアプリのUI・UXデザインチームを統括。",
+              "パートナー企業のフィードバックとデザイン成果物のプロジェクトを管理。",
+              "ロシアなど東欧圏のブロックチェーン開発者とのコミュニケーションや、海外出張時の現地スタッフ支援を経験。"
+            ]
+          },
+          {
+            "title": "ブロックチェーンサービスの先行企画・デザイン",
+            "bullets": [
+              "ブロックチェーンメインネット「GRIDA」のブランドデザインに参加。",
+              "自己主権型IDサービス「GRIDA DID」のUI・UXデザイン。",
+              "ファンダム文化を基盤としたNFTマーケットプレイス「GRIDA Flace」のUI・UXデザイン。",
+              "モバイルアプリ・WebサービスのUI、サービス内アイコン、イラストを制作。",
+              "新規プロジェクトのサービス画面を先行企画し、デザインプロトタイプを制作。",
+              "ブランドアイデンティティ・BX設計のプロジェクトディレクションに参加。",
+              "海外投資家向けのプレゼンテーションを制作し、新規事業開発のデザインプロジェクトを管理。"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "DiningCode",
+        "role": "開発チーム - UI/UX Designer",
+        "period": "2017.04 – 2019.01",
+        "projects": [
+          {
+            "title": "ビッグデータを活用した飲食店検索アプリ「DiningCode」",
+            "bullets": [
+              "月間飲食店閲覧数1,500万回、月間ユニークユーザー200万人。",
+              "アプリ累計ダウンロード数180万件。",
+              "モバイルアプリ・WebサイトのUI・UXデザイン。",
+              "アプリストアのプロモーション画像、アプリ内アイコン、イラストなどを制作。",
+              "ユーザー環境に応じたモバイルアプリの改善・保守における開発対応。"
+            ]
+          },
+          {
+            "title": "ビッグデータを活用したグルメ宅配サービス「DakoBox」",
+            "bullets": [
+              "ビッグデータを活用したグルメ宅配サービス「DakoBox」をリリース。",
+              "WebサイトのUI・UX企画、デザインリサーチ、GUI制作。",
+              "提携企業のマーケティングバナー、イベントページ、商品詳細ページを制作。",
+              "外部チャネル向けのマーケティング用カードニュースなど、画像コンテンツを制作。"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "Ulike",
+        "role": "事業企画チーム - UI/UX Designer、課長",
+        "period": "2013.06 – 2016.11",
+        "projects": [
+          {
+            "title": "SK Telecom eスポーツライブ配信サービス「T-LoL」",
+            "bullets": [
+              "Google Playで100万ダウンロード。",
+              "累計ユーザー600万人。",
+              "モバイルアプリのUI・UXデザイン。",
+              "ライブ配信やコミュニティ（イベントなど）のコンテンツをデザイン。",
+              "開発対応（UIガイドライン）、保守、クライアントとのコミュニケーション。"
+            ]
+          },
+          {
+            "title": "SK Telecom スポーツ配信・試合情報ポータル「T-Sports」（現在はSKT wavveに統合）",
+            "bullets": []
+          },
+          {
+            "title": "SK Telecom 英語学習サービス「T-Master」",
+            "bullets": [
+              "モバイルアプリのUI・UXデザイン。",
+              "ライブ配信やコミュニティ（イベントなど）のコンテンツをデザイン。",
+              "開発対応（UIガイドライン）、保守、クライアントとのコミュニケーション。"
+            ]
+          }
+        ]
+      },
+      {
+        "company": "amoeba",
+        "role": "インターフェースチーム - GUI Designer、代理",
+        "period": "2009.09 – 2012.12",
+        "projects": [
+          {
+            "title": "SK Telecom バスケットボール配信・試合情報サービス「T-Basketball」のGUI",
+            "bullets": [
+              "先行デザイン案の制作、クライアント・外注先とのコミュニケーション。",
+              "開発部門への引き継ぎ用デザインガイドラインを制作。",
+              "イベントページ・コンテンツのデザイン。"
+            ]
+          },
+          {
+            "title": "Samsung Electronics GUI",
+            "bullets": [
+              "Samsung MSCのLearning Hub・Learning Hub Storeのタブレット／モバイルアプリGUI。",
+              "Samsung MSCのメッセンジャーサービス「ChatON」のモバイルアプリGUI。",
+              "Samsung MobileのGalaxy SシリーズGUI（One UI）に参加。",
+              "Galaxy S2の欧州・インド向けGUI。",
+              "Galaxy S2のGUI。",
+              "TouchWiz 3.0 Galaxy S2のアイコンセット。",
+              "BADA・WaveのGUI。"
+            ]
+          }
+        ]
+      }
+    ],
+    "skills": [
+      {
+        "title": "デザイン・プロトタイピング",
+        "text": "Figma、Claude Code、Codex ほか"
+      },
+      {
+        "title": "マネジメント",
+        "text": "Confluence、JIRA、Notion、Storybook"
+      }
+    ],
+    "etc": [
+      "リペア・リフォームプラットフォームOldee — サイドプロジェクトのデザイナーとして参加",
+      "コンピュータグラフィックス運用技能士 — 韓国産業人力公団",
+      "第2回I·DIGITAL·U市民アイデア公募展（ソウルデジタル財団）— 奨励賞",
+      "第14回国際デザイントレンド大展（デザイントレンド学会）— 機関長賞",
+      "英語・日本語 — 日常会話レベル"
+    ],
+    "name": "チョン・ジヨン",
+    "role": "Product Designer",
+    "linkedin": "https://www.linkedin.com/in/nvydec/",
+    "philosophy_label": "デザイン哲学",
+    "career_label": "職歴",
+    "skills_label": "スキル",
+    "etc_label": "その他の経験・資格"
+  }
+}

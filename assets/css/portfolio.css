@@ -57,8 +57,6 @@ img { display: block; max-width: 100%; height: auto; }
 .about-person h2 { font-size: 30px; letter-spacing: -.05em; font-weight: 650; }
 .about-person p { font-size: 16px; color: var(--muted); margin: 2px 0 19px; }
 .about-person a { font-size: 14px; }
-.profile-links { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; }
-.file-type { border: 1px solid var(--rule); border-radius: 3px; padding: 1px 5px; font-size: 11px; line-height: 1.4; color: var(--muted); }
 .about-body section+section { border-top: 1px solid var(--rule); padding-top: 30px; margin-top: 52px; }
 .about-label { color: var(--muted); font-size: 16px; letter-spacing: -.025em; font-weight: 540; margin-bottom: 25px; }
 .principle + .principle { margin-top: 26px; }
@@ -161,4 +159,40 @@ a:active, button:active, summary:active { opacity: .72; }
 .prose summary:hover, .prose summary:focus-visible { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   [data-reveal].revealed { animation: none; }
+}
+
+.header-actions { display: flex; align-items: center; gap: clamp(24px, 4vw, 56px); }
+.mast .language-switch { gap: 16px; padding-left: 24px; border-left: 1px solid var(--rule); }
+.mast .language-switch a { font-weight: 450; }
+.mast .language-switch a[aria-current] { font-weight: 650; color: var(--accent); }
+.mast .language-switch a::after { display: none; }
+.about-body { min-width: 0; }
+.resume-intro { font-size: 18px; line-height: 1.8; letter-spacing: -.025em; word-break: keep-all; overflow-wrap: break-word; margin-bottom: 44px; }
+.principle h3 { font-size: clamp(19px,1.65vw,24px); letter-spacing: -.04em; font-weight: 630; }
+.resume-employment + .resume-employment { border-top: 1px solid var(--rule); margin-top: 40px; padding-top: 32px; }
+.resume-employer { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
+.resume-employer h3 { font-size: 22px; letter-spacing: -.035em; }
+.resume-employer p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+.resume-period { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.resume-project { margin-top: 24px; }
+.resume-project h4 { margin: 0 0 10px; font-size: 17px; line-height: 1.55; font-weight: 620; letter-spacing: -.02em; }
+.resume-project ul, .resume-extras { margin: 0; padding-left: 1.2em; color: #535358; line-height: 1.8; overflow-wrap: anywhere; }
+.resume-project li + li, .resume-extras li + li { margin-top: 7px; }
+.resume-skills { margin: 0; }
+.resume-skills > div + div { margin-top: 18px; }
+.resume-skills dt { font-weight: 620; }
+.resume-skills dd { margin: 4px 0 0; color: #535358; }
+html[lang="ja"] .resume-intro, html[lang="ja"] .principle p { word-break: normal; }
+@media (max-width: 760px) {
+  .mast-inner { flex-wrap: wrap; padding-block: 18px; gap: 12px; }
+  .signature { flex-basis: 100%; }
+  .header-actions { width: 100%; justify-content: space-between; gap: 12px; }
+  .mast .primary-nav { gap: 20px; }
+  .mast .language-switch { border-left: 0; padding-left: 0; gap: 14px; }
+  .mast .language-switch a { font-size: 14px; }
+}
+@media (max-width: 560px) {
+  .resume-employer { display: block; }
+  .resume-intro { font-size: 17px; }
+  .mast .language-switch { gap: 10px; }
 }

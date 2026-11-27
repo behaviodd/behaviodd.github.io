@@ -2,17 +2,17 @@
 
 작성일: 2026-11-27 (Asia/Seoul) · 다음 작업: 2026-11-28
 
-## 후속 변경: works 통합
+## 최신 변경: PDF 삭제와 다국어 resume
 
-- 주 메뉴와 목록은 `works`(`/works/`)로 통합했다. 이전 목록 주소는 새 목록으로 이동한다.
-- 기존 Work 4개와 AI Projects 6개의 원고를 모두 `_work/`에 모았다. 일반 블로그 글 3개는 `_posts/`에 유지한다.
-- `_data/ai_projects.yml`은 제거했다. 제목·목록용 제목(`card_title`)·표지·순서(`order`)는 각 원고 상단에서 수정한다.
-- 상세 글 주소와 본문, 목록 순서는 유지했다. 옮긴 작업기는 명시적인 `permalink`로 기존 `/blog/…/` 주소를 유지한다.
-- Profile 소개의 AI 표현 두 곳을 LLM으로 변경했다.
-- 사이트 제목을 `CHEON JIYOUNG`으로 변경했다. 카드에 Profile과 같은 스크롤 fade-in을 적용하고 링크·메뉴·접힘 항목에 마이크로 모션을 추가했다. 모션 줄이기 설정을 지원한다.
-- Profile의 Resume 링크는 `assets/documents/cheon-jiyoung-resume-2026.pdf`를 새 탭으로 연다. 최종 파일은 사용자가 제공한 `[2026] Resume_천지영.pdf`이며, 처음 제공한 DesignPortfolio PDF를 교체했다.
-- README의 원고 수정 안내는 사용자 요청으로 제거했다.
-- 사용자가 이번까지의 전체 변경 사항 커밋·푸시와 GitHub Pages 배포를 요청했다. 아래 내용은 이전 세션 기록이다.
+- 사용자의 개인정보 삭제 요청에 따라 공개 Resume PDF와 링크를 제거했다. PDF가 포함된 과거 main 이력도 승인받아 재작성했고, 해당 PDF를 포함한 이전 Actions 배포 실행과 산출물도 삭제했다.
+- `.gitignore`에 `assets/documents/*.pdf`를 추가했다. 개인 PDF를 다시 커밋하지 않는다. 원본은 사용자의 Downloads 폴더에만 있다.
+- profile 메뉴는 resume로 변경했다. 한국어 `/resume/`, 영어 `/en/resume/`, 일본어 `/ja/resume/`를 제공한다. `/about/`, `/profile/`은 `/resume/`로 이동한다.
+- `_data/resume.yml`에 세 언어의 소개·Philosophy·경력·스킬을 보관하고 `_layouts/resume.html`로 렌더링한다. 한국어 Philosophy는 PDF 원문을 그대로 옮겼으며 이메일·전화번호와 외부 포트폴리오 공유 링크는 포함하지 않았다.
+- 상단의 언어 전환은 resume 페이지의 언어를 선택한다. works 아티클은 한국어 원문을 유지한다.
+- works의 모든 원고 10개는 `_work/`에 있다. 각 원고 상단의 `title`, `card_title`, `cover`, `cover_alt`, `order`를 수정한다. 이전 상세 글 주소는 유지한다.
+- 사이트 제목은 `CHEON JIYOUNG`이다. 카드와 resume에 스크롤 fade-in, 링크와 메뉴에 마이크로 모션을 적용했다. 모션 줄이기 설정을 지원한다.
+- 과거 커밋 원본 주소의 GitHub 캐시는 여전히 응답할 수 있다. GitHub Support 삭제 요청이 추가로 필요하다. 저장소 이력 정리는 GitHub 캐시와 타인의 다운로드 사본 삭제를 보장하지 않는다.
+- 아래는 이전 세션 기록이다. PDF 제공 관련 옛 내용은 현재 상태에 적용하지 않는다.
 
 ## 현재 상태
 
