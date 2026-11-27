@@ -5,10 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ page.title }} — K-POP Digging Club</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
-    rel="stylesheet">
   <link rel="stylesheet" as="style" crossorigin
     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <style>
@@ -35,7 +31,7 @@
       --accent-sub-glow: rgba(92, 201, 202, 0.3);
       --surface: rgba(255, 255, 255, 0.03);
       --surface-solid: #000;
-      --font: "JetBrains Mono", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     html {
@@ -46,6 +42,8 @@
       background: var(--bg);
       -webkit-font-smoothing: antialiased;
     }
+
+    textarea, pre, code, kbd, samp { font-family: var(--font); }
 
     body {
       min-height: 100vh;

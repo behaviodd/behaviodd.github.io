@@ -6,6 +6,7 @@
   <title>{% if page.title %}{{ page.title | escape }} · {% endif %}{{ site.title }}</title>
   <link rel="icon" type="image/png" href="{{ '/assets/identity/monogram.png' | relative_url }}">
   <link rel="stylesheet" href="{{ '/assets/css/portfolio.css' | relative_url }}">
+  <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 </head>
 <body id="top">
   <a class="skip" href="#content">본문으로 이동</a>
@@ -13,7 +14,7 @@
     <div class="wrap mast-inner">
       <a class="signature" href="{{ '/' | relative_url }}" lang="en">Cheon Jiyoung</a>
       <nav aria-label="주 메뉴">
-        {% assign routes = '필로소피|/about/,Work|/work/,AI Projects|/ai-projects/' | split: ',' %}
+        {% assign routes = 'profile|/about/,Work|/work/,AI Projects|/ai-projects/' | split: ',' %}
         {% for route in routes %}{% assign item = route | split: '|' %}
         <a href="{{ item[1] | relative_url }}"{% if page.url == item[1] %} aria-current="page"{% elsif page.collection == 'work' and item[0] == 'Work' %} aria-current="location"{% elsif page.collection == 'posts' and item[0] == 'AI Projects' %}{% assign match = site.data.ai_projects | where: 'slug', page.slug | first %}{% if match %} aria-current="location"{% endif %}{% endif %}>{{ item[0] }}</a>
         {% endfor %}

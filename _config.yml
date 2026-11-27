@@ -12,6 +12,7 @@ kramdown:
   input: GFM
 exclude:
   - README.md
+  - docs/HANDOFF.md
   - work-hours-calculator/
   - worker/
   - Gemfile
