@@ -3,8 +3,8 @@ layout: project
 title: 주문 전에 배송 주소를 확인할 수 있도록
 company: 메이크스타
 order: 1
-cover: /assets/work/address-cover.png
-cover_alt: 원본 프로토타입의 배송 국가 선택 창과 대한민국을 선택한 뒤 표시되는 배송지 수정 화면
+cover: /assets/work/address-regional-forms.png
+cover_alt: 중국의 두 줄 상세주소 입력란과 대만의 EZ WAY 실명인증 안내를 나란히 보여주는 배송지 입력 화면
 description: 국가마다 다른 주소 체계를 따라 입력하고, 배송에 쓰일 영문 주소까지 확인하는 주문 경험을 설계했습니다.
 ---
 
