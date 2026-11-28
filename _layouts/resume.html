@@ -8,7 +8,10 @@ layout: default
   <header class="about-person">
     <h2>{{ resume.name }}</h2>
     <p lang="en">{{ resume.role }}</p>
-    <a class="inline-link" href="{{ resume.linkedin }}" lang="en">LinkedIn</a>
+    <div class="resume-contacts">
+      <a class="inline-link" href="{{ resume.linkedin }}" lang="en">LinkedIn</a>
+      <a class="inline-link" href="mailto:cibo1290@gmail.com">cibo1290@gmail.com</a>
+    </div>
   </header>
   <div class="about-body">
     <p class="resume-intro" data-reveal>{{ resume.intro }}</p>
@@ -43,10 +46,6 @@ layout: default
     <section aria-labelledby="skills">
       <h2 id="skills" class="about-label" data-reveal>{{ resume.skills_label }}</h2>
       <dl class="resume-skills">{% for skill in resume.skills %}<div data-reveal><dt>{{ skill.title }}</dt><dd>{{ skill.text }}</dd></div>{% endfor %}</dl>
-    </section>
-    <section aria-labelledby="etc">
-      <h2 id="etc" class="about-label" data-reveal>{{ resume.etc_label }}</h2>
-      <ul class="resume-extras">{% for item in resume.etc %}<li data-reveal>{{ item }}</li>{% endfor %}</ul>
     </section>
   </div>
 </div>

@@ -4,5 +4,6 @@
       <img src="{{ include.item.cover | relative_url }}" width="1500" height="1000" alt="{{ include.item.cover_alt | default: include.item.alt | escape }}" decoding="async"{% unless include.eager %} loading="lazy"{% endunless %}>
     </div>
     <h2>{{ include.item.card_title | default: include.item.title | escape }}</h2>
+    {% if include.item.show_card_description %}<p class="card-subtitle">{{ include.item.description | escape }}</p>{% endif %}
   </a>
 </article>

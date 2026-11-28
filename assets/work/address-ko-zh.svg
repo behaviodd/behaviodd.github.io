@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800"><rect width="1200" height="800" fill="#f1edef"/>
+<rect x="48" y="62" width="537" height="676" rx="22" fill="white"/>
+<text x="86" y="150" font-family="system-ui, sans-serif" font-size="43" font-weight="700" fill="#202428">배송지 등록</text>
+<text x="86" y="219" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">배송 국가/지역</text>
+<rect x="86" y="233" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="104" y="276" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">대한민국</text>
+<text x="86" y="343" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">기본주소</text>
+<rect x="86" y="357" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="104" y="400" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">도로명 또는 지번 검색</text>
+<text x="86" y="467" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">상세주소</text>
+<rect x="86" y="481" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="104" y="524" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">동 · 층 · 호</text>
+<text x="86" y="591" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">우편번호</text>
+<rect x="86" y="605" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="104" y="648" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">예: 04524</text>
+<path d="m501 257 9 9 9-9" stroke="#45484c" stroke-width="3" fill="none"/>
+<rect x="615" y="62" width="537" height="676" rx="22" fill="white"/>
+<text x="653" y="150" font-family="system-ui, sans-serif" font-size="43" font-weight="700" fill="#202428">添加收货地址</text>
+<text x="653" y="219" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">配送国家/地区</text>
+<rect x="653" y="233" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="671" y="276" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">中国大陆</text>
+<text x="653" y="343" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">省 / 市</text>
+<rect x="653" y="357" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="671" y="400" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">广东省　/　深圳市</text>
+<text x="653" y="467" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">区 / 县</text>
+<rect x="653" y="481" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="671" y="524" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">南山区</text>
+<text x="653" y="591" font-family="system-ui, sans-serif" font-size="24" font-weight="600" fill="#202428">详细地址</text>
+<rect x="653" y="605" width="461" height="65" rx="9" fill="#f0f2f4"/>
+<text x="671" y="648" font-family="system-ui, sans-serif" font-size="26" font-weight="400" fill="#202428">道路名称、门牌号</text>
+<path d="m1068 257 9 9 9-9" stroke="#45484c" stroke-width="3" fill="none"/>
+</svg>

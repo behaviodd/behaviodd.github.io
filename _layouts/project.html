@@ -8,7 +8,7 @@ layout: default
     <p class="story-meta">{{ page.company }}{% if page.period %}<span aria-hidden="true">·</span>{{ page.period }}{% endif %}</p>
     {% if page.description %}<p class="standfirst">{{ page.description }}</p>{% endif %}
   </header>
-  <div class="cover"><img src="{{ page.cover | relative_url }}" alt="{{ page.cover_alt | escape }}" fetchpriority="high"></div>
+  <div class="cover">{% if page.zoom_cover %}<a href="{{ page.cover | relative_url }}" aria-label="표지 이미지 크게 보기">{% endif %}<img src="{{ page.cover | relative_url }}" alt="{{ page.cover_alt | escape }}" fetchpriority="high">{% if page.zoom_cover %}</a>{% endif %}</div>
   <div class="prose">{{ content }}</div>
   <div class="story-end"><a class="inline-link" href="{{ '/works/' | relative_url }}"><span aria-hidden="true">←</span> works 목록</a></div>
 </article>
